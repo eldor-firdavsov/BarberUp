@@ -1,5 +1,21 @@
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext.jsx';
+
 function Settings() {
-    return <div>Client Settings</div>;
+    const { logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
+
+    return (
+        <div>
+            <div>Client Settings</div>
+            <button onClick={handleLogout}>Logout</button>
+        </div>
+    );
 }
 
 export default Settings;
