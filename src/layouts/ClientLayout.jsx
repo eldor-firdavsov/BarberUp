@@ -1,12 +1,13 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { Search, Calendar, Settings, Bell } from "lucide-react";
 
+const tabs = [
+    { id: "explore", label: "EXPLORE", icon: Search, path: "/client/dashboard" },
+    { id: "bookings", label: "BOOKINGS", icon: Calendar, path: "/client/bookings" },
+    { id: "settings", label: "SETTINGS", icon: Settings, path: "/client/settings" },
+];
+
 function ClientLayout() {
-    const tabs = [
-        { id: "explore", label: "EXPLORE", icon: Search, path: "/client/dashboard" },
-        { id: "bookings", label: "BOOKINGS", icon: Calendar, path: "/client/bookings" },
-        { id: "settings", label: "SETTINGS", icon: Settings, path: "/client/settings" },
-    ];
 
     return (
         <div className="w-full min-h-screen flex flex-col justify-between bg-white">

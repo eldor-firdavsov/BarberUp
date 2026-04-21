@@ -1,14 +1,14 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { Home, Calendar, Users, Settings, Bell } from "lucide-react";
 
-function BarberLayout() {
+const tabs = [
+    { id: "home", label: "HOME", icon: Home, path: "/barber/dashboard" },
+    { id: "schedule", label: "SCHEDULE", icon: Calendar, path: "/barber/appointments" },
+    { id: "clients", label: "CLIENTS", icon: Users, path: "/barber/clients" },
+    { id: "settings", label: "SETTINGS", icon: Settings, path: "/barber/settings" },
+];
 
-    const tabs = [
-        { id: "home", label: "HOME", icon: Home, path: "/barber/dashboard" },
-        { id: "schedule", label: "SCHEDULE", icon: Calendar, path: "/barber/appointments" },
-        { id: "clients", label: "CLIENTS", icon: Users, path: "/barber/clients" },
-        { id: "settings", label: "SETTINGS", icon: Settings, path: "/barber/settings" },
-    ];
+function BarberLayout() {
 
     return (
         <div className="w-full min-h-screen flex flex-col justify-between bg-white">

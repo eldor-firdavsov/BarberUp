@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function Register() {
   const [email, setEmail] = useState("");
@@ -30,7 +30,7 @@ function Register() {
   return (
     <>
       <section className="mt-10 mx-auto">
-        <div className="flex-col text-center ">
+        <div className="flex flex-col text-center ">
           <img
             src="./Scissor.png"
             alt="blue scissor icon"
@@ -46,8 +46,8 @@ function Register() {
             started
           </p>
         </div>
-        <div className="flex-col justify-items-center mt-10">
-          <div className="flex-col mb-5">
+        <div className="flex flex-col justify-items-center mt-10">
+          <div className="flex flex-col mb-5">
             <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">
               Email
             </h1>
@@ -75,19 +75,19 @@ function Register() {
             Sign Up
           </button>
         </div>
-        <div className="flex-col justify-items-center mt-3">
+        <div className="flex flex-col justify-items-center mt-3">
           <div className="ml-38 leading-none  text-right">
             <p className="text-[11px] text-[#7D7483]">
-              Already have an accaunt?
+              Already have an account?
             </p>
-            <a onClick={() => navigate("/login")} href="#" className="text-[11px] font-semibold text-[#1D0065] ">
+            <Link to="/login" className="text-[11px] font-semibold text-[#1D0065] ">
               Sign In
-            </a>
+            </Link>
           </div>
         </div>
       </section>
-      
-      
+
+
     </>
   );
 }

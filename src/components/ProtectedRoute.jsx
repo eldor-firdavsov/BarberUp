@@ -13,7 +13,7 @@ function ProtectedRoute({ children, requiredRole }) {
     }
 
     if (user.role !== requiredRole) {
-        return <Navigate to="/" replace />;
+        return <Navigate to={`/${user.role}/dashboard`} replace />;
     }
 
     return children;

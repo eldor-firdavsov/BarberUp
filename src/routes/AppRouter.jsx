@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import RoleSelection from '../pages/auth/RoleSelection.jsx';
 import Register from '../pages/auth/Register.jsx';
@@ -9,6 +9,8 @@ import BarberOnboarding from '../pages/auth/BarberOnboarding.jsx';
 import ClientLayout from '../layouts/ClientLayout.jsx';
 import ClientDashboard from '../pages/client/Dashboard.jsx';
 import ClientSettings from '../pages/client/Settings.jsx';
+import ClientBooking from '../pages/client/Booking.jsx';
+import BarbershopDetails from '../pages/client/BarbershopDetails.jsx';
 
 import BarberLayout from '../layouts/BarberLayout.jsx';
 import BarberDashboard from '../pages/barber/Dashboard.jsx';
@@ -37,6 +39,8 @@ function AppRouter() {
                     }
                 >
                     <Route path="dashboard" element={<ClientDashboard />} />
+                    <Route path="bookings" element={<ClientBooking />} />
+                    <Route path="barbershop/:id" element={<BarbershopDetails />} />
                     <Route path="settings" element={<ClientSettings />} />
                 </Route>
 
@@ -53,6 +57,8 @@ function AppRouter() {
                     <Route path="appointments" element={<BarberAppointments />} />
                     <Route path="settings" element={<BarberSettings />} />
                 </Route>
+
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>
     );
