@@ -19,14 +19,15 @@ import BarberAppointments from '../pages/barber/Appointments.jsx';
 import BarberSettings from '../pages/barber/Settings.jsx';
 
 import ProtectedRoute from '../components/ProtectedRoute.jsx';
+import PublicRoute from '../components/PublicRoute.jsx';
 
 function AppRouter() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<RoleSelection />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<PublicRoute><RoleSelection /></PublicRoute>} />
+                <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+                <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                 <Route path="/onboarding/client" element={<ClientOnboarding />} />
                 <Route path="/onboarding/barber" element={<BarberOnboarding />} />
 

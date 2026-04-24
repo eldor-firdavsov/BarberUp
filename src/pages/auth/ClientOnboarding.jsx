@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext.jsx';
 function ClientOnboarding() {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
+    const [profileImage, setProfileImage] = useState(null);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -15,90 +17,130 @@ function ClientOnboarding() {
         }
     }, [navigate]);
 
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setProfileImage(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleFinish = () => {
-        if (name && phone) {
-            try {
-                const dataStr = localStorage.getItem('onboarding_data');
-                if (!dataStr) return;
-                const data = JSON.parse(dataStr);
+        if (!name || !phone) {
+            setError("Please fill in all required fields.");
+            return;
+        }
+        if (!profileImage) {
+            setError("Image is required");
+            return;
+        }
 
-                const userObj = {
-                    role: 'client',
-                    email: data.email,
-                    password: data.password,
-                    name,
-                    phone
-                };
+        try {
+            const dataStr = localStorage.getItem('onboarding_data');
+            if (!dataStr) return;
+            const data = JSON.parse(dataStr);
 
-                const users = JSON.parse(localStorage.getItem('users')) || [];
-                const userExists = users.some(u => u.email === data.email);
+            const userObj = {
+                role: 'client',
+                email: data.email,
+                password: data.password,
+                name,
+                phone,
+                profileImage
+            };
 
-                if (!userExists) {
-                    users.push(userObj);
-                    localStorage.setItem('users', JSON.stringify(users));
-                }
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            const userExists = users.some(u => u.email === data.email);
 
-                login(userObj);
-                navigate('/client/dashboard');
-            } catch (error) {
-                console.error("Failed to parse onboarding data.");
+            if (!userExists) {
+                users.push(userObj);
+                localStorage.setItem('users', JSON.stringify(users));
             }
+
+            login(userObj);
+            navigate('/client/dashboard');
+        } catch (error) {
+            console.error("Failed to parse onboarding data.");
         }
     };
 
     return (
-        <>
-            <section className="mt-15 mx-auto justify-items-center">
-                <div className="flex flex-col justify-items-center ">
-                    <div className="flex items-center gap-2">
-                        <img src="./Scissor.png" alt="blue scissor icon" className="w-3 h-3" />
-                        <p className="text-[#1D0065] font-bold">Join NavbatGo</p>
-                    </div>
+        <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
+            <button
+                onClick={() => navigate(-1)}
+                className="self-start mb-6 flex items-center text-[#4C4451] font-medium"
+            >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M15 18l-6-6 6-6" /></svg>
+                Back
+            </button>
 
-                    <h1 className="text-[36px] text-start font-bold text-[#1D0065] leading-none my-5">
-                        Set Up Your Client <br />Profile
-                    </h1>
+            <header className="mb-10">
+                <div className="flex items-center gap-2 mb-4">
+                    <img src="./Scissor.png" alt="blue scissor icon" className="w-4 h-4" />
+                    <p className="text-[#1D0065] text-sm font-bold uppercase tracking-wider">Join NavbatGo</p>
+                </div>
+                <h1 className="text-3xl font-bold text-[#1D0065] leading-tight">
+                    Set Up Your Client Profile
+                </h1>
+            </header>
+
+            <div className="space-y-6 flex-grow">
+                <h2 className="flex items-center gap-2 text-lg font-bold text-[#1D0065] mb-2">
+                    <img src="./Icon.png" alt="" className="h-5 w-5" /> Personal Information
+                </h2>
+
+                <div>
+                    <label className="label-base">Full Name</label>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="e.g Aziz Raghimov"
+                        className="input-base"
+                    />
                 </div>
 
-                <h1 className="flex items-center mt-15 mb-5 mr-13 gap-2 text-[20px] font-semibold">
-                    <img src="./Icon.png" alt="" className="h-4 w-4" />Personal Information
-                </h1>
-
-                <div className="flex flex-col justify-items-center ">
-                    <div className="flex flex-col mb-5 ">
-                        <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">Full name</h1>
+                <div>
+                    <label className="label-base">Mobile Number</label>
+                    <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-standard)] px-5 border border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:bg-white transition-all h-[var(--input-height)]">
+                        <span className="text-black font-medium text-base pt-[1px]">+998</span>
                         <input
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="e.g Aziz Raghimov"
-                            className="pl-5 pr-15 py-3 font-semibold rounded-xl"
+                            type="tel"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            placeholder=" 90 123 45 67"
+                            className="w-full ml-2 text-base font-normal text-black bg-transparent outline-none h-full"
                         />
                     </div>
-
-                    <div className="ml-10">
-                        <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">Mobile Number</h1>
-                        <div className="flex items-center ml-5">
-                            <p>+998</p>
-                            <input
-                                type="tel"
-                                value={phone}
-                                onChange={e => setPhone(e.target.value)}
-                                placeholder=" 90 123 45 67"
-                                className="ml-2 pr-15 py-2 rounded-xl text-[16px] font-regular text-[#000000]"
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={handleFinish}
-                        className="flex justify-items-center mt-20 font-medium bg-[#1D0065] text-white px-30 py-3 rounded-xl cursor-pointer"
-                    >
-                        Continue
-                    </button>
                 </div>
-            </section>
-        </>
+
+                <div>
+                    <label className="label-base">Profile Image</label>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100"
+                    />
+                    {profileImage && (
+                        <img src={profileImage} alt="Preview" className="mt-3 w-16 h-16 rounded-full object-cover shadow-sm border border-gray-100" />
+                    )}
+                </div>
+
+                {error && <div className="text-red-500 text-sm font-medium mt-2 text-center">{error}</div>}
+            </div>
+
+            <button
+                onClick={handleFinish}
+                disabled={!name || !phone || !profileImage}
+                className="btn-primary mt-8"
+            >
+                Continue
+            </button>
+        </section>
     );
 }
 

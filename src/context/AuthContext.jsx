@@ -7,9 +7,9 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('currentUser');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
+        const savedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+        if (savedUser) {
+            setUser(savedUser);
         }
         setLoading(false);
     }, []);
@@ -23,10 +23,20 @@ export function AuthProvider({ children }) {
     const logout = () => {
         setUser(null);
         localStorage.removeItem('currentUser');
+        window.location.href = '/';
+    };
+
+    const getBarbers = () => {
+        try {
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            return users.filter(u => u.role === 'barber');
+        } catch (error) {
+            return [];
+        }
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, getBarbers }}>
             {children}
         </AuthContext.Provider>
     );

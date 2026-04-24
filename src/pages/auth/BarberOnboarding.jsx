@@ -9,6 +9,9 @@ function BarberOnboarding() {
     const [workingHoursStart, setWorkingHoursStart] = useState('');
     const [workingHoursEnd, setWorkingHoursEnd] = useState('');
     const [avgPrice, setAvgPrice] = useState('');
+    const [profileImage, setProfileImage] = useState(null);
+    const [shopImage, setShopImage] = useState(null);
+    const [error, setError] = useState('');
 
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -20,149 +23,182 @@ function BarberOnboarding() {
         }
     }, [navigate]);
 
+    const handleProfileImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setProfileImage(reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleShopImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setShopImage(reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleFinish = () => {
-        if (name && phone && shopName && workingHoursStart && workingHoursEnd && avgPrice) {
-            try {
-                const dataStr = localStorage.getItem('onboarding_data');
-                if (!dataStr) return;
-                const data = JSON.parse(dataStr);
+        if (!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice) {
+            setError("Please fill in all required fields.");
+            return;
+        }
+        if (!profileImage || !shopImage) {
+            setError("Image is required");
+            return;
+        }
 
-                const userObj = {
-                    role: 'barber',
-                    email: data.email,
-                    password: data.password,
-                    name,
-                    phone,
-                    shopName,
-                    workingHours: `${workingHoursStart} - ${workingHoursEnd}`,
-                    avgPrice
-                };
+        try {
+            const dataStr = localStorage.getItem('onboarding_data');
+            if (!dataStr) return;
+            const data = JSON.parse(dataStr);
 
-                const users = JSON.parse(localStorage.getItem('users')) || [];
-                const userExists = users.some(u => u.email === data.email);
+            const userObj = {
+                id: data.email, // using email as a unique id
+                role: 'barber',
+                email: data.email,
+                password: data.password,
+                name,
+                phone,
+                shopName,
+                workingHours: `${workingHoursStart} - ${workingHoursEnd}`,
+                avgPrice,
+                profileImage,
+                shopImage
+            };
 
-                if (!userExists) {
-                    users.push(userObj);
-                    localStorage.setItem('users', JSON.stringify(users));
-                }
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            const userExists = users.some(u => u.email === data.email);
 
-                login(userObj);
-                navigate('/barber/dashboard');
-            } catch (error) {
-                console.error("Failed to parse onboarding data.");
+            if (!userExists) {
+                users.push(userObj);
+                localStorage.setItem('users', JSON.stringify(users));
             }
+
+            login(userObj);
+            navigate('/barber/dashboard');
+        } catch (error) {
+            console.error("Failed to parse onboarding data.");
         }
     };
 
     return (
-        <>
-            <section className="mt-15 mx-auto justify-items-center">
-                <div className="flex flex-col justify-items-center ">
-                    <div className="flex items-center gap-2">
-                        <img src="./Scissor.png" alt="blue scissor icon" className="w-3 h-3" />
-                        <p className="text-[#1D0065] font-bold">Join NavbatGo</p>
-                    </div>
-
-                    <h1 className="text-[36px] text-start font-bold text-[#1D0065] leading-none my-5">
-                        Set Up Your Barber <br />Profile
-                    </h1>
-
-                    <p className="text-[18px] font-medium text-[#4C4451]">
-                        Build your professional presence and <br />
-                        start accepting bookings in Tashkent's <br />
-                        premier grooming marketplace.
-                    </p>
+        <section className="page-animate min-h-screen px-6 py-10 max-w-md mx-auto">
+            <button
+                onClick={() => navigate(-1)}
+                className="self-start mb-6 flex items-center text-[#4C4451] font-medium"
+            >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M15 18l-6-6 6-6" /></svg>
+                Back
+            </button>
+            <header className="mb-10">
+                <div className="flex items-center gap-2 mb-4">
+                    <img src="./Scissor.png" alt="" className="w-4 h-4" />
+                    <p className="text-[#1D0065] text-sm font-bold uppercase tracking-wider">Join NavbatGo</p>
                 </div>
+                <h1 className="text-3xl font-bold text-[#1D0065] leading-tight mb-4">Set Up Your Barber Profile</h1>
+                <p className="text-[#4C4451] text-md leading-relaxed">
+                    Build your professional presence and start accepting bookings in Tashkent.
+                </p>
+            </header>
 
-                <h1 className="flex items-center mt-15 mb-5 mr-13 gap-2 text-[20px] font-semibold">
-                    <img src="./Icon.png" alt="" className="h-4 w-4" />Personal Information
-                </h1>
-
-                <div className="flex flex-col justify-items-center ">
-                    <div className="flex flex-col mb-5 ">
-                        <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">Full name</h1>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="e.g Aziz Raghimov"
-                            className="pl-5 pr-15 py-3 font-semibold rounded-xl"
-                        />
-                    </div>
-
-                    <div className="ml-10">
-                        <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">Mobile Number</h1>
-                        <div className="flex items-center ml-5">
-                            <p>+998</p>
-                            <input
-                                type="tel"
-                                value={phone}
-                                onChange={e => setPhone(e.target.value)}
-                                placeholder=" 90 123 45 67"
-                                className="ml-2 pr-15 py-2 rounded-xl text-[16px] font-regular text-[#000000]"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <h1 className="flex items-center mr-25 mt-15 mb-5 gap-2 text-[20px] font-semibold">
-                    <img src="./shop.png" alt="" className="h-4 w-4" />Business Details
-                </h1>
-
-                <div className="flex flex-col justify-items-center ">
-                    <div className="flex flex-col mb-5 ">
-                        <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">Barbershop name</h1>
-                        <input
-                            type="text"
-                            value={shopName}
-                            onChange={e => setShopName(e.target.value)}
-                            placeholder="e.g Modern Atelier"
-                            className="pl-5 pr-15 py-3 font-semibold rounded-xl"
-                        />
-                    </div>
-
-                    <div className="ml-10 mb-5">
-                        <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">Working Hours</h1>
-                        <div className="flex items-center">
-                            <input
-                                type="time"
-                                value={workingHoursStart}
-                                onChange={e => setWorkingHoursStart(e.target.value)}
-                                className="px-4 py-1 rounded-lg"
-                            />
-                            <hr className="w-3 mx-2" />
-                            <input
-                                type="time"
-                                value={workingHoursEnd}
-                                onChange={e => setWorkingHoursEnd(e.target.value)}
-                                className="px-4 py-1 rounded-lg"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col mb-5 ">
-                        <h1 className="font-semibold text-[14px] text-[#4C4451] mb-2">Average price</h1>
-                        <div className="flex items-center gap-2">
+            <div className="space-y-8">
+                {/* Personal Info Group */}
+                <div>
+                    <h2 className="flex items-center gap-2 text-lg font-bold text-[#1D0065] mb-5">
+                        <img src="./Icon.png" alt="" className="h-5 w-5" /> Personal Information
+                    </h2>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="label-base">Full Name</label>
                             <input
                                 type="text"
-                                value={avgPrice}
-                                onChange={e => setAvgPrice(e.target.value)}
-                                placeholder="150 000"
-                                className="pl-5 pr-6 py-1 rounded-lg"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                className="input-base"
+                                placeholder="e.g Aziz Raghimov"
                             />
-                            <h1>UZS</h1>
+                        </div>
+                        <div>
+                            <label className="label-base">Mobile Number</label>
+                            <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-standard)] px-5 border border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:bg-white transition-all h-[var(--input-height)]">
+                                <span className="text-black font-medium text-base pt-[1px]">+998</span>
+                                <input
+                                    type="tel"
+                                    value={phone}
+                                    onChange={e => setPhone(e.target.value)}
+                                    className="w-full ml-2 text-base font-normal text-black bg-transparent outline-none h-full"
+                                    placeholder=" 90 123 45 67"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="label-base">Profile Photo</label>
+                            <input type="file" accept="image/*" onChange={handleProfileImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100" />
+                            {profileImage && <img src={profileImage} alt="Preview" className="mt-2 w-16 h-16 rounded-full object-cover shadow-sm" />}
                         </div>
                     </div>
-
-                    <button
-                        onClick={handleFinish}
-                        className="flex justify-items-center mt-10 mb-5 font-medium bg-[#1D0065] text-white px-35 py-3 rounded-xl cursor-pointer"
-                    >
-                        Continue
-                    </button>
                 </div>
-            </section>
-        </>
+
+                {/* Business Details Group */}
+                <div>
+                    <h2 className="flex items-center gap-2 text-lg font-bold text-[#1D0065] mb-5">
+                        <img src="./shop.png" alt="" className="h-5 w-5" /> Business Details
+                    </h2>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="label-base">Barbershop Name</label>
+                            <input
+                                type="text"
+                                value={shopName}
+                                onChange={e => setShopName(e.target.value)}
+                                className="input-base"
+                                placeholder="e.g Modern Atelier"
+                            />
+                        </div>
+                        <div>
+                            <label className="label-base">Working Hours</label>
+                            <div className="flex items-center gap-3">
+                                <input type="time" value={workingHoursStart} onChange={e => setWorkingHoursStart(e.target.value)} className="input-base text-center px-2" />
+                                <span className="text-gray-400 font-bold">—</span>
+                                <input type="time" value={workingHoursEnd} onChange={e => setWorkingHoursEnd(e.target.value)} className="input-base text-center px-2" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="label-base">Average Price</label>
+                            <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-standard)] px-5 border border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:bg-white transition-all h-[var(--input-height)]">
+                                <input
+                                    type="text"
+                                    value={avgPrice}
+                                    onChange={e => setAvgPrice(e.target.value)}
+                                    className="w-full bg-transparent outline-none text-base text-black font-normal"
+                                    placeholder="150 000"
+                                />
+                                <span className="font-bold text-[var(--primary)] ml-2">UZS</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="label-base">Shop Photo</label>
+                            <input type="file" accept="image/*" onChange={handleShopImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100" />
+                            {shopImage && <img src={shopImage} alt="Shop Preview" className="mt-2 w-full h-32 rounded-xl object-cover shadow-sm" />}
+                        </div>
+                    </div>
+                </div>
+
+                {error && <div className="text-red-500 text-sm font-medium mt-4 text-center">{error}</div>}
+
+                <button
+                    onClick={handleFinish}
+                    disabled={!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice || !profileImage || !shopImage}
+                    className="btn-primary"
+                >
+                    Complete Registration
+                </button>
+            </div>
+        </section>
     );
 }
 
