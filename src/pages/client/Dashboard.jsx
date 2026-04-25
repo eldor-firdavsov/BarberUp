@@ -69,7 +69,7 @@ function Client() {
                     {barbers.map((barber, index) => (
                         <div
                             key={index}
-                            onClick={() => navigate(`/client/barbershop/${encodeURIComponent(barber.email)}`)}
+                            onClick={() => navigate(`/barber/${encodeURIComponent(barber.email)}`)}
                             className="flex flex-col border border-gray-100 rounded-[1.5rem] overflow-hidden shadow-sm bg-white pb-5 transition-transform hover:-translate-y-1 cursor-pointer"
                         >
                             <img
@@ -103,7 +103,7 @@ function Client() {
                                         className="btn-primary !w-auto px-6 !h-12 !text-sm"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            navigate(`/client/barbershop/${encodeURIComponent(barber.email)}`);
+                                            navigate(`/barber/${encodeURIComponent(barber.email)}`);
                                         }}
                                     >Book session</button>
                                 </div>

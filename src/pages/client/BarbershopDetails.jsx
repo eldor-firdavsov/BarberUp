@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
-function BarbershopDetails() {
+export default function BarbershopDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [barber, setBarber] = useState(null);
@@ -16,9 +15,9 @@ function BarbershopDetails() {
             setBarber(found);
             generateSlots(found);
         } else {
-            navigate('/client/dashboard');
+            setBarber('not_found');
         }
-    }, [id, navigate]);
+    }, [id]);
 
     const generateSlots = (barberData) => {
         if (barberData.isWorkingNow === false) {
@@ -68,84 +67,119 @@ function BarbershopDetails() {
         setSlots(newSlots);
     };
 
+    const toggleSlot = (time) => {
+        setSelectedSlot((prev) => (prev === time ? null : time));
+    };
+
+    if (barber === 'not_found') {
+        return (
+            <div className="min-h-screen bg-[var(--background)] flex justify-center items-center p-4">
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">Barber not found</h2>
+            </div>
+        );
+    }
+
     if (!barber) return <div className="p-10 text-center">Loading...</div>;
 
     return (
-        <section className="page-animate min-h-screen flex flex-col bg-gray-50 pb-12">
-            <div className="relative h-64 w-full bg-black">
-                <img
-                    src={barber.shopImage || "Background.png"}
-                    alt="Shop Cover"
-                    className="w-full h-full object-cover opacity-80"
-                    onError={(e) => { e.currentTarget.src = "Background.png"; }}
-                />
+        <div className="min-h-screen bg-[var(--background)] flex justify-center p-4 sm:p-6 animate-[fadeIn_0.3s_ease-out]">
+            <div className="w-full max-w-md bg-[var(--card-bg)] rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden relative transition-all duration-500">
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-6 left-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md cursor-pointer hover:bg-gray-100 transition-all"
+                    className="absolute top-5 left-5 z-20 w-10 h-10 bg-[var(--card-bg)] opacity-90 rounded-full flex items-center justify-center shadow-sm backdrop-blur-md cursor-pointer hover:opacity-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D0065" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                 </button>
-            </div>
-
-            <div className="max-w-md mx-auto w-full px-6 -mt-12 relative z-10 flex flex-col">
-                <div className="bg-white rounded-3xl p-6 shadow-md border border-gray-100 flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
-                        <img
-                            src={barber.profileImage || "Icon.png"}
-                            alt="Barber"
-                            className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-sm bg-gray-100"
-                        />
-                        <div>
-                            <h1 className="text-2xl font-bold text-black leading-tight">{barber.shopName}</h1>
-                            <p className="text-sm font-semibold text-[var(--text-muted)] mt-1">{barber.name}</p>
-                        </div>
-                    </div>
-
-                    <hr className="border-gray-100 my-2" />
-
-                    <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
-                        <div>
-                            <p className="text-xs text-[var(--text-light)] font-semibold uppercase tracking-wider mb-1">Details</p>
-                            <p className="text-sm font-semibold text-black">{barber.workingHours}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-xs text-[var(--text-light)] font-semibold uppercase tracking-wider mb-1">Status</p>
-                            <p className={`text-sm font-bold ${barber.isWorkingNow === false ? 'text-red-500' : 'text-green-500'}`}>
-                                {barber.isWorkingNow === false ? 'Offline' : 'Online'}
-                            </p>
-                        </div>
-                    </div>
+                <div className="relative h-64 w-full">
+                    <img
+                        src={barber.shopImage || barber.profileImage || "https://placehold.co/600x400/purple/white?text=Shop+Cover"}
+                        alt="barber"
+                        className="w-full h-full object-cover rounded-b-[2rem]"
+                        onError={(e) => { e.currentTarget.src = "https://placehold.co/600x400/purple/white?text=Shop+Cover"; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent w-full h-full object-cover rounded-b-[2rem]"></div>
                 </div>
 
-                <div className="mt-8">
-                    <h2 className="text-xl font-bold text-black mb-4">Available Times</h2>
-                    {slots.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-3">
-                            {slots.map((slot, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => setSelectedSlot(slot)}
-                                    className={`py-3 rounded-xl text-sm font-bold transition-all border ${selectedSlot === slot ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-md' : 'bg-white text-[var(--text-muted)] border-gray-200 hover:border-[var(--primary)] hover:text-[var(--primary)]'}`}
+                <div className="p-6 space-y-7 -mt-4 relative z-10 bg-[var(--card-bg)] rounded-[2rem]">
+
+                    <div>
+                        <h2 className="text-2xl font-extrabold text-[var(--text-primary)] tracking-tight leading-tight">
+                            {barber.shopName || "Gentleman's Atelier"}
+                        </h2>
+                        <p className="text-sm font-medium text-[var(--text-secondary)] mt-1">{barber.name || "By Anvar Rakhimov"}</p>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-[var(--background)] opacity-90 rounded-2xl p-4 text-sm border border-[var(--border)]">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase">Average Price</p>
+                            <p className="font-bold text-[var(--text-primary)] text-base">{barber.avgPrice || "150,000 UZS"}</p>
+                        </div>
+                        <div className="w-[1px] h-8 bg-[var(--border)]"></div>
+                        <div className="flex flex-col gap-1 items-end">
+                            <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase">Today</p>
+                            <p className="font-bold text-[var(--text-primary)] text-base">{barber.workingHours || "09:00 - 21:00"}</p>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-normal">
+                        An exclusive grooming experience tailored for the modern gentleman in
+                        Tashkent. We combine traditional techniques with contemporary
+                        aesthetics to define your personal style.
+                    </p>
+
+                    <div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-[var(--text-primary)] text-lg">
+                                Available Slots
+                            </h3>
+                            <button className="text-sm font-semibold text-[var(--primary)] hover:opacity-80 transition-colors">
+                                View Calendar
+                            </button>
+                        </div>
+
+                        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+                            {slots.length > 0 ? slots.map((time) => (
+                                <label
+                                    key={time}
+                                    className={`min-w-[85px] flex flex-col items-center justify-center px-4 py-3 rounded-2xl border cursor-pointer hover:-translate-y-1 hover:shadow-sm transition-all duration-200
+                  ${selectedSlot === time
+                                            ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-md"
+                                            : "bg-[var(--card-bg)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--primary)]"
+                                        }`}
                                 >
-                                    {slot}
-                                </button>
-                            ))}
+                                    <span className="text-xs">
+                                        {parseInt(time.split(':')[0]) < 12 ? 'MORNING' : parseInt(time.split(':')[0]) < 17 ? 'AFTERNOON' : 'EVENING'}
+                                    </span>
+                                    <span className="font-semibold">{time}</span>
+                                    <input
+                                        type="checkbox"
+                                        className="hidden"
+                                        checked={selectedSlot === time}
+                                        onChange={() => toggleSlot(time)}
+                                    />
+                                </label>
+                            )) : (
+                                <p className="text-sm text-[var(--text-secondary)]">No available slots today.</p>
+                            )}
                         </div>
-                    ) : (
-                        <p className="text-[var(--text-light)] text-sm">No available slots.</p>
-                    )}
-                </div>
+                    </div>
 
-                <button
-                    disabled={!selectedSlot}
-                    className="btn-primary mt-10"
-                    onClick={() => alert(`Slot ${selectedSlot} booked successfully!`)}
-                >
-                    {selectedSlot ? `Book for ${selectedSlot}` : "Select a time"}
-                </button>
+                    <div>
+                        <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase mb-1">Location</p>
+                        <p className="text-sm font-medium text-[var(--text-primary)] mb-3">
+                            {barber.location || "Amir Temur Avenue 108, Tashkent"}
+                        </p>
+
+                        <div className="w-full h-28 bg-[var(--background)] border border-[var(--border)] rounded-2xl flex items-center justify-center text-[var(--text-secondary)] text-sm font-medium">
+                            Map Preview
+                        </div>
+                    </div>
+
+                    <button className="w-full bg-[var(--primary)] text-white py-4 mt-2 rounded-[1.25rem] font-bold text-[15px] shadow-lg hover:opacity-90 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
+                        Book Now
+                    </button>
+                </div>
             </div>
-        </section>
+        </div>
     );
 }
-
-export default BarbershopDetails;

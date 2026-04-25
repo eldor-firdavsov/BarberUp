@@ -32,6 +32,15 @@ function AppRouter() {
                 <Route path="/onboarding/barber" element={<BarberOnboarding />} />
 
                 <Route
+                    path="/barber/:id"
+                    element={
+                        <ProtectedRoute requiredRole="client">
+                            <BarbershopDetails />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
                     path="/client"
                     element={
                         <ProtectedRoute requiredRole="client">
@@ -41,7 +50,6 @@ function AppRouter() {
                 >
                     <Route path="dashboard" element={<ClientDashboard />} />
                     <Route path="bookings" element={<ClientBooking />} />
-                    <Route path="barbershop/:id" element={<BarbershopDetails />} />
                     <Route path="settings" element={<ClientSettings />} />
                 </Route>
 
