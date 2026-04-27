@@ -13,7 +13,7 @@ function ClientLayout() {
         <div className="w-full min-h-screen flex flex-col justify-between bg-white">
 
             {/* HEADER */}
-            <header className="w-full flex items-center justify-between px-6 py-4 bg-gray-100">
+            <header className="w-full fixed top-0 z-10 flex items-center justify-between px-6 py-4 bg-gray-100">
                 <div className="flex items-center gap-3">
                     <img
                         src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
@@ -32,12 +32,12 @@ function ClientLayout() {
             </header>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1">
+            <main className="flex-1 py-15">
                 <Outlet />
             </main>
 
             {/* FOOTER NAV */}
-            <footer className="w-full bg-gray-100 p-4 flex justify-around items-center rounded-t-xl">
+            <footer className="w-full fixed bottom-0 bg-gray-100 p-4 flex justify-around items-center rounded-t-xl">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
 
