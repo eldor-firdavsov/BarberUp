@@ -1,23 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 function Settings() {
-    const { logout, user, login } = useAuth();
-    const navigate = useNavigate();
-
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [profileImage, setProfileImage] = useState(null);
+    const { logout, user, updateSessionUser } = useAuth();
+    const [name, setName] = useState(user?.name || '');
+    const [phone, setPhone] = useState((user?.phone || '').replace(/\D/g, '').replace(/^998/, '').slice(-9));
+    const [profileImage, setProfileImage] = useState(user?.profileImage || null);
     const [success, setSuccess] = useState('');
-
-    useEffect(() => {
-        if (user) {
-            setName(user.name || '');
-            setPhone(user.phone || '');
-            setProfileImage(user.profileImage || null);
-        }
-    }, [user]);
+    const cleanPhone = (value) => value.replace(/\D/g, '');
+    const isPhoneValid = cleanPhone(phone).length === 9;
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
@@ -29,16 +20,10 @@ function Settings() {
     };
 
     const handleSave = () => {
-        if (!name || !phone) return;
-        const updatedUser = { ...user, name, phone, profileImage };
+        if (!name || !phone || !isPhoneValid) return;
+        const updatedUser = { ...user, name, phone: `+998${cleanPhone(phone)}`, profileImage };
 
-        // Update LocalStorage array
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const updatedUsers = users.map(u => u.email === user.email ? updatedUser : u);
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-        // Update Current User
-        login(updatedUser);
+        updateSessionUser(updatedUser);
 
         setSuccess('Profile updated successfully!');
         setTimeout(() => setSuccess(''), 3000);
@@ -46,7 +31,6 @@ function Settings() {
 
     const handleLogout = () => {
         logout();
-        navigate('/');
     };
 
     return (
@@ -75,7 +59,7 @@ function Settings() {
 
                 {success && <div className="text-green-600 text-sm font-bold text-center mt-4 bg-green-50 py-2 rounded-xl border border-green-200">{success}</div>}
 
-                <button onClick={handleSave} disabled={!name || !phone} className="btn-primary mt-6">Save Changes</button>
+                <button onClick={handleSave} disabled={!name || !phone || !isPhoneValid} className="btn-primary mt-6">Save Changes</button>
             </div>
 
             <button onClick={handleLogout} className="mt-10 py-4 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 transition-all cursor-pointer">

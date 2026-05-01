@@ -1,45 +1,27 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 function Settings() {
-    const { logout, user, login } = useAuth();
-    const navigate = useNavigate();
+    const { logout, user, updateSessionUser } = useAuth();
 
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [shopName, setShopName] = useState('');
-    const [workingHoursStart, setWorkingHoursStart] = useState('');
-    const [workingHoursEnd, setWorkingHoursEnd] = useState('');
-    const [avgPrice, setAvgPrice] = useState('');
-    const [profileImage, setProfileImage] = useState(null);
-    const [shopImage, setShopImage] = useState(null);
+    const [name, setName] = useState(user?.name || '');
+    const [phone, setPhone] = useState((user?.phone || '').replace(/\D/g, '').replace(/^998/, '').slice(-9));
+    const [shopName, setShopName] = useState(user?.shopName || '');
+    const initialHours = user?.workingHours?.split('-').map((s) => s.trim()) ?? ['', ''];
+    const [workingHoursStart, setWorkingHoursStart] = useState(initialHours[0] || '');
+    const [workingHoursEnd, setWorkingHoursEnd] = useState(initialHours[1] || '');
+    const [avgPrice, setAvgPrice] = useState(user?.avgPrice || '');
+    const [profileImage, setProfileImage] = useState(user?.profileImage || null);
+    const [shopImage, setShopImage] = useState(user?.shopImage || null);
 
     // New Availability Controls
-    const [isWorkingNow, setIsWorkingNow] = useState(true);
-    const [lunchStart, setLunchStart] = useState('');
-    const [lunchEnd, setLunchEnd] = useState('');
+    const [isWorkingNow, setIsWorkingNow] = useState(user?.isWorkingNow !== false);
+    const [lunchStart, setLunchStart] = useState(user?.lunchStart || '');
+    const [lunchEnd, setLunchEnd] = useState(user?.lunchEnd || '');
 
     const [success, setSuccess] = useState('');
-
-    useEffect(() => {
-        if (user) {
-            setName(user.name || '');
-            setPhone(user.phone || '');
-            setShopName(user.shopName || '');
-            if (user.workingHours) {
-                const [start, end] = user.workingHours.split('-').map(s => s.trim());
-                setWorkingHoursStart(start || '');
-                setWorkingHoursEnd(end || '');
-            }
-            setAvgPrice(user.avgPrice || '');
-            setProfileImage(user.profileImage || null);
-            setShopImage(user.shopImage || null);
-            setIsWorkingNow(user.isWorkingNow !== false); // default true
-            setLunchStart(user.lunchStart || '');
-            setLunchEnd(user.lunchEnd || '');
-        }
-    }, [user]);
+    const cleanPhone = (value) => value.replace(/\D/g, '');
+    const isPhoneValid = cleanPhone(phone).length === 9;
 
     const handleProfileImageUpload = (e) => {
         const file = e.target.files[0];
@@ -60,11 +42,11 @@ function Settings() {
     };
 
     const handleSave = () => {
-        if (!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice) return;
+        if (!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice || !isPhoneValid) return;
         const updatedUser = {
             ...user,
             name,
-            phone,
+            phone: `+998${cleanPhone(phone)}`,
             shopName,
             workingHours: `${workingHoursStart} - ${workingHoursEnd}`,
             avgPrice,
@@ -75,13 +57,7 @@ function Settings() {
             lunchEnd
         };
 
-        // Update LocalStorage array
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const updatedUsers = users.map(u => u.email === user.email ? updatedUser : u);
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-        // Update Current User
-        login(updatedUser);
+        updateSessionUser(updatedUser);
 
         setSuccess('Profile updated successfully!');
         setTimeout(() => setSuccess(''), 3000);
@@ -89,7 +65,6 @@ function Settings() {
 
     const handleLogout = () => {
         logout();
-        navigate('/');
     };
 
     return (
@@ -172,7 +147,7 @@ function Settings() {
 
                 {success && <div className="text-green-600 text-sm font-bold text-center mt-4 bg-green-50 py-2 rounded-xl border border-green-200">{success}</div>}
 
-                <button onClick={handleSave} disabled={!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice || !profileImage || !shopImage} className="btn-primary mt-6">Save Changes</button>
+                <button onClick={handleSave} disabled={!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice || !profileImage || !shopImage || !isPhoneValid} className="btn-primary mt-6">Save Changes</button>
             </div>
 
             <button onClick={handleLogout} className="mt-10 py-4 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 transition-all cursor-pointer">

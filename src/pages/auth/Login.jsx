@@ -1,42 +1,80 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getClients } from '../../api/clientApi.js';
+import { getBarbers } from '../../api/barberApi.js';
 
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const handleSignIn = () => {
+    const handleSignIn = async () => {
+        if (loading) return;
         if (!email || !password) {
-            setError("Fields cannot be empty.");
+            setError('Fields cannot be empty.');
             return;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            setError("Invalid email format.");
+            setError('Invalid email format.');
             return;
         }
 
-        const users = JSON.parse(localStorage.getItem('users')) || [];
-        const foundUser = users.find(u => u.email === email && u.password === password);
+        setLoading(true);
+        setError('');
+        console.log('[Login] Attempting login for:', email);
 
-        if (foundUser) {
-            setError('');
-            login(foundUser);
-            if (foundUser.role === 'client') {
-                navigate('/client/dashboard');
-            } else if (foundUser.role === 'barber') {
-                navigate('/barber/dashboard');
+        try {
+            const [
+                { data: barberList, error: barberError },
+                { data: clientList, error: clientError }
+            ] = await Promise.all([getBarbers(), getClients()]);
+            console.log('[Login] barberList:', barberList, '| error:', barberError);
+            console.log('[Login] clientList:', clientList, '| error:', clientError);
+
+            if (barberError && clientError) {
+                setError('Network error. Please check your connection.');
+                setLoading(false);
+                return;
             }
-        } else {
-            setError('Invalid email or password.');
+
+            const foundBarber = (barberList ?? []).find(u => u.email === email && u.password === password);
+            if (foundBarber) {
+                login({ ...foundBarber, role: 'barber' });
+                navigate('/barber/dashboard');
+                setLoading(false);
+                return;
+            }
+
+            const foundClient = (clientList ?? []).find(u => u.email === email && u.password === password);
+
+            if (foundClient) {
+                const userObj = {
+                    role: 'client',
+                    email: foundClient.email,
+                    name: foundClient.name ?? foundClient.fullname,
+                    phone: foundClient.phone,
+                    id: foundClient.id ?? foundClient._id ?? null,
+                    ...foundClient,
+                };
+                login(userObj);
+                navigate('/client/dashboard');
+            } else {
+                setError('Invalid email or password.');
+            }
+        } catch (err) {
+            console.error('[Login] Unexpected error:', err);
+            setError('Something went wrong. Please try again.');
         }
+
+        setLoading(false);
     };
 
-    const isFormValid = email.trim() !== "" && password.trim() !== "";
+    const isFormValid = email.trim() !== '' && password.trim() !== '';
 
     return (
         <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
@@ -66,6 +104,7 @@ function Login() {
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         className="input-base"
+                        disabled={loading}
                     />
                 </div>
 
@@ -77,6 +116,7 @@ function Login() {
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         className="input-base"
+                        disabled={loading}
                     />
                 </div>
 
@@ -84,15 +124,15 @@ function Login() {
 
                 <button
                     onClick={handleSignIn}
-                    disabled={!isFormValid}
+                    disabled={!isFormValid || loading}
                     className="btn-primary mt-4"
                 >
-                    Sign In
+                    {loading ? 'Signing in…' : 'Sign In'}
                 </button>
 
                 <div className="text-center mt-6">
                     <p className="text-xs text-[#7D7483]">
-                        Don't have an account?{' '}
+                        Don&apos;t have an account?{' '}
                         <Link to="/register" className="font-bold text-[#1D0065] underline">
                             Sign Up
                         </Link>

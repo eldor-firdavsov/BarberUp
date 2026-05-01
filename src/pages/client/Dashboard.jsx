@@ -1,27 +1,63 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getBarbers } from '../../api/barberApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 function Client() {
-    const { getBarbers } = useAuth();
+    const { user } = useAuth();
     const [barbers, setBarbers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [retrying, setRetrying] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (getBarbers) {
-            setBarbers(getBarbers());
-        } else {
-            try {
-                const users = JSON.parse(localStorage.getItem("users") || "[]");
-                setBarbers(users.filter(u => u.role === "barber"));
-            } catch (error) {
+        let isMounted = true;
+        async function fetchAPI() {
+            setLoading(true);
+            setError('');
+            console.log('[ClientDashboard] Fetching barbers…');
+            const { data, error: apiError } = await getBarbers();
+
+            if (!isMounted) return;
+
+            console.log('[ClientDashboard] result → data:', data, '| error:', apiError);
+
+            if (apiError || !data) {
+                setError('Something went wrong');
                 setBarbers([]);
+            } else {
+                const filtered = (data ?? []).filter(
+                    (barber) => barber.id !== user?.id && barber.email !== user?.email
+                );
+                setBarbers(filtered);
             }
+            setLoading(false);
         }
-    }, [getBarbers]);
+        fetchAPI();
+        return () => { isMounted = false; };
+    }, [user?.id, user?.email]);
+
+    const handleRetry = async () => {
+        setRetrying(true);
+        setLoading(true);
+        setError('');
+        const { data, error: apiError } = await getBarbers();
+        if (apiError || !data) {
+            setError('Something went wrong');
+            setBarbers([]);
+        } else {
+            const filtered = (data ?? []).filter(
+                (barber) => barber.id !== user?.id && barber.email !== user?.email
+            );
+            setBarbers(filtered);
+        }
+        setLoading(false);
+        setRetrying(false);
+    };
 
     const getBarberStatus = (barber) => {
-        if (barber.isWorkingNow === false) return "Currently Offline";
+        if (barber.isWorkingNow === false) return 'Currently Offline';
         const now = new Date();
         const currentMins = now.getHours() * 60 + now.getMinutes();
 
@@ -30,12 +66,9 @@ function Client() {
             const [lEndH, lEndM] = barber.lunchEnd.split(':').map(Number);
             const lStartMins = lStartH * 60 + lStartM;
             const lEndMins = lEndH * 60 + lEndM;
-
-            if (currentMins >= lStartMins && currentMins < lEndMins) {
-                return "On Break";
-            }
+            if (currentMins >= lStartMins && currentMins < lEndMins) return 'On Break';
         }
-        return "Available";
+        return 'Available';
     };
 
     return (
@@ -64,35 +97,57 @@ function Client() {
                 <button className="btn-secondary whitespace-nowrap text-sm">Closest</button>
             </div>
 
-            {barbers.length > 0 ? (
+            {/* Loading State */}
+            {loading && (
+                <div className="flex justify-center items-center py-10">
+                    <p className="text-gray-500 font-medium">Loading...</p>
+                </div>
+            )}
+
+            {/* Error State */}
+            {error && !loading && (
+                <div className="py-10 text-center">
+                    <p className="text-base text-red-500 font-semibold">{error}</p>
+                    <button
+                        onClick={handleRetry}
+                        disabled={retrying}
+                        className="btn-primary mt-4"
+                    >
+                        {retrying ? 'Retrying...' : 'Retry'}
+                    </button>
+                </div>
+            )}
+
+            {/* Barber List */}
+            {!loading && !error && barbers.length > 0 && (
                 <div className="space-y-8 pb-10">
                     {barbers.map((barber, index) => (
                         <div
-                            key={index}
-                            onClick={() => navigate(`/barber/${encodeURIComponent(barber.email)}`)}
+                            key={barber.id ?? index}
+                            onClick={() => navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`)}
                             className="flex flex-col border border-gray-100 rounded-[1.5rem] overflow-hidden shadow-sm bg-white pb-5 transition-transform hover:-translate-y-1 cursor-pointer"
                         >
                             <img
-                                src={barber.shopImage || "Background.png"}
+                                src={barber.shopImage || 'Background.png'}
                                 alt="Shop"
                                 className="w-full h-56 object-cover"
-                                onError={(e) => { e.currentTarget.src = "Background.png"; }}
+                                onError={(e) => { e.currentTarget.src = 'Background.png'; }}
                             />
                             <div className="px-5 pt-5">
                                 <div className="flex justify-between items-start mb-1">
-                                    <h1 className="text-2xl font-bold text-black">{barber.shopName || "Modern Atelier"}</h1>
+                                    <h1 className="text-2xl font-bold text-black">{barber.shopName || barber.name || 'Modern Atelier'}</h1>
                                     {(() => {
                                         const status = getBarberStatus(barber);
-                                        let badgeColor = "bg-green-100 text-green-700";
-                                        if (status === "Currently Offline") badgeColor = "bg-gray-100 text-gray-600";
-                                        if (status === "On Break") badgeColor = "bg-orange-100 text-orange-600";
+                                        let badgeColor = 'bg-green-100 text-green-700';
+                                        if (status === 'Currently Offline') badgeColor = 'bg-gray-100 text-gray-600';
+                                        if (status === 'On Break') badgeColor = 'bg-orange-100 text-orange-600';
                                         return <span className={`px-2 py-1 text-xs font-bold rounded-md ${badgeColor}`}>{status}</span>;
                                     })()}
                                 </div>
                                 <div className="flex gap-4 items-center mb-6">
                                     <p className="text-sm text-[var(--text-muted)] font-semibold">{barber.name}</p>
                                     <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                    <p className="text-sm text-[var(--text-muted)]">{barber.workingHours}</p>
+                                    <p className="text-sm text-[var(--text-muted)]">{barber.workingHours ?? ''}</p>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -103,15 +158,20 @@ function Client() {
                                         className="btn-primary !w-auto px-6 !h-12 !text-sm"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            navigate(`/barber/${encodeURIComponent(barber.email)}`);
+                                            navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`);
                                         }}
-                                    >Book session</button>
+                                    >
+                                        Book session
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
-            ) : (
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && barbers.length === 0 && (
                 <div className="py-10 text-center">
                     <p className="text-base text-[var(--text-muted)] font-semibold">No barbers available</p>
                 </div>

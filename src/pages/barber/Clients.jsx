@@ -1,24 +1,59 @@
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Calendar as CalendarIcon, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { getBookings } from '../../api/bookingApi.js';
+import { getClients } from '../../api/clientApi.js';
+import { compareTimes, formatTo24h } from '../../utils/time.js';
 
 function Clients() {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('upcoming');
+    const [upcomingClients, setUpcomingClients] = useState([]);
+    const [historyClients, setHistoryClients] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    // Mock Data
-    const upcomingClients = [
-        { id: 1, name: "Bob Johnson", image: "https://i.pravatar.cc/150?u=3", date: "Today", time: "15:00", services: "Haircut & Beard" },
-        { id: 2, name: "Emma Davis", image: "https://i.pravatar.cc/150?u=4", date: "Today", time: "16:00", services: "Classic Haircut" },
-        { id: 3, name: "Michael Brown", image: "https://i.pravatar.cc/150?u=5", date: "Tomorrow", time: "10:00", services: "Beard Trim" },
-        { id: 4, name: "Chris Wilson", image: "https://i.pravatar.cc/150?u=6", date: "Tomorrow", time: "11:30", services: "Haircut" },
-    ];
+    useEffect(() => {
+        let mounted = true;
+        async function load() {
+            setLoading(true);
+            setError('');
+            const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
+                getBookings(),
+                getClients(),
+            ]);
+            if (!mounted) return;
+            if (bookingError) {
+                setError(bookingError);
+                setLoading(false);
+                return;
+            }
+            const clientsById = Object.fromEntries((clients ?? []).map((client) => [client.id, client]));
+            const own = (bookingList ?? []).filter((booking) => booking.barber === user?.id);
+            const formatted = own.map((booking) => ({
+                id: booking.id,
+                name: clientsById[booking.client]?.name || 'Client',
+                image: "https://i.pravatar.cc/150?u=client-list",
+                date: 'Today',
+                time: booking.booking_hours || '--:--',
+                services: 'Session',
+                status: (booking.status || 'pending').toLowerCase(),
+            }));
 
-    const historyClients = [
-        { id: 10, name: "John Doe", image: "https://i.pravatar.cc/150?u=1", date: "Oct 12, 2023", time: "13:00", status: "completed" },
-        { id: 11, name: "Alex Smith", image: "https://i.pravatar.cc/150?u=7", date: "Oct 12, 2023", time: "11:00", status: "completed" },
-        { id: 12, name: "David Miller", image: "https://i.pravatar.cc/150?u=8", date: "Oct 11, 2023", time: "15:00", status: "cancelled" },
-    ];
+            setUpcomingClients(formatted.filter((item) => ['pending', 'accepted'].includes(item.status)));
+            setHistoryClients(formatted.filter((item) => ['rejected', 'cancelled', 'completed'].includes(item.status)));
+            setLoading(false);
+        }
+        load();
+        return () => {
+            mounted = false;
+        };
+    }, [user?.id]);
 
-    const currentList = activeTab === 'upcoming' ? upcomingClients : historyClients;
+    const currentList = useMemo(
+        () => (activeTab === 'upcoming' ? upcomingClients : historyClients).slice().sort((a, b) => compareTimes(a.time, b.time)),
+        [activeTab, upcomingClients, historyClients]
+    );
 
     return (
         <div className="px-6 py-4 space-y-6 page-animate h-full pb-24">
@@ -57,14 +92,16 @@ function Clients() {
 
             {/* List */}
             <div className="space-y-4">
-                {currentList.map(client => (
+                {loading && <p className="text-[var(--text-muted)] font-medium">Loading clients...</p>}
+                {error && <p className="text-red-500 font-medium">{error}</p>}
+                {!loading && !error && currentList.map(client => (
                     <div key={client.id} className="bg-white p-4 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)] flex items-center gap-4">
                         <img src={client.image} alt={client.name} className="w-12 h-12 rounded-full" />
                         <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-[var(--text-main)] truncate">{client.name}</h3>
                             <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text-light)]">
                                 <CalendarIcon size={12} />
-                                <span>{client.date} • {client.time}</span>
+                                <span>{client.date} • {formatTo24h(client.time) || '--:--'}</span>
                             </div>
                         </div>
 
@@ -93,7 +130,7 @@ function Clients() {
                     </div>
                 ))}
 
-                {currentList.length === 0 && (
+                {!loading && !error && currentList.length === 0 && (
                     <div className="text-center py-10">
                         <div className="inline-block p-4 rounded-full bg-gray-50 mb-3">
                             <Clock size={32} className="text-gray-300" />

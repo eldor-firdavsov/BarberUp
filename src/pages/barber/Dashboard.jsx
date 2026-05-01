@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Play, UserCircle, ChevronRight, Power } from 'lucide-react';
+import { Clock, Play, UserCircle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getBookings } from '../../api/bookingApi.js';
+import { getClients } from '../../api/clientApi.js';
+import { compareTimes, formatTo24h } from '../../utils/time.js';
 
 function Dashboard() {
     const { user } = useAuth();
@@ -10,49 +13,77 @@ function Dashboard() {
     const [isWorking, setIsWorking] = useState(false);
     const [lunchStart, setLunchStart] = useState("13:00");
     const [lunchEnd, setLunchEnd] = useState("14:00");
-
-    const [currentClient, setCurrentClient] = useState({
-        id: 1,
-        name: "John Doe",
-        image: "https://i.pravatar.cc/150?u=1",
-        startTime: Date.now() - 480000 // 8 minutes ago
-    });
-
-    const [nextClient, setNextClient] = useState({
-        id: 2,
-        name: "Alice Smith",
-        image: "https://i.pravatar.cc/150?u=2",
-        time: "14:00"
-    });
-
-    const [upcomingClients, setUpcomingClients] = useState([
-        { id: 3, name: "Bob Johnson", image: "https://i.pravatar.cc/150?u=3", time: "15:00" },
-        { id: 4, name: "Emma Davis", image: "https://i.pravatar.cc/150?u=4", time: "16:00" },
-        { id: 5, name: "Michael Brown", image: "https://i.pravatar.cc/150?u=5", time: "17:00" }
-    ]);
-
-    const [timer, setTimer] = useState("00:00");
+    const [bookings, setBookings] = useState([]);
+    const [clientsById, setClientsById] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        if (!currentClient) return;
-        const interval = setInterval(() => {
-            const diff = Math.floor((Date.now() - currentClient.startTime) / 1000);
-            const mins = String(Math.floor(diff / 60)).padStart(2, '0');
-            const secs = String(diff % 60).padStart(2, '0');
-            setTimer(`${mins}:${secs}`);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [currentClient]);
-
-    const handleNextClient = () => {
-        if (nextClient) {
-            setCurrentClient({ ...nextClient, startTime: Date.now() });
-            setNextClient(upcomingClients[0] || null);
-            setUpcomingClients(upcomingClients.slice(1));
-        } else {
-            setCurrentClient(null);
+        let mounted = true;
+        async function loadDashboard() {
+            setLoading(true);
+            setError('');
+            const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
+                getBookings(),
+                getClients(),
+            ]);
+            if (!mounted) return;
+            if (bookingError) {
+                setError(bookingError);
+                setBookings([]);
+                setLoading(false);
+                return;
+            }
+            setBookings((bookingList ?? []).filter((booking) => booking.barber === user?.id));
+            setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
+            setLoading(false);
         }
-    };
+        loadDashboard();
+        return () => {
+            mounted = false;
+        };
+    }, [user?.id]);
+
+    const upcomingBookings = useMemo(
+        () => bookings
+            .filter((booking) => ['pending', 'accepted'].includes((booking.status || '').toLowerCase()))
+            .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
+        [bookings]
+    );
+
+    const currentClient = useMemo(() => {
+        const first = upcomingBookings[0];
+        if (!first) return null;
+        const client = clientsById[first.client];
+        return {
+            id: first.id,
+            name: client?.name || 'Client',
+            image: "https://i.pravatar.cc/150?u=active-client",
+            time: formatTo24h(first.booking_hours) || '--:--',
+        };
+    }, [upcomingBookings, clientsById]);
+
+    const nextClient = useMemo(() => {
+        const second = upcomingBookings[1];
+        if (!second) return null;
+        const client = clientsById[second.client];
+        return {
+            id: second.id,
+            name: client?.name || 'Client',
+            image: "https://i.pravatar.cc/150?u=next-client",
+            time: formatTo24h(second.booking_hours) || '--:--',
+        };
+    }, [upcomingBookings, clientsById]);
+
+    const upcomingClients = useMemo(
+        () => upcomingBookings.slice(2).map((booking) => ({
+            id: booking.id,
+            name: clientsById[booking.client]?.name || 'Client',
+            image: "https://i.pravatar.cc/150?u=later-client",
+            time: formatTo24h(booking.booking_hours) || '--:--',
+        })),
+        [upcomingBookings, clientsById]
+    );
 
     return (
         <div className="px-6 py-4 space-y-8 page-animate h-full pb-24">
@@ -61,6 +92,8 @@ function Dashboard() {
             <div>
                 <h1 className="text-2xl font-bold text-[var(--primary)]">Dashboard</h1>
                 <p className="text-[var(--text-light)] text-sm mt-1">Manage your active sessions</p>
+                {loading && <p className="text-[var(--text-muted)] text-xs mt-1">Loading dashboard data...</p>}
+                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
             </div>
 
             {/* WORK STATUS */}
@@ -122,8 +155,8 @@ function Dashboard() {
                                 </div>
                             </div>
                             <div className="ml-auto text-right">
-                                <div className="text-3xl font-bold tracking-widest">{timer}</div>
-                                <span className="text-white/60 text-xs uppercase tracking-widest">Elapsed</span>
+                                <div className="text-3xl font-bold tracking-widest">{currentClient.time}</div>
+                                <span className="text-white/60 text-xs uppercase tracking-widest">Start</span>
                             </div>
                         </div>
                     </div>
@@ -147,7 +180,7 @@ function Dashboard() {
                                 <p className="text-[var(--primary)] font-medium text-sm">{nextClient.time}</p>
                             </div>
                             <button
-                                onClick={handleNextClient}
+                                onClick={() => navigate('/barber/appointments')}
                                 className="bg-[var(--primary)] text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-transform active:scale-95"
                             >
                                 <Play size={16} fill="currentColor" />

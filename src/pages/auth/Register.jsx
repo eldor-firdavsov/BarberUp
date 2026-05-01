@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { getBarbers } from '../../api/barberApi.js';
+import { getClients } from '../../api/clientApi.js';
+
 function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,7 +18,7 @@ function Register() {
     }
   }, [navigate]);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!email || !password) {
       setError("Fields cannot be empty.");
       return;
@@ -29,16 +33,46 @@ function Register() {
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    const userExists = users.some(u => u.email === email);
-    if (userExists) {
-      setError("User already exists with this email.");
+    const data = JSON.parse(localStorage.getItem("onboarding_data") || 'null');
+    if (!data?.role) {
+      setError('Please select a role first.');
+      setLoading(false);
+      navigate('/');
       return;
     }
+    console.log('[Register] role:', data?.role, '| email:', email);
 
-    const data = JSON.parse(localStorage.getItem("onboarding_data"));
+    setLoading(true);
+    setError('');
+
+    try {
+      // Check for duplicate email based on role
+      if (data?.role === "barber") {
+        const { data: barberList } = await getBarbers();
+        const userExists = (barberList ?? []).some(u => u.email === email);
+        if (userExists) {
+          setError("User already exists with this email.");
+          setLoading(false);
+          return;
+        }
+      } else if (data?.role === "client") {
+        const { data: clientList } = await getClients();
+        const userExists = (clientList ?? []).some(u => u.email === email);
+        console.log('[Register] client duplicate check:', userExists);
+        if (userExists) {
+          setError("A client with this email already exists.");
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('[Register] duplicate check error:', err);
+      // Allow to proceed if the check fails — creation will catch true duplicates
+    }
+
     const updatedData = { ...data, email, password };
     localStorage.setItem("onboarding_data", JSON.stringify(updatedData));
+    setLoading(false);
 
     if (data.role === "client") {
       navigate("/onboarding/client");
@@ -94,10 +128,10 @@ function Register() {
         {error && <div className="text-red-500 text-sm font-medium text-center">{error}</div>}
         <button
           onClick={handleContinue}
-          disabled={!isFormValid}
+          disabled={!isFormValid || loading}
           className="btn-primary mt-4"
         >
-          Sign Up
+          {loading ? 'Checking…' : 'Sign Up'}
         </button>
 
         <div className="text-center mt-6">

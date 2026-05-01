@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { createClient } from '../../api/clientApi.js';
 
 function ClientOnboarding() {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [profileImage, setProfileImage] = useState(null);
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const cleanPhone = (value) => value.replace(/\D/g, '');
+    const phoneDigits = cleanPhone(phone);
+    const isPhoneValid = phoneDigits.length === 9;
+
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -28,44 +34,72 @@ function ClientOnboarding() {
         }
     };
 
-    const handleFinish = () => {
-        if (!name || !phone) {
+    const handleFinish = async () => {
+        if (!name.trim() || !phone.trim()) {
             setError("Please fill in all required fields.");
             return;
         }
-        if (!profileImage) {
-            setError("Image is required");
+        if (!isPhoneValid) {
+            setError('Please enter a valid 9-digit phone number.');
             return;
         }
 
         try {
             const dataStr = localStorage.getItem('onboarding_data');
-            if (!dataStr) return;
+            if (!dataStr) {
+                console.error('[ClientOnboarding] No onboarding_data in localStorage');
+                return;
+            }
             const data = JSON.parse(dataStr);
+            console.log('[ClientOnboarding] onboarding_data:', data);
 
-            const userObj = {
-                role: 'client',
+            setLoading(true);
+            setError('');
+
+            const payload = {
+                fullname: name,
                 email: data.email,
                 password: data.password,
-                name,
-                phone,
-                profileImage
+                phone: `+998${phoneDigits}`,
             };
+            console.log('[ClientOnboarding] POST payload:', payload);
 
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            const userExists = users.some(u => u.email === data.email);
+            const { data: apiUser, error: apiError } = await createClient(payload);
 
-            if (!userExists) {
-                users.push(userObj);
-                localStorage.setItem('users', JSON.stringify(users));
+            console.log('[ClientOnboarding] API response → data:', apiUser, '| error:', apiError);
+
+            if (apiError) {
+                console.error('[ClientOnboarding] API error:', apiError);
+                setError(apiError);
+                return;
             }
+
+            // Build the session user object from the API response
+            const userObj = {
+                role: 'client',
+                email: apiUser?.email ?? data.email,
+                name: apiUser?.fullname ?? name,
+                phone: apiUser?.phone ?? phone,
+                profileImage,
+                id: apiUser?.id ?? apiUser?._id ?? null,
+                ...(apiUser ?? {}),
+            };
+            console.log('[ClientOnboarding] userObj for session:', userObj);
+
+            // Clean up temp onboarding data
+            localStorage.removeItem('onboarding_data');
 
             login(userObj);
             navigate('/client/dashboard');
-        } catch (error) {
-            console.error("Failed to parse onboarding data.");
+        } catch (err) {
+            console.error('[ClientOnboarding] unexpected error:', err);
+            setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
+
+    const isFormValid = name.trim() !== '' && phone.trim() !== '' && isPhoneValid;
 
     return (
         <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
@@ -100,6 +134,7 @@ function ClientOnboarding() {
                         onChange={e => setName(e.target.value)}
                         placeholder="e.g Aziz Raghimov"
                         className="input-base"
+                        disabled={loading}
                     />
                 </div>
 
@@ -113,8 +148,12 @@ function ClientOnboarding() {
                             onChange={e => setPhone(e.target.value)}
                             placeholder=" 90 123 45 67"
                             className="w-full ml-2 text-base font-normal text-black bg-transparent outline-none h-full"
+                            disabled={loading}
                         />
                     </div>
+                    {phone.trim() !== '' && !isPhoneValid && (
+                        <p className="text-red-500 text-xs mt-1">Please enter 9 digits after +998</p>
+                    )}
                 </div>
 
                 <div>
@@ -123,6 +162,7 @@ function ClientOnboarding() {
                         type="file"
                         accept="image/*"
                         onChange={handleImageUpload}
+                        disabled={loading}
                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100"
                     />
                     {profileImage && (
@@ -135,10 +175,10 @@ function ClientOnboarding() {
 
             <button
                 onClick={handleFinish}
-                disabled={!name || !phone || !profileImage}
+                disabled={!isFormValid || loading}
                 className="btn-primary mt-8"
             >
-                Continue
+                {loading ? 'Creating account…' : 'Continue'}
             </button>
         </section>
     );

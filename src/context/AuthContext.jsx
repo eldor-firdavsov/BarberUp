@@ -1,42 +1,42 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const savedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-        if (savedUser) {
-            setUser(savedUser);
+    const [user, setUser] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('user') || 'null');
+        } catch {
+            localStorage.removeItem('user');
+            return null;
         }
-        setLoading(false);
-    }, []);
+    });
+    const loading = false;
 
     const login = (userObj) => {
         setUser(userObj);
-        localStorage.setItem('currentUser', JSON.stringify(userObj));
+        localStorage.setItem('user', JSON.stringify(userObj));
         localStorage.removeItem('onboarding_data');
+    };
+
+    const updateSessionUser = (updates) => {
+        setUser((prev) => {
+            if (!prev) return prev;
+            const next = typeof updates === 'function' ? updates(prev) : { ...prev, ...updates };
+            localStorage.setItem('user', JSON.stringify(next));
+            return next;
+        });
     };
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem('currentUser');
+        localStorage.removeItem('user');
         window.location.href = '/';
     };
 
-    const getBarbers = () => {
-        try {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            return users.filter(u => u.role === 'barber');
-        } catch (error) {
-            return [];
-        }
-    };
-
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading, getBarbers }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, updateSessionUser }}>
             {children}
         </AuthContext.Provider>
     );

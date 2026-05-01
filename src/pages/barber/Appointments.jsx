@@ -1,25 +1,60 @@
-import React, { useState } from 'react';
-import { Calendar as CalendarIcon, Check, X, Clock, MapPin } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Calendar as CalendarIcon, Check, X, Clock } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { getBookings, updateBookingStatus } from '../../api/bookingApi.js';
+import { getClients } from '../../api/clientApi.js';
+import { compareTimes, formatTo24h } from '../../utils/time.js';
 
 function Appointments() {
-    // Generate a fixed mock schedule for today
-    const [bookings, setBookings] = useState([
-        { id: 101, client: "James Smith", time: "09:00", service: "Haircut", status: "pending", image: "https://i.pravatar.cc/150?u=12" },
-        { id: 102, client: "Richard Roe", time: "10:30", service: "Beard Trim", status: "accepted", image: "https://i.pravatar.cc/150?u=13" },
-        { id: 103, client: "Samuel Jackson", time: "13:00", service: "Haircut & Beard", status: "pending", image: "https://i.pravatar.cc/150?u=14" },
-        { id: 104, client: "Daniel Craig", time: "15:00", service: "Haircut", status: "accepted", image: "https://i.pravatar.cc/150?u=15" },
-        { id: 105, client: "Tom Hardy", time: "16:30", service: "Styling", status: "rejected", image: "https://i.pravatar.cc/150?u=16" },
-    ]);
+    const { user } = useAuth();
+    const [bookings, setBookings] = useState([]);
+    const [clientsById, setClientsById] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [pendingUpdateId, setPendingUpdateId] = useState(null);
 
-    const handleStatusUpdate = (id, newStatus) => {
-        setBookings(bookings.map(b => b.id === id ? { ...b, status: newStatus } : b));
+    useEffect(() => {
+        let mounted = true;
+        async function load() {
+            setLoading(true);
+            setError('');
+            const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
+                getBookings(),
+                getClients(),
+            ]);
+            if (!mounted) return;
+            if (bookingError) {
+                setError(bookingError);
+                setBookings([]);
+                setLoading(false);
+                return;
+            }
+            const ownBookings = (bookingList ?? []).filter((booking) => booking.barber === user?.id);
+            setBookings(ownBookings);
+            setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
+            setLoading(false);
+        }
+        load();
+        return () => {
+            mounted = false;
+        };
+    }, [user?.id]);
+
+    const handleStatusUpdate = async (id, newStatus) => {
+        setPendingUpdateId(id);
+        const { data, error: updateError } = await updateBookingStatus(id, { status: newStatus });
+        if (updateError) {
+            setError(updateError);
+        } else if (data) {
+            setBookings((prev) => prev.map((booking) => (booking.id === id ? data : booking)));
+        }
+        setPendingUpdateId(null);
     };
 
-    // For rendering a day timeline, simply list the current bookings sorted by time for simplicity
-    const sortedBookings = [...bookings].sort((a, b) => a.time.localeCompare(b.time));
-
-    // Get today's formatted date
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const sortedBookings = useMemo(
+        () => [...bookings].sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
+        [bookings]
+    );
 
     return (
         <div className="px-6 py-4 space-y-6 page-animate h-full pb-24">
@@ -54,14 +89,17 @@ function Appointments() {
             {/* Timeline View */}
             <div className="space-y-4">
                 <h2 className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider mx-1">Today's Schedule</h2>
+                {loading && <p className="text-[var(--text-muted)] font-medium">Loading schedule...</p>}
+                {error && <p className="text-red-500 font-medium">{error}</p>}
 
-                <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)] overflow-hidden divide-y divide-[var(--border-color)]">
+                {!loading && !error && sortedBookings.length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)] overflow-hidden divide-y divide-[var(--border-color)]">
                     {sortedBookings.map((booking) => (
                         <div key={booking.id} className="p-4 flex gap-4">
                             {/* Time Column */}
                             <div className="flex flex-col items-center w-16 pt-1">
-                                <span className="font-bold text-[var(--text-main)] text-sm">{booking.time}</span>
-                                <span className="text-xs text-[var(--text-light)]">AM/PM</span> {/* Simplification */}
+                                <span className="font-bold text-[var(--text-main)] text-sm">{formatTo24h(booking.booking_hours) || '--:--'}</span>
+                                <span className="text-xs text-[var(--text-light)]">TIME</span>
                             </div>
 
                             {/* Divider Line */}
@@ -73,10 +111,10 @@ function Appointments() {
                             <div className="flex-1 bg-gray-50 rounded-xl p-3 border border-gray-100">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
-                                        <img src={booking.image} alt={booking.client} className="w-8 h-8 rounded-full" />
+                                        <img src="https://i.pravatar.cc/150?u=client" alt={clientsById[booking.client]?.name || booking.client} className="w-8 h-8 rounded-full" />
                                         <div>
-                                            <h3 className="font-bold text-[var(--text-main)] text-sm">{booking.client}</h3>
-                                            <p className="text-xs text-[var(--text-light)]">{booking.service}</p>
+                                            <h3 className="font-bold text-[var(--text-main)] text-sm">{clientsById[booking.client]?.name || 'Client'}</h3>
+                                            <p className="text-xs text-[var(--text-light)]">Session</p>
                                         </div>
                                     </div>
 
@@ -99,12 +137,14 @@ function Appointments() {
                                     <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
                                         <button
                                             onClick={() => handleStatusUpdate(booking.id, 'accepted')}
+                                            disabled={pendingUpdateId === booking.id}
                                             className="flex-1 flex items-center justify-center gap-1 bg-green-500 text-white text-xs font-bold py-2 rounded-lg transition-transform active:scale-95"
                                         >
                                             <Check size={14} /> Accept
                                         </button>
                                         <button
                                             onClick={() => handleStatusUpdate(booking.id, 'rejected')}
+                                            disabled={pendingUpdateId === booking.id}
                                             className="flex-1 flex items-center justify-center gap-1 bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-lg transition-transform active:scale-95"
                                         >
                                             <X size={14} /> Reject
@@ -114,7 +154,11 @@ function Appointments() {
                             </div>
                         </div>
                     ))}
-                </div>
+                    </div>
+                )}
+                {!loading && !error && sortedBookings.length === 0 && (
+                    <p className="text-[var(--text-muted)] font-medium">No bookings found.</p>
+                )}
             </div>
 
         </div>

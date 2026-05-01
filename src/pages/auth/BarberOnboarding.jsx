@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { createBarber } from '../../api/barberApi.js';
 
 function BarberOnboarding() {
     const [name, setName] = useState('');
@@ -9,9 +10,11 @@ function BarberOnboarding() {
     const [workingHoursStart, setWorkingHoursStart] = useState('');
     const [workingHoursEnd, setWorkingHoursEnd] = useState('');
     const [avgPrice, setAvgPrice] = useState('');
-    const [profileImage, setProfileImage] = useState(null);
-    const [shopImage, setShopImage] = useState(null);
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const cleanPhone = (value) => value.replace(/\D/g, '');
+    const phoneDigits = cleanPhone(phone);
+    const isPhoneValid = phoneDigits.length === 9;
 
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -23,65 +26,71 @@ function BarberOnboarding() {
         }
     }, [navigate]);
 
-    const handleProfileImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setProfileImage(reader.result);
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleShopImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setShopImage(reader.result);
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleFinish = () => {
-        if (!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice) {
+    const handleFinish = async () => {
+        if (!name.trim() || !phone.trim() || !shopName.trim() || !workingHoursStart || !workingHoursEnd || !avgPrice.trim()) {
             setError("Please fill in all required fields.");
             return;
         }
-        if (!profileImage || !shopImage) {
-            setError("Image is required");
+        if (!isPhoneValid) {
+            setError('Please enter a valid 9-digit phone number.');
             return;
         }
 
         try {
             const dataStr = localStorage.getItem('onboarding_data');
-            if (!dataStr) return;
+            if (!dataStr) {
+                console.error('[BarberOnboarding] No onboarding_data in localStorage');
+                return;
+            }
             const data = JSON.parse(dataStr);
+            console.log('[BarberOnboarding] onboarding_data:', data);
 
-            const userObj = {
-                id: data.email, // using email as a unique id
-                role: 'barber',
+            setLoading(true);
+            setError('');
+
+            const barberData = {
+                name,
                 email: data.email,
                 password: data.password,
-                name,
-                phone,
+                phone: `+998${phoneDigits}`,
                 shopName,
                 workingHours: `${workingHoursStart} - ${workingHoursEnd}`,
                 avgPrice,
-                profileImage,
-                shopImage
             };
+            console.log('[BarberOnboarding] barberData (frontend format):', barberData);
 
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            const userExists = users.some(u => u.email === data.email);
+            const { data: apiBarber, error: apiError } = await createBarber(barberData);
 
-            if (!userExists) {
-                users.push(userObj);
-                localStorage.setItem('users', JSON.stringify(users));
+            console.log('[BarberOnboarding] API response → data:', apiBarber, '| error:', apiError);
+
+            if (apiError) {
+                console.error('[BarberOnboarding] API error:', apiError);
+                setError(apiError);
+                return;
             }
 
+            // Build session user from the normalised API response
+            const userObj = {
+                role: 'barber',
+                id: apiBarber?.id ?? apiBarber?._id ?? data.email,
+                email: apiBarber?.email ?? data.email,
+                name: apiBarber?.name ?? name,
+                phone: apiBarber?.phone ?? phone,
+                shopName: apiBarber?.shopName ?? shopName,
+                workingHours: apiBarber?.workingHours ?? `${workingHoursStart} - ${workingHoursEnd}`,
+                avgPrice: apiBarber?.avgPrice ?? avgPrice,
+                ...(apiBarber ?? {}),
+            };
+            console.log('[BarberOnboarding] userObj for session:', userObj);
+
+            localStorage.removeItem('onboarding_data');
             login(userObj);
             navigate('/barber/dashboard');
-        } catch (error) {
-            console.error("Failed to parse onboarding data.");
+        } catch (err) {
+            console.error('[BarberOnboarding] unexpected error:', err);
+            setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -94,6 +103,7 @@ function BarberOnboarding() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M15 18l-6-6 6-6" /></svg>
                 Back
             </button>
+
             <header className="mb-10">
                 <div className="flex items-center gap-2 mb-4">
                     <img src="./Scissor.png" alt="" className="w-4 h-4" />
@@ -106,11 +116,11 @@ function BarberOnboarding() {
             </header>
 
             <div className="space-y-8">
-                {/* Personal Info Group */}
                 <div>
                     <h2 className="flex items-center gap-2 text-lg font-bold text-[#1D0065] mb-5">
                         <img src="./Icon.png" alt="" className="h-5 w-5" /> Personal Information
                     </h2>
+
                     <div className="space-y-4">
                         <div>
                             <label className="label-base">Full Name</label>
@@ -120,8 +130,10 @@ function BarberOnboarding() {
                                 onChange={e => setName(e.target.value)}
                                 className="input-base"
                                 placeholder="e.g Aziz Raghimov"
+                                disabled={loading}
                             />
                         </div>
+
                         <div>
                             <label className="label-base">Mobile Number</label>
                             <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-standard)] px-5 border border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:bg-white transition-all h-[var(--input-height)]">
@@ -132,22 +144,21 @@ function BarberOnboarding() {
                                     onChange={e => setPhone(e.target.value)}
                                     className="w-full ml-2 text-base font-normal text-black bg-transparent outline-none h-full"
                                     placeholder=" 90 123 45 67"
+                                    disabled={loading}
                                 />
                             </div>
-                        </div>
-                        <div>
-                            <label className="label-base">Profile Photo</label>
-                            <input type="file" accept="image/*" onChange={handleProfileImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100" />
-                            {profileImage && <img src={profileImage} alt="Preview" className="mt-2 w-16 h-16 rounded-full object-cover shadow-sm" />}
+                            {phone.trim() !== '' && !isPhoneValid && (
+                                <p className="text-red-500 text-xs mt-1">Please enter 9 digits after +998</p>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Business Details Group */}
                 <div>
                     <h2 className="flex items-center gap-2 text-lg font-bold text-[#1D0065] mb-5">
                         <img src="./shop.png" alt="" className="h-5 w-5" /> Business Details
                     </h2>
+
                     <div className="space-y-4">
                         <div>
                             <label className="label-base">Barbershop Name</label>
@@ -157,16 +168,19 @@ function BarberOnboarding() {
                                 onChange={e => setShopName(e.target.value)}
                                 className="input-base"
                                 placeholder="e.g Modern Atelier"
+                                disabled={loading}
                             />
                         </div>
+
                         <div>
                             <label className="label-base">Working Hours</label>
                             <div className="flex items-center gap-3">
-                                <input type="time" value={workingHoursStart} onChange={e => setWorkingHoursStart(e.target.value)} className="input-base text-center px-2" />
+                                <input type="time" value={workingHoursStart} onChange={e => setWorkingHoursStart(e.target.value)} className="input-base text-center px-2" disabled={loading} />
                                 <span className="text-gray-400 font-bold">—</span>
-                                <input type="time" value={workingHoursEnd} onChange={e => setWorkingHoursEnd(e.target.value)} className="input-base text-center px-2" />
+                                <input type="time" value={workingHoursEnd} onChange={e => setWorkingHoursEnd(e.target.value)} className="input-base text-center px-2" disabled={loading} />
                             </div>
                         </div>
+
                         <div>
                             <label className="label-base">Average Price</label>
                             <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-standard)] px-5 border border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:bg-white transition-all h-[var(--input-height)]">
@@ -176,14 +190,10 @@ function BarberOnboarding() {
                                     onChange={e => setAvgPrice(e.target.value)}
                                     className="w-full bg-transparent outline-none text-base text-black font-normal"
                                     placeholder="150 000"
+                                    disabled={loading}
                                 />
                                 <span className="font-bold text-[var(--primary)] ml-2">UZS</span>
                             </div>
-                        </div>
-                        <div>
-                            <label className="label-base">Shop Photo</label>
-                            <input type="file" accept="image/*" onChange={handleShopImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100" />
-                            {shopImage && <img src={shopImage} alt="Shop Preview" className="mt-2 w-full h-32 rounded-xl object-cover shadow-sm" />}
                         </div>
                     </div>
                 </div>
@@ -192,10 +202,10 @@ function BarberOnboarding() {
 
                 <button
                     onClick={handleFinish}
-                    disabled={!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice || !profileImage || !shopImage}
+                    disabled={!name.trim() || !phone.trim() || !shopName.trim() || !workingHoursStart || !workingHoursEnd || !avgPrice.trim() || !isPhoneValid || loading}
                     className="btn-primary"
                 >
-                    Complete Registration
+                    {loading ? 'Creating account…' : 'Complete Registration'}
                 </button>
             </div>
         </section>
