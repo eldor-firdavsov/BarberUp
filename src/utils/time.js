@@ -65,6 +65,81 @@ export function isSlotTaken(bookings, slot, barberId) {
     });
 }
 
+/**
+ * Get current time as "HH:mm" string.
+ */
+export function getCurrentTime() {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * True if current time falls within the given working hours range.
+ * workingHours should be a string like "09:00 - 18:00".
+ * Returns true if workingHours is empty/invalid (no restriction).
+ */
+export function isWithinWorkingHours(workingHours) {
+    if (!workingHours || workingHours === 'N/A') {
+        console.log('[WORK HOURS CHECK] No working hours set — no restriction');
+        return true;
+    }
+    const parts = String(workingHours).split('-').map((s) => s.trim());
+    const start = formatTo24h(parts[0]);
+    const end = formatTo24h(parts[1]);
+    if (!start || !end) {
+        console.log('[WORK HOURS CHECK] Invalid working hours format — no restriction');
+        return true;
+    }
+    const now = getCurrentTime();
+    const inRange = now >= start && now < end;
+    console.log(`[WORK HOURS CHECK] now=${now} range=${start}-${end} inRange=${inRange}`);
+    return inRange;
+}
+
+/**
+ * True if current time falls within the given lunch break range.
+ * lunchStart/lunchEnd should be "HH:mm" strings or empty/null.
+ * Returns false if lunch break is not configured (no restriction).
+ */
+export function isWithinLunchBreak(lunchStart, lunchEnd) {
+    const start = formatTo24h(lunchStart);
+    const end = formatTo24h(lunchEnd);
+    if (!start || !end) {
+        console.log('[LUNCH BREAK CHECK] No lunch break configured — no restriction');
+        return false;
+    }
+    const now = getCurrentTime();
+    const inLunch = now >= start && now < end;
+    console.log(`[LUNCH BREAK CHECK] now=${now} range=${start}-${end} inLunch=${inLunch}`);
+    return inLunch;
+}
+
+/**
+ * Compute final work status based on priority rules:
+ *   1. Manual OFF → always OFF
+ *   2. Outside working hours → OFF
+ *   3. Inside lunch break → OFF
+ *   4. Manual ON + all checks pass → ON
+ */
+export function computeFinalWorkStatus(manualStatus, workingHours, lunchStart, lunchEnd) {
+    if (!manualStatus) {
+        console.log('[FINAL STATUS] Manual status is OFF → final=OFF');
+        return false;
+    }
+    const inWorkHours = isWithinWorkingHours(workingHours);
+    if (!inWorkHours) {
+        console.log('[FINAL STATUS] Outside working hours → final=OFF');
+        return false;
+    }
+    const inLunch = isWithinLunchBreak(lunchStart, lunchEnd);
+    if (inLunch) {
+        console.log('[FINAL STATUS] Inside lunch break → final=OFF');
+        return false;
+    }
+    console.log('[FINAL STATUS] All checks passed → final=ON');
+    return true;
+}
+
 function normalizeRefId(value) {
     if (value == null || value === '') return null;
     if (typeof value === 'string') {

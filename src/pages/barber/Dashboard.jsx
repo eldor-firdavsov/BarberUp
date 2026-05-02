@@ -1,22 +1,65 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Play, UserCircle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
-import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { compareTimes, formatTo24h, computeFinalWorkStatus } from '../../utils/time.js';
+
+const WORK_STATUS_KEY = 'navbatgo_work_status';
+
+function restoreManualStatus() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(WORK_STATUS_KEY));
+        if (saved && typeof saved.isWorking === 'boolean') {
+            console.log('[WORK STATUS RESTORE] Found saved state:', saved);
+            return saved.isWorking;
+        }
+    } catch (e) {
+        console.error('[WORK STATUS RESTORE] Invalid JSON in localStorage', e);
+        localStorage.removeItem(WORK_STATUS_KEY);
+    }
+    console.log('[WORK STATUS RESTORE] No saved state found — defaulting to OFF');
+    return false;
+}
+
+function persistManualStatus(isWorking) {
+    const payload = { isWorking, updatedAt: new Date().toISOString() };
+    localStorage.setItem(WORK_STATUS_KEY, JSON.stringify(payload));
+    console.log('[WORK STATUS TOGGLE] Saved:', payload);
+}
 
 function Dashboard() {
-    const { user } = useAuth();
+    const { user, updateSessionUser } = useAuth();
     const navigate = useNavigate();
 
-    const [isWorking, setIsWorking] = useState(false);
-    const [lunchStart, setLunchStart] = useState("13:00");
-    const [lunchEnd, setLunchEnd] = useState("14:00");
+    const [manualStatus, setManualStatus] = useState(() => restoreManualStatus());
     const [bookings, setBookings] = useState([]);
     const [clientsById, setClientsById] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const workingHours = user?.workingHours || '';
+    const lunchStart = user?.lunchStart || '';
+    const lunchEnd = user?.lunchEnd || '';
+
+    const isWorking = useMemo(() => {
+        return computeFinalWorkStatus(manualStatus, workingHours, lunchStart, lunchEnd);
+    }, [manualStatus, workingHours, lunchStart, lunchEnd]);
+
+    // Re-evaluate status every 30 seconds for time-based checks
+    const [, setTick] = useState(0);
+    useEffect(() => {
+        const interval = setInterval(() => setTick((t) => t + 1), 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleToggle = useCallback(() => {
+        const next = !manualStatus;
+        setManualStatus(next);
+        persistManualStatus(next);
+        updateSessionUser({ isWorkingNow: next });
+    }, [manualStatus, updateSessionUser]);
 
     useEffect(() => {
         let mounted = true;
@@ -106,35 +149,21 @@ function Dashboard() {
                         </p>
                     </div>
                     <button
-                        onClick={() => setIsWorking(!isWorking)}
+                        onClick={handleToggle}
                         className={`w-14 h-8 rounded-full flex items-center p-1 transition-colors duration-300 ${isWorking ? 'bg-green-500' : 'bg-gray-300'}`}
                     >
                         <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${isWorking ? 'translate-x-6' : 'translate-x-0'}`}></div>
                     </button>
                 </div>
 
+                {(lunchStart || lunchEnd) && (
                 <div className="pt-4 border-t border-[var(--border-color)]">
                     <p className="text-sm font-semibold text-[var(--text-muted)] mb-2">Lunch Break (Auto-unavailable)</p>
-                    <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                            <input
-                                type="time"
-                                value={lunchStart}
-                                onChange={(e) => setLunchStart(e.target.value)}
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
-                            />
-                        </div>
-                        <span className="text-[var(--text-light)]">to</span>
-                        <div className="flex-1">
-                            <input
-                                type="time"
-                                value={lunchEnd}
-                                onChange={(e) => setLunchEnd(e.target.value)}
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
-                            />
-                        </div>
-                    </div>
+                    <p className="text-sm text-[var(--text-light)]">
+                        {lunchStart && lunchEnd ? `${lunchStart} — ${lunchEnd}` : 'Partially configured'}
+                    </p>
                 </div>
+                )}
             </div>
 
             {/* CURRENT CLIENT */}
