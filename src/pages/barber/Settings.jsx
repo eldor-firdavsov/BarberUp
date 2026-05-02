@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+
+const WORK_STATUS_KEY = 'navbatgo_work_status';
 
 function Settings() {
     const { logout, user, updateSessionUser } = useAuth();
@@ -15,9 +17,24 @@ function Settings() {
     const [shopImage, setShopImage] = useState(user?.shopImage || null);
 
     // New Availability Controls
-    const [isWorkingNow, setIsWorkingNow] = useState(user?.isWorkingNow !== false);
+    const [isWorkingNow, setIsWorkingNow] = useState(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(WORK_STATUS_KEY));
+            if (saved && typeof saved.isWorking === 'boolean') return saved.isWorking;
+        } catch { /* ignore */ }
+        return user?.isWorkingNow === true;
+    });
     const [lunchStart, setLunchStart] = useState(user?.lunchStart || '');
     const [lunchEnd, setLunchEnd] = useState(user?.lunchEnd || '');
+
+    const handleWorkToggle = useCallback(() => {
+        const next = !isWorkingNow;
+        setIsWorkingNow(next);
+        const payload = { isWorking: next, updatedAt: new Date().toISOString() };
+        localStorage.setItem(WORK_STATUS_KEY, JSON.stringify(payload));
+        console.log('[WORK STATUS TOGGLE] Settings:', payload);
+        updateSessionUser({ isWorkingNow: next });
+    }, [isWorkingNow, updateSessionUser]);
 
     const [success, setSuccess] = useState('');
     const cleanPhone = (value) => value.replace(/\D/g, '');
@@ -58,6 +75,11 @@ function Settings() {
         };
 
         updateSessionUser(updatedUser);
+
+        // Sync work status to localStorage for Dashboard
+        const statusPayload = { isWorking: isWorkingNow, updatedAt: new Date().toISOString() };
+        localStorage.setItem(WORK_STATUS_KEY, JSON.stringify(statusPayload));
+        console.log('[WORK STATUS TOGGLE] Settings save:', statusPayload);
 
         setSuccess('Profile updated successfully!');
         setTimeout(() => setSuccess(''), 3000);
@@ -102,9 +124,9 @@ function Settings() {
                     </h2>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between bg-white px-5 py-3 border border-[var(--border-color)] rounded-[var(--radius-standard)] shadow-sm">
-                            <label className="font-semibold text-sm text-[var(--text-muted)] cursor-pointer select-none" onClick={() => setIsWorkingNow(!isWorkingNow)}>Working Now</label>
+                            <label className="font-semibold text-sm text-[var(--text-muted)] cursor-pointer select-none" onClick={handleWorkToggle}>Working Now</label>
                             <div
-                                onClick={() => setIsWorkingNow(!isWorkingNow)}
+                                onClick={handleWorkToggle}
                                 className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${isWorkingNow ? 'bg-[#1D0065]' : 'bg-gray-300'}`}
                             >
                                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${isWorkingNow ? 'translate-x-6' : ''}`}></div>
