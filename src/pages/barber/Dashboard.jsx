@@ -21,6 +21,7 @@ function Dashboard() {
     useEffect(() => {
         let mounted = true;
         async function loadDashboard() {
+            console.log('[DASHBOARD] Loading dashboard data...');
             setLoading(true);
             setError('');
             const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
@@ -34,13 +35,20 @@ function Dashboard() {
                 setLoading(false);
                 return;
             }
-            setBookings((bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id)));
+            const filteredBookings = (bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id));
+            console.log('[DASHBOARD] Filtered bookings for barber:', filteredBookings.length);
+            setBookings(filteredBookings);
             setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
             setLoading(false);
         }
         loadDashboard();
+        
+        // Set up periodic refresh for real-time updates
+        const refreshInterval = setInterval(loadDashboard, 10000); // Refresh every 10 seconds
+        
         return () => {
             mounted = false;
+            clearInterval(refreshInterval);
         };
     }, [user?.id]);
 
@@ -54,10 +62,12 @@ function Dashboard() {
     const currentClient = useMemo(() => {
         const first = upcomingBookings[0];
         if (!first) return null;
-        const client = clientsById[first.client];
+        // Use clientData from booking if available, otherwise fallback to clientsById
+        const client = first.clientData || clientsById[first.client];
+        console.log('[DASHBOARD] currentClient booking=', first, 'client=', client);
         return {
             id: first.id,
-            name: client?.name || 'Client',
+            name: client?.name || client?.fullname || 'Client',
             image: "https://i.pravatar.cc/150?u=active-client",
             time: formatTo24h(first.booking_hours) || '--:--',
         };
@@ -66,22 +76,25 @@ function Dashboard() {
     const nextClient = useMemo(() => {
         const second = upcomingBookings[1];
         if (!second) return null;
-        const client = clientsById[second.client];
+        const client = second.clientData || clientsById[second.client];
         return {
             id: second.id,
-            name: client?.name || 'Client',
+            name: client?.name || client?.fullname || 'Client',
             image: "https://i.pravatar.cc/150?u=next-client",
             time: formatTo24h(second.booking_hours) || '--:--',
         };
     }, [upcomingBookings, clientsById]);
 
     const upcomingClients = useMemo(
-        () => upcomingBookings.slice(2).map((booking) => ({
-            id: booking.id,
-            name: clientsById[booking.client]?.name || 'Client',
-            image: "https://i.pravatar.cc/150?u=later-client",
-            time: formatTo24h(booking.booking_hours) || '--:--',
-        })),
+        () => upcomingBookings.slice(2).map((booking) => {
+            const client = booking.clientData || clientsById[booking.client];
+            return {
+                id: booking.id,
+                name: client?.name || client?.fullname || 'Client',
+                image: "https://i.pravatar.cc/150?u=later-client",
+                time: formatTo24h(booking.booking_hours) || '--:--',
+            };
+        }),
         [upcomingBookings, clientsById]
     );
 

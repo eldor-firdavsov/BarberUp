@@ -16,6 +16,7 @@ function Appointments() {
     useEffect(() => {
         let mounted = true;
         async function load() {
+            console.log('[APPOINTMENTS] Loading appointments data...');
             setLoading(true);
             setError('');
             const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
@@ -30,13 +31,19 @@ function Appointments() {
                 return;
             }
             const ownBookings = (bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id));
+            console.log('[APPOINTMENTS] Filtered bookings for barber:', ownBookings.length);
             setBookings(ownBookings);
             setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
             setLoading(false);
         }
         load();
+        
+        // Set up periodic refresh for real-time updates
+        const refreshInterval = setInterval(load, 8000); // Refresh every 8 seconds
+        
         return () => {
             mounted = false;
+            clearInterval(refreshInterval);
         };
     }, [user?.id]);
 
@@ -115,9 +122,9 @@ function Appointments() {
                             <div className="flex-1 bg-gray-50 rounded-xl p-3 border border-gray-100">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
-                                        <img src="https://i.pravatar.cc/150?u=client" alt={clientsById[booking.client]?.name || booking.client} className="w-8 h-8 rounded-full" />
+                                        <img src="https://i.pravatar.cc/150?u=client" alt={booking.clientData?.name || booking.clientData?.fullname || clientsById[booking.client]?.name || booking.client} className="w-8 h-8 rounded-full" />
                                         <div>
-                                            <h3 className="font-bold text-[var(--text-main)] text-sm">{clientsById[booking.client]?.name || 'Client'}</h3>
+                                            <h3 className="font-bold text-[var(--text-main)] text-sm">{booking.clientData?.name || booking.clientData?.fullname || clientsById[booking.client]?.name || 'Client'}</h3>
                                             <p className="text-xs text-[var(--text-light)]">Session</p>
                                         </div>
                                     </div>

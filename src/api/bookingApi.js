@@ -40,13 +40,45 @@ export function normalizeBooking(raw) {
     if (!normalizedHours && raw.booking_hours != null) {
         console.warn('[BOOKING CHECK] Unparseable booking_hours, raw=', raw.booking_hours);
     }
+    
+    // Handle both ID references and populated objects
+    let barberId = null;
+    let clientId = null;
+    
+    if (raw.barber) {
+        if (typeof raw.barber === 'string') {
+            barberId = raw.barber;
+        } else if (typeof raw.barber === 'object') {
+            barberId = raw.barber._id ?? raw.barber.id;
+        }
+    }
+    
+    if (raw.client) {
+        if (typeof raw.client === 'string') {
+            clientId = raw.client;
+        } else if (typeof raw.client === 'object') {
+            clientId = raw.client._id ?? raw.client.id;
+        }
+    }
+    
+    // Normalize status - map "active" to "pending" for frontend compatibility
+    let normalizedStatus = raw.status ?? 'pending';
+    if (normalizedStatus === 'active') {
+        normalizedStatus = 'pending';
+    }
+    
+    console.log('[BOOKING NORMALIZE] id=', raw._id, 'barberId=', barberId, 'clientId=', clientId, 'status=', normalizedStatus);
+    
     return {
         ...raw,
         id: raw._id ?? raw.id ?? null,
-        barber: normalizeId(raw.barber),
-        client: normalizeId(raw.client),
+        barber: normalizeId(barberId),
+        client: normalizeId(clientId),
         booking_hours: normalizedHours ?? '',
-        status: raw.status ?? 'pending',
+        status: normalizedStatus,
+        // Keep original objects for reference if needed
+        barberData: typeof raw.barber === 'object' ? raw.barber : null,
+        clientData: typeof raw.client === 'object' ? raw.client : null,
     };
 }
 

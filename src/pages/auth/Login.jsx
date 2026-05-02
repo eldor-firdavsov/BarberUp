@@ -24,50 +24,88 @@ function Login() {
             return;
         }
 
+        // Normalize email and password for consistent comparison
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedPassword = password.trim();
+        
         setLoading(true);
         setError('');
-        console.log('[Login] Attempting login for:', email);
+        console.log('[LOGIN ATTEMPT] email:', normalizedEmail);
 
         try {
             const [
                 { data: barberList, error: barberError },
                 { data: clientList, error: clientError }
             ] = await Promise.all([getBarbers(), getClients()]);
-            console.log('[Login] barberList:', barberList, '| error:', barberError);
-            console.log('[Login] clientList:', clientList, '| error:', clientError);
+            console.log('[LOGIN FETCH] barbers:', barberList?.length || 0, 'error:', !!barberError);
+            console.log('[LOGIN FETCH] clients:', clientList?.length || 0, 'error:', !!clientError);
 
             if (barberError && clientError) {
+                console.error('[LOGIN FAILURE] Both API calls failed');
                 setError('Network error. Please check your connection.');
                 setLoading(false);
                 return;
             }
 
-            const foundBarber = (barberList ?? []).find(u => u.email === email && u.password === password);
+            // Check for barber with normalized email comparison
+            const foundBarber = (barberList ?? []).find(u => {
+                const barberEmail = (u.email || '').trim().toLowerCase();
+                const barberPassword = (u.password || '').trim();
+                const match = barberEmail === normalizedEmail && barberPassword === normalizedPassword;
+                if (match) {
+                    console.log('[LOGIN MATCH] Found barber:', u.email);
+                }
+                return match;
+            });
+            
             if (foundBarber) {
-                login({ ...foundBarber, role: 'barber' });
+                const userObj = {
+                    role: 'barber',
+                    id: foundBarber.id ?? foundBarber._id,
+                    email: foundBarber.email,
+                    name: foundBarber.fullname || foundBarber.name,
+                    phone: foundBarber.phone,
+                    shopName: foundBarber.office_name,
+                    workingHours: foundBarber.working_hours,
+                    avgPrice: foundBarber.average_price,
+                    ...foundBarber,
+                };
+                console.log('[LOGIN SUCCESS] Barber login successful:', userObj.email);
+                login(userObj);
                 navigate('/barber/dashboard');
                 setLoading(false);
                 return;
             }
 
-            const foundClient = (clientList ?? []).find(u => u.email === email && u.password === password);
+            // Check for client with normalized email comparison
+            const foundClient = (clientList ?? []).find(u => {
+                const clientEmail = (u.email || '').trim().toLowerCase();
+                const clientPassword = (u.password || '').trim();
+                const match = clientEmail === normalizedEmail && clientPassword === normalizedPassword;
+                if (match) {
+                    console.log('[LOGIN MATCH] Found client:', u.email);
+                }
+                return match;
+            });
 
             if (foundClient) {
                 const userObj = {
                     role: 'client',
+                    id: foundClient.id ?? foundClient._id,
                     email: foundClient.email,
-                    name: foundClient.name ?? foundClient.fullname,
+                    name: foundClient.fullname || foundClient.name,
                     phone: foundClient.phone,
-                    id: foundClient.id ?? foundClient._id ?? null,
                     ...foundClient,
                 };
+                console.log('[LOGIN SUCCESS] Client login successful:', userObj.email);
                 login(userObj);
                 navigate('/client/dashboard');
             } else {
+                console.log('[LOGIN FAILURE] No user found with matching credentials');
                 setError('Invalid email or password.');
             }
         } catch (err) {
-            console.error('[Login] Unexpected error:', err);
+            console.error('[LOGIN ERROR] Unexpected error:', err);
             setError('Something went wrong. Please try again.');
         }
 
