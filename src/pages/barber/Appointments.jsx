@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar as CalendarIcon, Check, X, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getBookings, updateBookingStatus } from '../../api/bookingApi.js';
+import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
 
@@ -29,7 +29,7 @@ function Appointments() {
                 setLoading(false);
                 return;
             }
-            const ownBookings = (bookingList ?? []).filter((booking) => booking.barber === user?.id);
+            const ownBookings = (bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id));
             setBookings(ownBookings);
             setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
             setLoading(false);
@@ -41,6 +41,10 @@ function Appointments() {
     }, [user?.id]);
 
     const handleStatusUpdate = async (id, newStatus) => {
+        if (id == null || String(id).trim() === '') {
+            console.error('[404 DEBUG] handleStatusUpdate: invalid booking id', id);
+            return;
+        }
         setPendingUpdateId(id);
         const { data, error: updateError } = await updateBookingStatus(id, { status: newStatus });
         if (updateError) {

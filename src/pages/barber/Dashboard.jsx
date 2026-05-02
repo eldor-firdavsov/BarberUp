@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Play, UserCircle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getBookings } from '../../api/bookingApi.js';
+import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
 
@@ -34,7 +34,7 @@ function Dashboard() {
                 setLoading(false);
                 return;
             }
-            setBookings((bookingList ?? []).filter((booking) => booking.barber === user?.id));
+            setBookings((bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id)));
             setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
             setLoading(false);
         }

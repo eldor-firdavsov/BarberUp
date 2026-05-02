@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getBookings } from '../../api/bookingApi.js';
+import { bookingMatchesClient, getBookings } from '../../api/bookingApi.js';
 import { getBarbers } from '../../api/barberApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
 
@@ -30,8 +30,12 @@ function Booking() {
                 return;
             }
 
-            const byId = Object.fromEntries((barberList ?? []).map((barber) => [barber.id, barber]));
-            const ownBookings = (bookingList ?? []).filter((booking) => booking.client === user?.id);
+            const byId = {};
+            for (const barber of barberList ?? []) {
+                if (barber?.id) byId[String(barber.id)] = barber;
+                if (barber?._id) byId[String(barber._id)] = barber;
+            }
+            const ownBookings = (bookingList ?? []).filter((booking) => bookingMatchesClient(booking.client, user?.id));
             setBarbersById(byId);
             setBookings(ownBookings);
             setLoading(false);

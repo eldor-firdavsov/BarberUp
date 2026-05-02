@@ -1,18 +1,29 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(() => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    /* Hydrate session after mount so ProtectedRoute never redirects before restore. */
+    /* eslint-disable react-hooks/set-state-in-effect -- intentional one-time auth bootstrap */
+    useEffect(() => {
+        console.log('[AUTH RESTORE] start');
         try {
-            return JSON.parse(localStorage.getItem('user') || 'null');
-        } catch {
+            const saved = JSON.parse(localStorage.getItem('user') || 'null');
+            setUser(saved);
+            console.log('[AUTH RESTORE]', saved ? `role=${saved.role}` : 'no session');
+        } catch (e) {
+            console.error('[AUTH RESTORE] invalid JSON', e);
             localStorage.removeItem('user');
-            return null;
+            setUser(null);
+        } finally {
+            setLoading(false);
         }
-    });
-    const loading = false;
+    }, []);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const login = (userObj) => {
         setUser(userObj);

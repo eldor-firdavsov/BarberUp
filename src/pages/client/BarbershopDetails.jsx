@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getBarbers } from "../../api/barberApi.js";
-import { createBooking, getBookings } from "../../api/bookingApi.js";
+import { bookingMatchesBarber, createBooking, getBookings } from "../../api/bookingApi.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { compareTimes, formatTo24h, isSlotTaken } from "../../utils/time.js";
 
@@ -69,17 +69,19 @@ export default function BarbershopDetails() {
     }
 
     async function refreshBookingState(targetBarberId) {
+        console.log('[BOOKING REFETCH] barberId=', targetBarberId);
         const { data: latestBookings, error: latestError } = await getBookings();
         if (latestError) {
             setError('Something went wrong');
             return { latestBookings: [], latestError };
         }
         const busySlots = (latestBookings ?? [])
-            .filter((booking) => booking.barber === targetBarberId)
-            .filter((booking) => !['rejected', 'cancelled'].includes((booking.status || '').toLowerCase()))
+            .filter((booking) => bookingMatchesBarber(booking.barber, targetBarberId))
+            .filter((booking) => !['rejected', 'cancelled'].includes(String(booking.status || '').toLowerCase()))
             .map((booking) => formatTo24h(booking.booking_hours))
             .filter(Boolean)
             .sort(compareTimes);
+        console.log('[BOOKING CHECK] bookedSlots (server)=', busySlots);
         setBookedSlots(busySlots);
         return { latestBookings, latestError: null };
     }
@@ -87,6 +89,11 @@ export default function BarbershopDetails() {
     useEffect(() => {
         let isMounted = true;
         async function fetchBarber() {
+            if (!id || String(id).trim() === '') {
+                console.error('[404 DEBUG] BarbershopDetails: missing route id');
+                navigate('/client/dashboard');
+                return;
+            }
             setLoading(true);
             setError('');
             setSuccessMessage('');
@@ -112,13 +119,21 @@ export default function BarbershopDetails() {
             console.log('[BarbershopDetails] found barber:', found);
 
             if (found) {
+                const barberKey = found.id ?? found._id;
+                if (!barberKey) {
+                    console.error('[404 DEBUG] Barber record has no id', found);
+                    setBarber('not_found');
+                    setLoading(false);
+                    return;
+                }
                 setBarber(found);
                 generateSlots(found);
                 const busySlots = (bookings ?? [])
-                    .filter((booking) => booking.barber === found.id)
+                    .filter((booking) => bookingMatchesBarber(booking.barber, barberKey))
                     .filter((booking) => !['rejected', 'cancelled'].includes(String(booking.status || '').toLowerCase()))
                     .map((booking) => formatTo24h(booking.booking_hours))
                     .filter(Boolean);
+                console.log('[BOOKING CHECK] initial bookedSlots=', busySlots);
                 setBookedSlots(busySlots);
                 if (bookingError) {
                     setError('Something went wrong');
@@ -130,7 +145,7 @@ export default function BarbershopDetails() {
         }
         fetchBarber();
         return () => { isMounted = false; };
-    }, [id]);
+    }, [id, navigate]);
 
     const toggleSlot = (time) => {
         if (bookedSlots.includes(time)) return;
@@ -139,7 +154,11 @@ export default function BarbershopDetails() {
     };
 
     const handleBookNow = async () => {
-        if (!selectedSlot || !barber?.id || !user?.id) return;
+        const barberKey = barber?.id ?? barber?._id;
+        if (!selectedSlot || !barberKey || !user?.id) {
+            console.error('[404 DEBUG] Book flow blocked missing data', { barberKey, userId: user?.id });
+            return;
+        }
         const safeSelectedSlot = formatTo24h(selectedSlot);
         if (!safeSelectedSlot) {
             setError('Something went wrong');
@@ -149,32 +168,41 @@ export default function BarbershopDetails() {
         setError('');
         setSuccessMessage('');
 
-        // Preflight duplicate check to reduce race condition risk.
-        const { latestBookings, latestError } = await refreshBookingState(barber.id);
+        // Preflight: latest server state — do NOT POST if slot already taken
+        const { latestBookings, latestError } = await refreshBookingState(barberKey);
         if (latestError) {
             setBookingLoading(false);
             return;
         }
-        if (isSlotTaken(latestBookings, safeSelectedSlot, barber.id)) {
-            setError('This time slot was just booked. Please choose another.');
+        console.log('[BOOKING CHECK] pre-POST slot=', safeSelectedSlot, 'taken=', isSlotTaken(latestBookings, safeSelectedSlot, barberKey));
+        if (isSlotTaken(latestBookings, safeSelectedSlot, barberKey)) {
+            setError('This time slot is already booked.');
             setBookingLoading(false);
             return;
         }
 
         const { error: bookingError } = await createBooking({
-            barber: barber.id,
+            barber: barberKey,
             client: user.id,
             booking_hours: safeSelectedSlot,
         });
         if (bookingError) {
             const duplicateMessage = String(bookingError).toLowerCase();
-            if (duplicateMessage.includes('duplicate') || duplicateMessage.includes('exists') || duplicateMessage.includes('already')) {
-                setError('This time slot was just booked. Please choose another.');
+            if (
+                duplicateMessage.includes('duplicate') ||
+                duplicateMessage.includes('exists') ||
+                duplicateMessage.includes('already') ||
+                duplicateMessage.includes('taken') ||
+                duplicateMessage.includes('booked')
+            ) {
+                setError('This time slot is already booked.');
             } else {
                 setError(bookingError);
             }
+            await refreshBookingState(barberKey);
         } else {
-            await refreshBookingState(barber.id);
+            console.log('[BOOKING POST] success, refetching');
+            await refreshBookingState(barberKey);
             setSuccessMessage('Booking confirmed');
             setSelectedSlot(null);
         }
@@ -182,10 +210,11 @@ export default function BarbershopDetails() {
     };
 
     const handleRetry = async () => {
-        if (!barber?.id) return;
+        const barberKey = barber?.id ?? barber?._id;
+        if (!barberKey) return;
         setRetrying(true);
         setError('');
-        await refreshBookingState(barber.id);
+        await refreshBookingState(barberKey);
         setRetrying(false);
     };
 

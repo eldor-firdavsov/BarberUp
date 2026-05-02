@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Calendar as CalendarIcon, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getBookings } from '../../api/bookingApi.js';
+import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
 
@@ -29,7 +29,7 @@ function Clients() {
                 return;
             }
             const clientsById = Object.fromEntries((clients ?? []).map((client) => [client.id, client]));
-            const own = (bookingList ?? []).filter((booking) => booking.barber === user?.id);
+            const own = (bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id));
             const formatted = own.map((booking) => ({
                 id: booking.id,
                 name: clientsById[booking.client]?.name || 'Client',
