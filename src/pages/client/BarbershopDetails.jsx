@@ -70,6 +70,13 @@ export default function BarbershopDetails() {
 
     async function refreshBookingState(targetBarberId) {
         console.log('[BOOKING REFETCH] barberId=', targetBarberId);
+        
+        if (!targetBarberId || String(targetBarberId).trim() === '') {
+            console.error('[BOOKING REFETCH] Invalid barber ID provided');
+            setError('Invalid barber ID');
+            return { latestBookings: [], latestError: 'Invalid barber ID' };
+        }
+        
         const { data: latestBookings, error: latestError } = await getBookings();
         if (latestError) {
             setError('Something went wrong');
@@ -111,7 +118,16 @@ export default function BarbershopDetails() {
                 return;
             }
 
-            const decodedId = decodeURIComponent(id);
+            let decodedId;
+            try {
+                decodedId = decodeURIComponent(id);
+            } catch (error) {
+                console.error('[BarbershopDetails] Invalid URI encoding:', id, error);
+                setBarber('not_found');
+                setLoading(false);
+                return;
+            }
+            
             // Match by email or by _id/id
             const found = (data ?? []).find(
                 u => u.email === decodedId || u.id === decodedId || u._id === decodedId
@@ -278,18 +294,18 @@ export default function BarbershopDetails() {
                             {slots.length > 0 ? slots.map((time) => (
                                 <label
                                     key={time}
-                                    className={`min-w-[85px] flex flex-col items-center justify-center px-4 py-3 rounded-2xl border cursor-pointer hover:-translate-y-1 hover:shadow-sm transition-all duration-200
+                                    className={`min-w-[100px] flex flex-col items-center justify-center px-4 py-4 rounded-2xl border cursor-pointer transition-all duration-200 hover:scale-105
                   ${bookedSlots.includes(time)
-                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
                                             : selectedSlot === time
-                                            ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-md"
-                                            : "bg-[var(--card-bg)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--primary)]"
+                                            ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-lg transform scale-105"
+                                            : "bg-white text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--primary)] hover:shadow-md"
                                         }`}
                                 >
-                                    <span className="text-xs">
-                                        SLOT
+                                    <span className="text-small font-medium uppercase tracking-wider">
+                                        Time
                                     </span>
-                                    <span className="font-semibold">{time}</span>
+                                    <span className="text-h3 font-bold">{time}</span>
                                     <input
                                         type="checkbox"
                                         className="hidden"
@@ -297,9 +313,23 @@ export default function BarbershopDetails() {
                                         disabled={bookedSlots.includes(time)}
                                         onChange={() => toggleSlot(time)}
                                     />
+                                    {bookedSlots.includes(time) && (
+                                        <div className="text-small text-gray-400 mt-1">Booked</div>
+                                    )}
+                                    {selectedSlot === time && (
+                                        <div className="text-small text-white/90 mt-1">Selected</div>
+                                    )}
                                 </label>
                             )) : (
-                                <p className="text-sm text-[var(--text-secondary)]">No available slots today.</p>
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">
+                                        <Clock size={32} className="text-gray-400" />
+                                    </div>
+                                    <h3 className="empty-state-title">No available slots</h3>
+                                    <p className="empty-state-description">
+                                        This barber is fully booked today. Please try another day.
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -315,23 +345,59 @@ export default function BarbershopDetails() {
                         </div>
                     </div>
 
-                    {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
-                    {successMessage && <p className="text-green-600 text-sm font-medium">{successMessage}</p>}
                     {error && (
-                        <button
-                            onClick={handleRetry}
-                            disabled={retrying || bookingLoading}
-                            className="w-full bg-[var(--primary)] text-white py-3 mt-2 rounded-[1.25rem] font-bold text-[14px] shadow-lg hover:opacity-90 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                            {retrying ? 'Retrying...' : 'Retry'}
-                        </button>
+                        <div className="error-container">
+                            <div className="error-container-header">
+                                <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="error-title">Booking Failed</span>
+                            </div>
+                            <p className="error-message">{error}</p>
+                            <div className="error-actions">
+                                <button
+                                    onClick={handleRetry}
+                                    disabled={retrying || bookingLoading}
+                                    className="btn-primary"
+                                >
+                                    {retrying ? (
+                                        <>
+                                            <div className="spinner"></div>
+                                            Retrying...
+                                        </>
+                                    ) : (
+                                        'Retry'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {successMessage && (
+                        <div className="success-container">
+                            <div className="success-container-header">
+                                <svg className="success-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="success-title">Booking Confirmed!</span>
+                            </div>
+                            <p className="success-message">
+                                Your appointment has been successfully booked. You'll receive a confirmation shortly.
+                            </p>
+                        </div>
                     )}
                     <button
                         onClick={handleBookNow}
                         disabled={!selectedSlot || bookingLoading}
-                        className="w-full bg-[var(--primary)] text-white py-4 mt-2 rounded-[1.25rem] font-bold text-[15px] shadow-lg hover:opacity-90 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="btn-primary w-full"
                     >
-                        {bookingLoading ? 'Booking...' : 'Book Now'}
+                        {bookingLoading ? (
+                            <>
+                                <div className="spinner"></div>
+                                Booking...
+                            </>
+                        ) : (
+                            'Book Now'
+                        )}
                     </button>
                 </div>
             </div>

@@ -66,6 +66,7 @@ function BarberOnboarding() {
             if (apiError) {
                 console.error('[BarberOnboarding] API error:', apiError);
                 setError(apiError);
+                setLoading(false);
                 return;
             }
 

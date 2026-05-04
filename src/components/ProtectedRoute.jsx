@@ -5,7 +5,15 @@ function ProtectedRoute({ children, requiredRole }) {
     const { user, loading } = useAuth();
 
     if (loading) {
-        return <div>Loading...</div>;
+        return (
+            <div className="min-h-screen bg-[var(--background)] flex justify-center items-center p-4">
+                <div className="w-full max-w-md">
+                    <div className="skeleton-card"></div>
+                    <div className="skeleton-text medium mt-4"></div>
+                    <div className="skeleton-text small mt-2"></div>
+                </div>
+            </div>
+        );
     }
 
     if (!user) {

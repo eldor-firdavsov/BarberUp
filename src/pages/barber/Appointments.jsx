@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
+import ClientProfileModal from '../../components/ClientProfileModal.jsx';
 
 function Appointments() {
     const { user } = useAuth();
@@ -12,6 +13,7 @@ function Appointments() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [pendingUpdateId, setPendingUpdateId] = useState(null);
+    const [profileModal, setProfileModal] = useState({ open: false, client: null });
 
     useEffect(() => {
         let mounted = true;
@@ -66,6 +68,18 @@ function Appointments() {
         () => [...bookings].sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
         [bookings]
     );
+
+    const openClientProfile = (clientId) => {
+        const client = clientsById[clientId] || booking.clientData;
+        if (client) {
+            setProfileModal({ open: true, client });
+            console.log('[CLIENT PROFILE] Opening for client:', client.id);
+        }
+    };
+
+    const closeProfileModal = () => {
+        setProfileModal({ open: false, client: null });
+    };
 
     return (
         <div className="px-6 py-4 space-y-6 page-animate h-full pb-24">
@@ -124,7 +138,12 @@ function Appointments() {
                                     <div className="flex items-center gap-2">
                                         <img src="https://i.pravatar.cc/150?u=client" alt={booking.clientData?.name || booking.clientData?.fullname || clientsById[booking.client]?.name || booking.client} className="w-8 h-8 rounded-full" />
                                         <div>
-                                            <h3 className="font-bold text-[var(--text-main)] text-sm">{booking.clientData?.name || booking.clientData?.fullname || clientsById[booking.client]?.name || 'Client'}</h3>
+                                            <button
+                                                onClick={() => openClientProfile(booking.client)}
+                                                className="font-bold text-[var(--text-main)] text-sm hover:text-[var(--primary)] transition-colors text-left"
+                                            >
+                                                {booking.clientData?.name || booking.clientData?.fullname || clientsById[booking.client]?.name || 'Client'}
+                                            </button>
                                             <p className="text-xs text-[var(--text-light)]">Session</p>
                                         </div>
                                     </div>
@@ -171,6 +190,13 @@ function Appointments() {
                     <p className="text-[var(--text-muted)] font-medium">No bookings found.</p>
                 )}
             </div>
+
+            {/* Client Profile Modal */}
+            <ClientProfileModal
+                client={profileModal.client}
+                isOpen={profileModal.open}
+                onClose={closeProfileModal}
+            />
 
         </div>
     );

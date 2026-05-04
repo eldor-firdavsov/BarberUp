@@ -71,6 +71,7 @@ function ClientOnboarding() {
             if (apiError) {
                 console.error('[ClientOnboarding] API error:', apiError);
                 setError(apiError);
+                setLoading(false);
                 return;
             }
 

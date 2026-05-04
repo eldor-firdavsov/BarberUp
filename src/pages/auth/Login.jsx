@@ -118,36 +118,38 @@ function Login() {
         <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
             <button
                 onClick={() => navigate('/')}
-                className="self-start mb-6 flex items-center text-[#4C4451] font-medium"
+                className="btn-ghost self-start mb-6"
             >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M15 18l-6-6 6-6" /></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                 Back
             </button>
+            
             <div className="text-center mb-10">
                 <img src="./Scissor.png" alt="blue scissor icon" className="mx-auto mb-6 h-10 w-10" />
-                <h1 className="text-3xl font-bold text-[#1D0065] leading-tight mb-3">
+                <h1 className="text-h1 mb-4">
                     Login to your <br /> account
                 </h1>
-                <p className="text-base text-[#4C4451]">
+                <p className="text-body">
                     Enter your email and password
                 </p>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-6">
                 <div>
-                    <label className="label-base">Email</label>
+                    <label className="label-base required">Email</label>
                     <input
                         type="email"
-                        placeholder="Email"
+                        placeholder="Enter your email address"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         className="input-base"
                         disabled={loading}
+                        autoComplete="email"
                     />
                 </div>
 
                 <div>
-                    <label className="label-base">Password</label>
+                    <label className="label-base required">Password</label>
                     <input
                         type="password"
                         placeholder="Enter your password"
@@ -155,23 +157,49 @@ function Login() {
                         onChange={e => setPassword(e.target.value)}
                         className="input-base"
                         disabled={loading}
+                        autoComplete="current-password"
                     />
                 </div>
 
-                {error && <div className="text-red-500 text-sm font-medium text-center">{error}</div>}
+                {error && (
+                    <div className="error-container">
+                        <div className="error-container-header">
+                            <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="error-title">Login Failed</span>
+                        </div>
+                        <p className="error-message">{error}</p>
+                        <div className="error-actions">
+                            <button
+                                onClick={() => setError('')}
+                                className="btn-ghost btn-sm"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <button
                     onClick={handleSignIn}
                     disabled={!isFormValid || loading}
-                    className="btn-primary mt-4"
+                    className="btn-primary"
                 >
-                    {loading ? 'Signing in…' : 'Sign In'}
+                    {loading ? (
+                        <>
+                            <div className="spinner"></div>
+                            Signing in…
+                        </>
+                    ) : (
+                        'Sign In'
+                    )}
                 </button>
 
-                <div className="text-center mt-6">
-                    <p className="text-xs text-[#7D7483]">
+                <div className="text-center">
+                    <p className="text-small">
                         Don&apos;t have an account?{' '}
-                        <Link to="/register" className="font-bold text-[#1D0065] underline">
+                        <Link to="/register" className="font-bold text-[var(--primary)] hover:underline transition-all">
                             Sign Up
                         </Link>
                     </p>

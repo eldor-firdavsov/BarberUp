@@ -36,7 +36,6 @@ function Register() {
     const data = JSON.parse(localStorage.getItem("onboarding_data") || 'null');
     if (!data?.role) {
       setError('Please select a role first.');
-      setLoading(false);
       navigate('/');
       return;
     }

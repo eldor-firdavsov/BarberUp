@@ -1,22 +1,65 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Play, UserCircle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
-import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { compareTimes, formatTo24h, computeFinalWorkStatus } from '../../utils/time.js';
+
+const WORK_STATUS_KEY = 'navbatgo_work_status';
+
+function restoreManualStatus() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(WORK_STATUS_KEY));
+        if (saved && typeof saved.isWorking === 'boolean') {
+            console.log('[WORK STATUS RESTORE] Found saved state:', saved);
+            return saved.isWorking;
+        }
+    } catch (e) {
+        console.error('[WORK STATUS RESTORE] Invalid JSON in localStorage', e);
+        localStorage.removeItem(WORK_STATUS_KEY);
+    }
+    console.log('[WORK STATUS RESTORE] No saved state found — defaulting to OFF');
+    return false;
+}
+
+function persistManualStatus(isWorking) {
+    const payload = { isWorking, updatedAt: new Date().toISOString() };
+    localStorage.setItem(WORK_STATUS_KEY, JSON.stringify(payload));
+    console.log('[WORK STATUS TOGGLE] Saved:', payload);
+}
 
 function Dashboard() {
-    const { user } = useAuth();
+    const { user, updateSessionUser } = useAuth();
     const navigate = useNavigate();
 
-    const [isWorking, setIsWorking] = useState(false);
-    const [lunchStart, setLunchStart] = useState("13:00");
-    const [lunchEnd, setLunchEnd] = useState("14:00");
+    const [manualStatus, setManualStatus] = useState(() => restoreManualStatus());
     const [bookings, setBookings] = useState([]);
     const [clientsById, setClientsById] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const workingHours = user?.workingHours || '';
+    const lunchStart = user?.lunchStart || '';
+    const lunchEnd = user?.lunchEnd || '';
+
+    const isWorking = useMemo(() => {
+        return computeFinalWorkStatus(manualStatus, workingHours, lunchStart, lunchEnd);
+    }, [manualStatus, workingHours, lunchStart, lunchEnd]);
+
+    // Re-evaluate status every 30 seconds for time-based checks
+    const [, setTick] = useState(0);
+    useEffect(() => {
+        const interval = setInterval(() => setTick((t) => t + 1), 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleToggle = useCallback(() => {
+        const next = !manualStatus;
+        setManualStatus(next);
+        persistManualStatus(next);
+        updateSessionUser({ isWorkingNow: next });
+    }, [manualStatus, updateSessionUser]);
 
     useEffect(() => {
         let mounted = true;
@@ -103,80 +146,86 @@ function Dashboard() {
 
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-[var(--primary)]">Dashboard</h1>
-                <p className="text-[var(--text-light)] text-sm mt-1">Manage your active sessions</p>
-                {loading && <p className="text-[var(--text-muted)] text-xs mt-1">Loading dashboard data...</p>}
-                {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+                <h1 className="text-h1">Dashboard</h1>
+                <p className="text-body text-muted">Manage your active sessions</p>
+                {loading && <div className="skeleton-text small mt-2"></div>}
+                {error && (
+                    <div className="error-container mt-4">
+                        <div className="error-container-header">
+                            <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="error-title">Dashboard Error</span>
+                        </div>
+                        <p className="error-message">{error}</p>
+                    </div>
+                )}
             </div>
 
             {/* WORK STATUS */}
-            <div className="bg-white p-5 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)]">
-                <div className="flex items-center justify-between mb-4">
+            <div className="card-base">
+                <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h2 className="text-lg font-bold text-[var(--text-main)]">Work Status</h2>
-                        <p className="text-sm text-[var(--text-light)]">
+                        <h2 className="text-h2 mb-2">Work Status</h2>
+                        <p className="text-body text-muted">
                             {isWorking ? "You are available for bookings" : "You are currently unavailable"}
                         </p>
                     </div>
                     <button
-                        onClick={() => setIsWorking(!isWorking)}
-                        className={`w-14 h-8 rounded-full flex items-center p-1 transition-colors duration-300 ${isWorking ? 'bg-green-500' : 'bg-gray-300'}`}
+                        onClick={handleToggle}
+                        className={`w-16 h-9 rounded-full flex items-center p-1 transition-all duration-300 hover:scale-105 ${isWorking ? 'bg-green-500' : 'bg-gray-300'}`}
                     >
-                        <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${isWorking ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        <div className={`bg-white w-7 h-7 rounded-full shadow-lg transform transition-transform duration-300 ${isWorking ? 'translate-x-7' : 'translate-x-0'}`}></div>
                     </button>
                 </div>
 
-                <div className="pt-4 border-t border-[var(--border-color)]">
-                    <p className="text-sm font-semibold text-[var(--text-muted)] mb-2">Lunch Break (Auto-unavailable)</p>
-                    <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                            <input
-                                type="time"
-                                value={lunchStart}
-                                onChange={(e) => setLunchStart(e.target.value)}
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
-                            />
-                        </div>
-                        <span className="text-[var(--text-light)]">to</span>
-                        <div className="flex-1">
-                            <input
-                                type="time"
-                                value={lunchEnd}
-                                onChange={(e) => setLunchEnd(e.target.value)}
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
-                            />
-                        </div>
+                {(lunchStart || lunchEnd) && (
+                <div className="pt-6 border-t border-[var(--border-color)]">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Clock size={16} className="text-muted" />
+                        <p className="text-label">Lunch Break (Auto-unavailable)</p>
                     </div>
+                    <p className="text-body text-muted">
+                        {lunchStart && lunchEnd ? `${lunchStart} — ${lunchEnd}` : 'Partially configured'}
+                    </p>
                 </div>
+                )}
             </div>
 
             {/* CURRENT CLIENT */}
             <div>
-                <h2 className="text-sm font-bold text-[var(--text-muted)] mb-3 mx-1 uppercase tracking-wider">Current Session</h2>
+                <h2 className="text-label uppercase tracking-wider mb-4">Current Session</h2>
                 {currentClient ? (
-                    <div className="bg-[var(--primary)] text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+                    <div className="card-base bg-gradient-to-r from-[var(--primary)] to-purple-600 text-white relative overflow-hidden hover:transform hover:-translate-y-1 transition-all">
                         <div className="absolute -right-4 -top-4 opacity-10">
-                            <Clock size={100} />
+                            <Clock size={120} />
                         </div>
                         <div className="flex items-center gap-4 relative z-10">
-                            <img src={currentClient.image} alt={currentClient.name} className="w-16 h-16 rounded-full border-2 border-white/20" />
-                            <div>
-                                <h3 className="text-xl font-bold">{currentClient.name}</h3>
-                                <div className="flex items-center gap-2 mt-1 text-white/80 text-sm">
-                                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                                    <span>In Progress</span>
+                            <div className="relative">
+                                <img src={currentClient.image} alt={currentClient.name} className="w-16 h-16 rounded-full border-3 border-white/20 shadow-lg" />
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-h2 text-white mb-2">{currentClient.name}</h3>
+                                <div className="flex items-center gap-2">
+                                    <span className="status-badge success">In Progress</span>
                                 </div>
                             </div>
-                            <div className="ml-auto text-right">
-                                <div className="text-3xl font-bold tracking-widest">{currentClient.time}</div>
-                                <span className="text-white/60 text-xs uppercase tracking-widest">Start</span>
+                            <div className="text-right">
+                                <p className="text-small text-white/60 mb-1">Session Time</p>
+                                <p className="text-h3 text-white">{currentClient.time}</p>
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-gray-50 border border-dashed border-gray-300 p-6 rounded-2xl text-center">
-                        <UserCircle size={40} className="mx-auto text-gray-300 mb-2" />
-                        <h3 className="text-gray-500 font-medium">No active client</h3>
+                    <div className="empty-state">
+                        <div className="empty-state-icon">
+                            <UserCircle size={40} className="text-gray-400" />
+                        </div>
+                        <h3 className="empty-state-title">No active client</h3>
+                        <p className="empty-state-description">
+                            You don't have any active sessions right now
+                        </p>
                     </div>
                 )}
             </div>
@@ -184,20 +233,23 @@ function Dashboard() {
             {/* NEXT CLIENT */}
             {nextClient && (
                 <div>
-                    <h2 className="text-sm font-bold text-[var(--text-muted)] mb-3 mx-1 uppercase tracking-wider">Up Next</h2>
-                    <div className="bg-white p-5 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)]">
+                    <h2 className="text-label uppercase tracking-wider mb-4">Up Next</h2>
+                    <div className="card-base hover:transform hover:-translate-y-1 transition-all">
                         <div className="flex items-center gap-4">
-                            <img src={nextClient.image} alt={nextClient.name} className="w-12 h-12 rounded-full" />
+                            <div className="relative">
+                                <img src={nextClient.image} alt={nextClient.name} className="w-14 h-14 rounded-full shadow-md" />
+                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-orange-400 rounded-full border-2 border-white"></div>
+                            </div>
                             <div className="flex-1">
-                                <h3 className="text-lg font-bold text-[var(--text-main)]">{nextClient.name}</h3>
-                                <p className="text-[var(--primary)] font-medium text-sm">{nextClient.time}</p>
+                                <h3 className="text-h2 mb-1">{nextClient.name}</h3>
+                                <p className="text-body text-primary font-medium">{nextClient.time}</p>
                             </div>
                             <button
                                 onClick={() => navigate('/barber/appointments')}
-                                className="bg-[var(--primary)] text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-transform active:scale-95"
+                                className="btn-primary btn-sm flex items-center gap-2 hover:scale-105 transition-transform"
                             >
                                 <Play size={16} fill="currentColor" />
-                                Start
+                                Start Session
                             </button>
                         </div>
                     </div>
@@ -207,23 +259,23 @@ function Dashboard() {
             {/* UPCOMING PREVIEW */}
             {upcomingClients.length > 0 && (
                 <div>
-                    <div className="flex items-center justify-between mb-3 mx-1">
-                        <h2 className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider">Later Today</h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-label uppercase tracking-wider">Later Today</h2>
                         <button
                             onClick={() => navigate('/barber/clients')}
-                            className="text-[var(--primary)] text-sm font-semibold flex items-center"
+                            className="btn-ghost btn-sm flex items-center gap-1 text-primary hover:scale-105 transition-transform"
                         >
                             See All <ChevronRight size={16} />
                         </button>
                     </div>
-                    <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)] overflow-hidden">
+                    <div className="card-base overflow-hidden">
                         {upcomingClients.map((client, index) => (
-                            <div key={client.id} className={`flex items-center gap-4 p-4 ${index !== upcomingClients.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                                <img src={client.image} alt={client.name} className="w-10 h-10 rounded-full" />
+                            <div key={client.id} className={`flex items-center gap-4 p-4 transition-colors hover:bg-gray-50 ${index !== upcomingClients.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                <img src={client.image} alt={client.name} className="w-12 h-12 rounded-full shadow-sm" />
                                 <div className="flex-1">
-                                    <h3 className="font-semibold text-[var(--text-main)]">{client.name}</h3>
+                                    <h3 className="text-body font-semibold">{client.name}</h3>
                                 </div>
-                                <div className="text-[var(--text-light)] font-medium text-sm">
+                                <div className="text-body text-muted font-medium">
                                     {client.time}
                                 </div>
                             </div>
