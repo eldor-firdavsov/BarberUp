@@ -140,20 +140,7 @@ function Client() {
     
     return (
         <section className="page-animate max-w-md mx-auto px-6 py-8 flex flex-col">
-            <header className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                    <img src="./Female_icon.png" alt="icon" className="w-8 h-8" />
-                    <h1 className="text-h1">NavbatGo</h1>
-                </div>
-                <div className="flex gap-4 items-center">
-                    <button className="btn-ghost btn-sm p-2">
-                        <img src="./search.png" alt="Search" className="w-5 h-5" />
-                    </button>
-                    <button className="btn-ghost btn-sm p-2">
-                        <img src="./bell.png" alt="Notifications" className="w-4 h-5" />
-                    </button>
-                </div>
-            </header>
+            
 
             {/* My Barber Section */}
             {favoriteBarbers.length > 0 && (
@@ -164,62 +151,55 @@ function Client() {
                         if (!favoriteBarber) return null;
                         
                         return (
-                            <div 
-                                className="card-base bg-gradient-to-r from-[var(--primary)] to-purple-600 text-white cursor-pointer transition-all hover:transform hover:-translate-y-2"
-                                onClick={() => navigate(`/barber/${encodeURIComponent(favoriteBarber.id ?? favoriteBarber.email)}`)}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="relative">
-                                        <img
-                                            src={favoriteBarber.shopImage || favoriteBarber.profileImage || 'Background.png'}
-                                            alt={favoriteBarber.shopName || favoriteBarber.name}
-                                            className="w-16 h-16 rounded-full border-3 border-white/20 shadow-lg"
-                                            onError={(e) => { e.currentTarget.src = 'Background.png'; }}
-                                        />
-                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-h2 text-white mb-1">{favoriteBarber.shopName || favoriteBarber.name}</h3>
-                                        <p className="text-white/80 text-body mb-3">{favoriteBarber.name || 'Your favorite barber'}</p>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`status-badge ${
-                                                getBarberStatus(favoriteBarber) === 'Available' 
-                                                    ? 'success' 
-                                                    : 'neutral'
-                                            }`}>
-                                                {getBarberStatus(favoriteBarber)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                navigate(`/barber/${encodeURIComponent(favoriteBarber.id ?? favoriteBarber.email)}`);
-                                            }}
-                                            className="bg-white text-[var(--primary)] px-4 py-2 rounded-lg font-bold text-sm hover:bg-white/90 transition-all hover:scale-105"
-                                        >
-                                            Book Now
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openProfileModal(favoriteBarber);
-                                            }}
-                                            className="bg-white/20 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-white/30 transition-all hover:scale-105"
-                                        >
-                                            View Profile
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            // <div 
+                            //     className="card-base bg-gradient-to-r from-[var(--primary)] to-purple-600 text-white cursor-pointer transition-all hover:transform hover:-translate-y-2"
+                            //     onClick={() => navigate(`/barber/${encodeURIComponent(favoriteBarber.id ?? favoriteBarber.email)}`)}
+                            // >
+                            //     <div className="flex items-center gap-4">
+                            //         <div className="relative">
+                            //             <img
+                            //                 src={favoriteBarber.shopImage || favoriteBarber.profileImage || 'Background.png'}
+                            //                 alt={favoriteBarber.shopName || favoriteBarber.name}
+                            //                 className="w-16 h-16 rounded-full border-3 border-white/20 shadow-lg"
+                            //                 onError={(e) => { e.currentTarget.src = 'Background.png'; }}
+                            //             />
+                            //             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
+                            //         </div>
+                            //         <div className="flex-1">
+                            //             <h3 className="text-h2 text-white mb-1">{favoriteBarber.shopName || favoriteBarber.name}</h3>
+                            //             <p className="text-white/80 text-body mb-3">{favoriteBarber.name || 'Your favorite barber'}</p>
+                            //             <div className="flex items-center gap-3">
+                            //                 <span className={`status-badge ${
+                            //                     getBarberStatus(favoriteBarber) === 'Available' 
+                            //                         ? 'success' 
+                            //                         : 'neutral'
+                            //                 }`}>
+                            //                     {getBarberStatus(favoriteBarber)}
+                            //                 </span>
+                            //             </div>
+                            //         </div>
+                            //         <div className="flex flex-col gap-2">
+                            //             <button
+                            //                 onClick={(e) => {
+                            //                     e.stopPropagation();
+                            //                     navigate(`/barber/${encodeURIComponent(favoriteBarber.id ?? favoriteBarber.email)}`);
+                            //                 }}
+                            //                 className="bg-white text-[var(--primary)] px-4 py-2 rounded-lg font-bold text-sm hover:bg-white/90 transition-all hover:scale-105"
+                            //             >
+                            //                 Book Now
+                            //             </button>
+                                        
+                            //         </div>
+                            //     </div>
+                            // </div>
+                            ''
                         );
                     })()}
                 </div>
             )}
 
             {/* Find Your Barber Section (when no favorites) */}
-            {favoriteBarbers.length === 0 && (
+            {/* {favoriteBarbers.length === 0 && (
                 <div className="mb-8">
                     <h2 className="text-h2 mb-6">Find your barber</h2>
                     <div className="empty-state">
@@ -238,7 +218,7 @@ function Client() {
                         </button>
                     </div>
                 </div>
-            )}
+            )} */}
 
             <h1 className="text-4xl font-bold text-[#1D0065] leading-tight mb-4">
                 <span className="text-black">Elevate your <br /></span>Grooming.
@@ -249,20 +229,20 @@ function Client() {
 
             <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar mb-8">
                 <button 
-                    onClick={() => setActiveTab('favorites')}
-                    className={`btn-secondary whitespace-nowrap text-sm ${
-                        activeTab === 'favorites' ? '!bg-[var(--primary)] !text-white' : ''
-                    }`}
-                >
-                    Favorites {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
-                </button>
-                <button 
                     onClick={() => setActiveTab('all')}
                     className={`btn-secondary whitespace-nowrap text-sm ${
                         activeTab === 'all' ? '!bg-[var(--primary)] !text-white' : ''
                     }`}
                 >
                     All Masters
+                </button>
+                <button 
+                    onClick={() => setActiveTab('favorites')}
+                    className={`btn-secondary whitespace-nowrap text-sm ${
+                        activeTab === 'favorites' ? '!bg-[var(--primary)] !text-white' : ''
+                    }`}
+                >
+                    Favorites {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
                 </button>
                 <button 
                     onClick={() => setActiveTab('nearby')}
@@ -363,7 +343,7 @@ function Client() {
                         >
                             <div className="relative overflow-hidden rounded-t-2xl">
                                 <img
-                                    src={barber.shopImage || 'Background.png'}
+                                    src={barber.shopImage || 'https://d2zdpiztbgorvt.cloudfront.net/region1/us/1322907/biz_photo/3806c4bb1b924e4c87908a506761cb-old-steel-barbershop-biz-photo-425e6efceeb04c7b9e42564ff6852b-booksy.jpeg'}
                                     alt="Shop"
                                     className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
                                     onError={(e) => { e.currentTarget.src = 'Background.png'; }}
@@ -373,7 +353,7 @@ function Client() {
                                         onClick={(e) => toggleFavorite(barber.id, e)}
                                         className="bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-white transition-all hover:scale-110 shadow-lg"
                                     >
-                                        <Heart size={16} fill={isFavorite(barber.id) ? 'currentColor' : 'none'} color={isFavorite(barber.id) ? '#EF4444' : '#9CA3AF'} />
+                                        <Heart size={16} fill={isFavorite(barber.id) ? 'red' : 'none'} color={isFavorite(barber.id) ? '#EF4444' : '#9CA3AF'} />
                                     </button>
                                 </div>
                                 <div className="absolute bottom-4 left-4">
