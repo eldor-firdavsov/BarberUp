@@ -39,7 +39,7 @@ function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const workingHours = user?.workingHours || '';
+    const workingHours = user?.working_hours || '';
     const lunchStart = user?.lunchStart || '';
     const lunchEnd = user?.lunchEnd || '';
 

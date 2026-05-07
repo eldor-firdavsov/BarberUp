@@ -6,6 +6,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     /* Hydrate session after mount so ProtectedRoute never redirects before restore. */
     /* eslint-disable react-hooks/set-state-in-effect -- intentional one-time auth bootstrap */
@@ -64,6 +65,12 @@ export function AuthProvider({ children }) {
     const login = (userObj) => {
         console.log('[SESSION LOGIN] start:', { role: userObj?.role, email: userObj?.email, id: userObj?.id });
         
+        // Prevent concurrent login attempts (race condition protection)
+        if (isLoggingIn) {
+            console.warn('[SESSION LOGIN] login already in progress, ignoring duplicate attempt');
+            return;
+        }
+        
         // Validate user object before setting session
         if (!userObj || typeof userObj !== 'object') {
             console.error('[SESSION LOGIN] invalid user object');
@@ -80,13 +87,27 @@ export function AuthProvider({ children }) {
             return;
         }
         
-        // Clean up any existing onboarding data
-        localStorage.removeItem('onboarding_data');
+        // Set login in progress flag to prevent race conditions
+        setIsLoggingIn(true);
         
-        // Set user session
-        setUser(userObj);
-        localStorage.setItem('user', JSON.stringify(userObj));
-        console.log('[SESSION LOGIN] success:', { role: userObj.role, email: userObj.email });
+        try {
+            // Clean up any existing onboarding data
+            localStorage.removeItem('onboarding_data');
+            
+            // Set user session
+            setUser(userObj);
+            localStorage.setItem('user', JSON.stringify(userObj));
+            console.log('[SESSION LOGIN] success:', { role: userObj.role, email: userObj.email });
+        } catch (error) {
+            console.error('[SESSION LOGIN] error during login process:', error);
+            // Cleanup on error
+            setUser(null);
+            localStorage.removeItem('user');
+            localStorage.removeItem('onboarding_data');
+        } finally {
+            // Always reset login in progress flag
+            setIsLoggingIn(false);
+        }
     };
 
     const updateSessionUser = (updates) => {
@@ -119,7 +140,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading, updateSessionUser }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, isLoggingIn, updateSessionUser }}>
             {children}
         </AuthContext.Provider>
     );

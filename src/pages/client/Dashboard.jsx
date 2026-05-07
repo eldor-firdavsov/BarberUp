@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBarbers } from '../../api/barberApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -12,7 +12,7 @@ function Client() {
     const [error, setError] = useState('');
     const [retrying, setRetrying] = useState(false);
     const [favoriteBarbers, setFavoriteBarbers] = useState([]);
-    const [activeTab, setActiveTab] = useState('all'); // 'favorites', 'all', 'nearby'
+    const [activeTab, setActiveTab] = useState('nearby'); // 'favorites', 'nearby'
     const [profileModal, setProfileModal] = useState({ open: false, barber: null });
     const navigate = useNavigate();
 
@@ -123,103 +123,91 @@ function Client() {
     };
 
     const getBarberStatus = (barber) => {
-        if (barber.isWorkingNow === false) return 'Currently Offline';
+        if (barber.status === 'inactive') return 'Currently Offline';
         const now = new Date();
         const currentMins = now.getHours() * 60 + now.getMinutes();
 
-        if (barber.lunchStart && barber.lunchEnd) {
-            const [lStartH, lStartM] = barber.lunchStart.split(':').map(Number);
-            const [lEndH, lEndM] = barber.lunchEnd.split(':').map(Number);
-            const lStartMins = lStartH * 60 + lStartM;
-            const lEndMins = lEndH * 60 + lEndM;
-            if (currentMins >= lStartMins && currentMins < lEndMins) return 'On Break';
+        // Parse working hours (e.g., "09:00 AM - 08:00 PM")
+        if (barber.working_hours) {
+            const [openTime, closeTime] = barber.working_hours.split(' - ');
+            const [openHour, openMin, openPeriod] = openTime.match(/(\d+):(\d+)\s*(AM|PM)/i)?.slice(1) || [];
+            const [closeHour, closeMin, closePeriod] = closeTime.match(/(\d+):(\d+)\s*(AM|PM)/i)?.slice(1) || [];
+            
+            if (openHour && closeHour) {
+                let openHour24 = parseInt(openHour);
+                let closeHour24 = parseInt(closeHour);
+                
+                if (openPeriod?.toUpperCase() === 'PM' && openHour24 !== 12) openHour24 += 12;
+                if (openPeriod?.toUpperCase() === 'AM' && openHour24 === 12) openHour24 = 0;
+                if (closePeriod?.toUpperCase() === 'PM' && closeHour24 !== 12) closeHour24 += 12;
+                if (closePeriod?.toUpperCase() === 'AM' && closeHour24 === 12) closeHour24 = 0;
+                
+                const openMins = openHour24 * 60 + parseInt(openMin || 0);
+                const closeMins = closeHour24 * 60 + parseInt(closeMin || 0);
+                
+                if (currentMins < openMins || currentMins >= closeMins) {
+                    return 'Currently Offline';
+                }
+            }
         }
         return 'Available';
     };
+
+    // Memoized client location to avoid repeated localStorage parsing
+    const clientLocation = useMemo(() => {
+        try {
+            const stored = localStorage.getItem('client_location');
+            return stored ? JSON.parse(stored) : { coordinates: [69.2401, 41.2995] }; // Default: Tashkent
+        } catch (error) {
+            console.error('[ClientDashboard] Error parsing client location:', error);
+            return { coordinates: [69.2401, 41.2995] };
+        }
+    }, []);
+
+    // Memoized distance calculation function
+    const calculateDistance = useCallback((barber) => {
+        if (!barber.location?.coordinates || !Array.isArray(barber.location.coordinates) || barber.location.coordinates.length < 2) {
+            return 999999; // Put barbers without location at the end
+        }
+        
+        const [lng1, lat1] = clientLocation.coordinates;
+        const [lng2, lat2] = barber.location.coordinates;
+        
+        // Haversine distance formula
+        const R = 6371; // Earth's radius in kilometers
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+        
+        return distance;
+    }, [clientLocation]);
+
+    // Memoized filtered and sorted barbers to prevent recalculation on every render
+    const filteredAndSortedBarbers = useMemo(() => {
+        return barbers
+            .filter(barber => {
+                if (activeTab === 'favorites') {
+                    return favoriteBarbers.includes(barber.id);
+                }
+                return true; // Show all for nearby tab
+            })
+            .sort((a, b) => {
+                // Sort by distance (nearest first) for both tabs
+                return calculateDistance(a) - calculateDistance(b);
+            });
+    }, [barbers, activeTab, favoriteBarbers, calculateDistance]);
 
     
     return (
         <section className="page-animate max-w-md mx-auto px-6 py-8 flex flex-col">
             
 
-            {/* My Barber Section */}
-            {favoriteBarbers.length > 0 && (
-                <div className="mb-8">
-                    <h2 className="text-h2 mb-6">My Barber</h2>
-                    {(() => {
-                        const favoriteBarber = barbers.find(barber => isFavorite(barber.id));
-                        if (!favoriteBarber) return null;
-                        
-                        return (
-                            // <div 
-                            //     className="card-base bg-gradient-to-r from-[var(--primary)] to-purple-600 text-white cursor-pointer transition-all hover:transform hover:-translate-y-2"
-                            //     onClick={() => navigate(`/barber/${encodeURIComponent(favoriteBarber.id ?? favoriteBarber.email)}`)}
-                            // >
-                            //     <div className="flex items-center gap-4">
-                            //         <div className="relative">
-                            //             <img
-                            //                 src={favoriteBarber.shopImage || favoriteBarber.profileImage || 'Background.png'}
-                            //                 alt={favoriteBarber.shopName || favoriteBarber.name}
-                            //                 className="w-16 h-16 rounded-full border-3 border-white/20 shadow-lg"
-                            //                 onError={(e) => { e.currentTarget.src = 'Background.png'; }}
-                            //             />
-                            //             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
-                            //         </div>
-                            //         <div className="flex-1">
-                            //             <h3 className="text-h2 text-white mb-1">{favoriteBarber.shopName || favoriteBarber.name}</h3>
-                            //             <p className="text-white/80 text-body mb-3">{favoriteBarber.name || 'Your favorite barber'}</p>
-                            //             <div className="flex items-center gap-3">
-                            //                 <span className={`status-badge ${
-                            //                     getBarberStatus(favoriteBarber) === 'Available' 
-                            //                         ? 'success' 
-                            //                         : 'neutral'
-                            //                 }`}>
-                            //                     {getBarberStatus(favoriteBarber)}
-                            //                 </span>
-                            //             </div>
-                            //         </div>
-                            //         <div className="flex flex-col gap-2">
-                            //             <button
-                            //                 onClick={(e) => {
-                            //                     e.stopPropagation();
-                            //                     navigate(`/barber/${encodeURIComponent(favoriteBarber.id ?? favoriteBarber.email)}`);
-                            //                 }}
-                            //                 className="bg-white text-[var(--primary)] px-4 py-2 rounded-lg font-bold text-sm hover:bg-white/90 transition-all hover:scale-105"
-                            //             >
-                            //                 Book Now
-                            //             </button>
-                                        
-                            //         </div>
-                            //     </div>
-                            // </div>
-                            ''
-                        );
-                    })()}
-                </div>
-            )}
-
-            {/* Find Your Barber Section (when no favorites) */}
-            {/* {favoriteBarbers.length === 0 && (
-                <div className="mb-8">
-                    <h2 className="text-h2 mb-6">Find your barber</h2>
-                    <div className="empty-state">
-                        <div className="empty-state-icon">
-                            <Heart size={40} className="text-gray-400" />
-                        </div>
-                        <h3 className="empty-state-title">No favorite barber yet</h3>
-                        <p className="empty-state-description">
-                            Save barbers as favorites for faster booking and personalized recommendations
-                        </p>
-                        <button 
-                            onClick={() => setActiveTab('all')}
-                            className="btn-primary empty-state-action"
-                        >
-                            Explore Barbers
-                        </button>
-                    </div>
-                </div>
-            )} */}
-
+            
+            
             <h1 className="text-4xl font-bold text-[#1D0065] leading-tight mb-4">
                 <span className="text-black">Elevate your <br /></span>Grooming.
             </h1>
@@ -229,12 +217,12 @@ function Client() {
 
             <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar mb-8">
                 <button 
-                    onClick={() => setActiveTab('all')}
+                    onClick={() => setActiveTab('nearby')}
                     className={`btn-secondary whitespace-nowrap text-sm ${
-                        activeTab === 'all' ? '!bg-[var(--primary)] !text-white' : ''
+                        activeTab === 'nearby' ? '!bg-[var(--primary)] !text-white' : ''
                     }`}
                 >
-                    All Masters
+                    Nearby
                 </button>
                 <button 
                     onClick={() => setActiveTab('favorites')}
@@ -243,14 +231,6 @@ function Client() {
                     }`}
                 >
                     Favorites {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
-                </button>
-                <button 
-                    onClick={() => setActiveTab('nearby')}
-                    className={`btn-secondary whitespace-nowrap text-sm ${
-                        activeTab === 'nearby' ? '!bg-[var(--primary)] !text-white' : ''
-                    }`}
-                >
-                    Nearby
                 </button>
             </div>
 
@@ -314,28 +294,7 @@ function Client() {
                         </div>
                     )}
                     
-                    {barbers
-                        .filter(barber => {
-                            if (activeTab === 'favorites') {
-                                return isFavorite(barber.id);
-                            }
-                            return true; // Show all for 'all' and 'nearby' tabs
-                        })
-                        // Sort based on active tab
-                        .sort((a, b) => {
-                            if (activeTab === 'nearby') {
-                                // Sort by name for now (real distance calculation requires backend)
-                                return (a.shopName || a.name || '').localeCompare(b.shopName || b.name || '');
-                            } else {
-                                // Default sorting: favorites first, then by name
-                                const aFav = isFavorite(a.id);
-                                const bFav = isFavorite(b.id);
-                                if (aFav && !bFav) return -1;
-                                if (!aFav && bFav) return 1;
-                                return (a.shopName || a.name || '').localeCompare(b.shopName || b.name || '');
-                            }
-                        })
-                        .map((barber, index) => (
+                    {filteredAndSortedBarbers.map((barber, index) => (
                         <div
                             key={barber.id ?? index}
                             onClick={() => navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`)}
@@ -370,13 +329,13 @@ function Client() {
                             </div>
                             <div className="p-6">
                                 <div className="mb-4">
-                                    <h3 className="text-h2 mb-2">{barber.shopName || barber.name || 'Modern Atelier'}</h3>
+                                    <h3 className="text-h2 mb-2">{barber.office_name || barber.fullname || 'Modern Atelier'}</h3>
                                     <div className="flex items-center gap-3 text-small text-muted">
-                                        <span>{barber.name}</span>
-                                        {barber.workingHours && (
+                                        <span>{barber.fullname}</span>
+                                        {barber.working_hours && (
                                             <>
                                                 <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                                <span>{barber.workingHours}</span>
+                                                <span>{barber.working_hours}</span>
                                             </>
                                         )}
                                     </div>
@@ -384,10 +343,13 @@ function Client() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h2 className="text-xs font-semibold text-[var(--primary)] opacity-80 mb-1">
-                                            Status
+                                            {activeTab === 'nearby' ? 'Distance' : 'Status'}
                                         </h2>
                                         <p className="text-sm font-bold text-[#312E81]">
-                                            {getBarberStatus(barber)}
+                                            {activeTab === 'nearby' 
+                                                ? `${calculateDistance(barber).toFixed(1)} km`
+                                                : getBarberStatus(barber)
+                                            }
                                         </p>
                                     </div>
                                     <div className="flex gap-2">

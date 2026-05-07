@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { createBarber } from '../../api/barberApi.js';
+import MapPicker from '../../components/MapPicker.jsx';
 
 function BarberOnboarding() {
-    const [name, setName] = useState('');
+    const [fullname, setFullname] = useState('');
     const [phone, setPhone] = useState('');
-    const [shopName, setShopName] = useState('');
-    const [workingHoursStart, setWorkingHoursStart] = useState('');
-    const [workingHoursEnd, setWorkingHoursEnd] = useState('');
-    const [avgPrice, setAvgPrice] = useState('');
+    const [office_name, setOfficeName] = useState('');
+    const [office_description, setOfficeDescription] = useState('');
+    const [working_hours, setWorkingHours] = useState('');
+    const [average_price, setAveragePrice] = useState('');
+    const [location, setLocation] = useState({ address: '', coordinates: [69.2401, 41.2995] }); // Default: Tashkent
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const cleanPhone = (value) => value.replace(/\D/g, '');
@@ -27,12 +29,47 @@ function BarberOnboarding() {
     }, [navigate]);
 
     const handleFinish = async () => {
-        if (!name.trim() || !phone.trim() || !shopName.trim() || !workingHoursStart || !workingHoursEnd || !avgPrice.trim()) {
+        if (!fullname.trim() || !phone.trim() || !office_name.trim() || !working_hours.trim() || !average_price.trim()) {
             setError("Please fill in all required fields.");
             return;
         }
         if (!isPhoneValid) {
             setError('Please enter a valid 9-digit phone number.');
+            return;
+        }
+        if (!location.address) {
+            setError('Please provide your office address.');
+            return;
+        }
+        
+        // Input length validation to prevent UI overflow
+        if (fullname.trim().length > 100) {
+            setError('Name must be less than 100 characters.');
+            return;
+        }
+        
+        if (phone.trim().length > 20) {
+            setError('Phone number must be less than 20 characters.');
+            return;
+        }
+        
+        if (office_name.trim().length > 200) {
+            setError('Office name must be less than 200 characters.');
+            return;
+        }
+        
+        if (office_description.trim().length > 1000) {
+            setError('Office description must be less than 1000 characters.');
+            return;
+        }
+        
+        if (working_hours.trim().length > 50) {
+            setError('Working hours must be less than 50 characters.');
+            return;
+        }
+        
+        if (location.address.length > 500) {
+            setError('Address must be less than 500 characters.');
             return;
         }
 
@@ -49,13 +86,17 @@ function BarberOnboarding() {
             setError('');
 
             const barberData = {
-                name,
+                fullname,
                 email: data.email,
                 password: data.password,
                 phone: `+998${phoneDigits}`,
-                shopName,
-                workingHours: `${workingHoursStart} - ${workingHoursEnd}`,
-                avgPrice,
+                office_name,
+                office_description,
+                working_hours,
+                average_price,
+                status: 'active',
+                address: location.address,
+                coordinates: location.coordinates,
             };
             console.log('[BarberOnboarding] barberData (frontend format):', barberData);
 
@@ -75,11 +116,15 @@ function BarberOnboarding() {
                 role: 'barber',
                 id: apiBarber?.id ?? apiBarber?._id ?? data.email,
                 email: apiBarber?.email ?? data.email,
-                name: apiBarber?.name ?? name,
-                phone: apiBarber?.phone ?? phone,
-                shopName: apiBarber?.shopName ?? shopName,
-                workingHours: apiBarber?.workingHours ?? `${workingHoursStart} - ${workingHoursEnd}`,
-                avgPrice: apiBarber?.avgPrice ?? avgPrice,
+                fullname: apiBarber?.fullname ?? fullname,
+                phone: apiBarber?.phone ?? `+998${phoneDigits}`,
+                office_name: apiBarber?.office_name ?? office_name,
+                office_description: apiBarber?.office_description ?? office_description,
+                working_hours: apiBarber?.working_hours ?? working_hours,
+                average_price: apiBarber?.average_price ?? average_price,
+                status: apiBarber?.status ?? 'active',
+                address: apiBarber?.address ?? location.address,
+                coordinates: apiBarber?.coordinates ?? location.coordinates,
                 ...(apiBarber ?? {}),
             };
             console.log('[BarberOnboarding] userObj for session:', userObj);
@@ -127,8 +172,8 @@ function BarberOnboarding() {
                             <label className="label-base">Full Name</label>
                             <input
                                 type="text"
-                                value={name}
-                                onChange={e => setName(e.target.value)}
+                                value={fullname}
+                                onChange={e => setFullname(e.target.value)}
                                 className="input-base"
                                 placeholder="e.g Aziz Raghimov"
                                 disabled={loading}
@@ -162,24 +207,38 @@ function BarberOnboarding() {
 
                     <div className="space-y-4">
                         <div>
-                            <label className="label-base">Barbershop Name</label>
+                            <label className="label-base">Office Name</label>
                             <input
                                 type="text"
-                                value={shopName}
-                                onChange={e => setShopName(e.target.value)}
+                                value={office_name}
+                                onChange={e => setOfficeName(e.target.value)}
                                 className="input-base"
-                                placeholder="e.g Modern Atelier"
+                                placeholder="e.g Jaska VIP Barbershop"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="label-base">Office Description</label>
+                            <textarea
+                                value={office_description}
+                                onChange={e => setOfficeDescription(e.target.value)}
+                                className="input-base min-h-[80px] resize-none"
+                                placeholder="Describe your barbershop..."
                                 disabled={loading}
                             />
                         </div>
 
                         <div>
                             <label className="label-base">Working Hours</label>
-                            <div className="flex items-center gap-3">
-                                <input type="time" value={workingHoursStart} onChange={e => setWorkingHoursStart(e.target.value)} className="input-base text-center px-2" disabled={loading} />
-                                <span className="text-gray-400 font-bold">—</span>
-                                <input type="time" value={workingHoursEnd} onChange={e => setWorkingHoursEnd(e.target.value)} className="input-base text-center px-2" disabled={loading} />
-                            </div>
+                            <input
+                                type="text"
+                                value={working_hours}
+                                onChange={e => setWorkingHours(e.target.value)}
+                                className="input-base"
+                                placeholder="e.g 09:00 AM - 08:00 PM"
+                                disabled={loading}
+                            />
                         </div>
 
                         <div>
@@ -187,14 +246,22 @@ function BarberOnboarding() {
                             <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-standard)] px-5 border border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:bg-white transition-all h-[var(--input-height)]">
                                 <input
                                     type="text"
-                                    value={avgPrice}
-                                    onChange={e => setAvgPrice(e.target.value)}
+                                    value={average_price}
+                                    onChange={e => setAveragePrice(e.target.value)}
                                     className="w-full bg-transparent outline-none text-base text-black font-normal"
-                                    placeholder="150 000"
+                                    placeholder="40,000"
                                     disabled={loading}
                                 />
-                                <span className="font-bold text-[var(--primary)] ml-2">UZS</span>
+                                <span className="font-bold text-[var(--primary)] ml-2">so'm</span>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="label-base">Office Location</label>
+                            <MapPicker 
+                                onLocationChange={setLocation}
+                                initialLocation={location}
+                            />
                         </div>
                     </div>
                 </div>
@@ -203,7 +270,7 @@ function BarberOnboarding() {
 
                 <button
                     onClick={handleFinish}
-                    disabled={!name.trim() || !phone.trim() || !shopName.trim() || !workingHoursStart || !workingHoursEnd || !avgPrice.trim() || !isPhoneValid || loading}
+                    disabled={!fullname.trim() || !phone.trim() || !office_name.trim() || !working_hours.trim() || !average_price.trim() || !location.address.trim() || !isPhoneValid || loading}
                     className="btn-primary"
                 >
                     {loading ? 'Creating account…' : 'Complete Registration'}

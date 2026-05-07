@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { createClient } from '../../api/clientApi.js';
 
 function ClientOnboarding() {
-    const [name, setName] = useState('');
+    const [fullname, setFullname] = useState('');
     const [phone, setPhone] = useState('');
     const [profileImage, setProfileImage] = useState(null);
     const [error, setError] = useState('');
@@ -26,6 +26,18 @@ function ClientOnboarding() {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validate file size to prevent memory issues (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                setError('Image size must be less than 5MB.');
+                return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                setError('Please upload a valid image file.');
+                return;
+            }
+            
             const reader = new FileReader();
             reader.onloadend = () => {
                 setProfileImage(reader.result);
@@ -35,12 +47,23 @@ function ClientOnboarding() {
     };
 
     const handleFinish = async () => {
-        if (!name.trim() || !phone.trim()) {
+        if (!fullname.trim() || !phone.trim()) {
             setError("Please fill in all required fields.");
             return;
         }
         if (!isPhoneValid) {
             setError('Please enter a valid 9-digit phone number.');
+            return;
+        }
+        
+        // Input length validation to prevent UI overflow
+        if (fullname.trim().length > 100) {
+            setError('Name must be less than 100 characters.');
+            return;
+        }
+        
+        if (phone.trim().length > 20) {
+            setError('Phone number must be less than 20 characters.');
             return;
         }
 
@@ -57,7 +80,7 @@ function ClientOnboarding() {
             setError('');
 
             const payload = {
-                fullname: name,
+                fullname,
                 email: data.email,
                 password: data.password,
                 phone: `+998${phoneDigits}`,
@@ -79,8 +102,8 @@ function ClientOnboarding() {
             const userObj = {
                 role: 'client',
                 email: apiUser?.email ?? data.email,
-                name: apiUser?.fullname ?? name,
-                phone: apiUser?.phone ?? phone,
+                fullname: apiUser?.fullname ?? fullname,
+                phone: apiUser?.phone ?? `+998${phoneDigits}`,
                 profileImage,
                 id: apiUser?.id ?? apiUser?._id ?? null,
                 ...(apiUser ?? {}),
@@ -100,7 +123,7 @@ function ClientOnboarding() {
         }
     };
 
-    const isFormValid = name.trim() !== '' && phone.trim() !== '' && isPhoneValid;
+    const isFormValid = fullname.trim() !== '' && phone.trim() !== '' && isPhoneValid;
 
     return (
         <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
@@ -131,8 +154,8 @@ function ClientOnboarding() {
                     <label className="label-base">Full Name</label>
                     <input
                         type="text"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
+                        value={fullname}
+                        onChange={e => setFullname(e.target.value)}
                         placeholder="e.g Aziz Raghimov"
                         className="input-base"
                         disabled={loading}

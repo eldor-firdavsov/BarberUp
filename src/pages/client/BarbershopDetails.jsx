@@ -15,6 +15,7 @@ export default function BarbershopDetails() {
     const [bookedSlots, setBookedSlots] = useState([]);
     const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
+    const [isBookingInProgress, setIsBookingInProgress] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [retrying, setRetrying] = useState(false);
@@ -169,10 +170,18 @@ export default function BarbershopDetails() {
         setSuccessMessage('');
     };
 
-    const handleBookNow = async () => {
+    const handleBookSession = async () => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
         const barberKey = barber?.id ?? barber?._id;
-        if (!selectedSlot || !barberKey || !user?.id) {
-            console.error('[404 DEBUG] Book flow blocked missing data', { barberKey, userId: user?.id });
+        if (!barberKey) {
+            setError('Invalid barber data');
+            return;
+        }
+        if (!selectedSlot) {
+            setError('Please select a time slot');
             return;
         }
         const safeSelectedSlot = formatTo24h(selectedSlot);
@@ -180,7 +189,15 @@ export default function BarbershopDetails() {
             setError('Something went wrong');
             return;
         }
+
+        // Prevent concurrent booking attempts (race condition protection)
+        if (isBookingInProgress) {
+            console.warn('[BOOKING] Booking already in progress, ignoring duplicate attempt');
+            return;
+        }
+
         setBookingLoading(true);
+        setIsBookingInProgress(true);
         setError('');
         setSuccessMessage('');
 
@@ -223,6 +240,7 @@ export default function BarbershopDetails() {
             setSelectedSlot(null);
         }
         setBookingLoading(false);
+        setIsBookingInProgress(false);
     };
 
     const handleRetry = async () => {
@@ -386,11 +404,11 @@ export default function BarbershopDetails() {
                         </div>
                     )}
                     <button
-                        onClick={handleBookNow}
-                        disabled={!selectedSlot || bookingLoading}
+                        onClick={handleBookSession}
+                        disabled={!selectedSlot || bookingLoading || isBookingInProgress}
                         className="btn-primary w-full"
                     >
-                        {bookingLoading ? (
+                        {bookingLoading || isBookingInProgress ? (
                             <>
                                 <div className="spinner"></div>
                                 Booking...

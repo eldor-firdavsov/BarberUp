@@ -9,11 +9,11 @@ function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, isLoggingIn } = useAuth();
     const navigate = useNavigate();
 
     const handleSignIn = async () => {
-        if (loading) return;
+        if (loading || isLoggingIn) return;
         if (!email || !password) {
             setError('Fields cannot be empty.');
             return;
@@ -183,10 +183,10 @@ function Login() {
 
                 <button
                     onClick={handleSignIn}
-                    disabled={!isFormValid || loading}
+                    disabled={!isFormValid || loading || isLoggingIn}
                     className="btn-primary"
                 >
-                    {loading ? (
+                    {loading || isLoggingIn ? (
                         <>
                             <div className="spinner"></div>
                             Signing in…

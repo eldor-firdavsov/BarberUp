@@ -61,14 +61,16 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
                         </div>
                         <div className="flex items-center gap-3 text-gray-600">
                             <Clock size={18} />
-                            <span>{barber.workingHours || '09:00 - 18:00'}</span>
+                            <span>{barber.working_hours || '09:00 AM - 08:00 PM'}</span>
                         </div>
-                        {barber.district && (
-                            <div className="flex items-center gap-3 text-gray-600">
-                                <MapPin size={18} />
-                                <span>{barber.district}</span>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-3 text-gray-600">
+                            <MapPin size={18} />
+                            <span>{barber.address || 'Address not provided'}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-gray-600">
+                            <span className="text-sm font-medium">Average Price:</span>
+                            <span>{barber.average_price || '40,000 so\'m'}</span>
+                        </div>
                     </div>
 
                     {/* Description */}

@@ -45,10 +45,11 @@ function Register() {
     setError('');
 
     try {
-      // Check for duplicate email based on role
+      // Check for duplicate email based on role using normalized comparison
       if (data?.role === "barber") {
         const { data: barberList } = await getBarbers();
-        const userExists = (barberList ?? []).some(u => u.email === email);
+        const normalizedEmail = email.trim().toLowerCase();
+        const userExists = (barberList ?? []).some(u => (u.email || '').trim().toLowerCase() === normalizedEmail);
         if (userExists) {
           setError("User already exists with this email.");
           setLoading(false);
@@ -56,7 +57,8 @@ function Register() {
         }
       } else if (data?.role === "client") {
         const { data: clientList } = await getClients();
-        const userExists = (clientList ?? []).some(u => u.email === email);
+        const normalizedEmail = email.trim().toLowerCase();
+        const userExists = (clientList ?? []).some(u => (u.email || '').trim().toLowerCase() === normalizedEmail);
         console.log('[Register] client duplicate check:', userExists);
         if (userExists) {
           setError("A client with this email already exists.");
@@ -69,7 +71,11 @@ function Register() {
       // Allow to proceed if the check fails — creation will catch true duplicates
     }
 
-    const updatedData = { ...data, email, password };
+    // Normalize email and password to match login normalization
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPassword = password.trim();
+    
+    const updatedData = { ...data, email: normalizedEmail, password: normalizedPassword };
     localStorage.setItem("onboarding_data", JSON.stringify(updatedData));
     setLoading(false);
 

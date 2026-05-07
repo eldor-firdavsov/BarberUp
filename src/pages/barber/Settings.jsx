@@ -1,23 +1,22 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import MapPicker from '../../components/MapPicker.jsx';
 
 const WORK_STATUS_KEY = 'navbatgo_work_status';
 
 function Settings() {
     const { logout, user, updateSessionUser } = useAuth();
 
-    const [name, setName] = useState(user?.name || '');
+    const [fullname, setFullname] = useState(user?.fullname || '');
     const [phone, setPhone] = useState((user?.phone || '').replace(/\D/g, '').replace(/^998/, '').slice(-9));
-    const [shopName, setShopName] = useState(user?.shopName || '');
-    const initialHours = user?.workingHours?.split('-').map((s) => s.trim()) ?? ['', ''];
+    const [office_name, setOfficeName] = useState(user?.office_name || '');
+    const initialHours = user?.working_hours?.split('-').map((s) => s.trim()) ?? ['', ''];
     const [workingHoursStart, setWorkingHoursStart] = useState(initialHours[0] || '');
     const [workingHoursEnd, setWorkingHoursEnd] = useState(initialHours[1] || '');
-    const [avgPrice, setAvgPrice] = useState(user?.avgPrice || '');
+    const [average_price, setAveragePrice] = useState(user?.average_price || '');
     const [profileImage, setProfileImage] = useState(user?.profileImage || null);
     const [shopImage, setShopImage] = useState(user?.shopImage || null);
-    const [district, setDistrict] = useState(user?.district || '');
-    const [landmark, setLandmark] = useState(user?.landmark || '');
-    const [coordinates, setCoordinates] = useState(user?.coordinates || '');
+    const [location, setLocation] = useState(user?.location || { address: '', coordinates: [69.2401, 41.2995] });
 
     // New Availability Controls
     const [isWorkingNow, setIsWorkingNow] = useState(() => {
@@ -62,22 +61,20 @@ function Settings() {
     };
 
     const handleSave = () => {
-        if (!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice || !isPhoneValid) return;
+        if (!fullname || !phone || !office_name || !workingHoursStart || !workingHoursEnd || !average_price || !isPhoneValid) return;
         const updatedUser = {
             ...user,
-            name,
+            fullname,
             phone: `+998${cleanPhone(phone)}`,
-            shopName,
-            workingHours: `${workingHoursStart} - ${workingHoursEnd}`,
-            avgPrice,
+            office_name,
+            working_hours: `${workingHoursStart} - ${workingHoursEnd}`,
+            average_price,
             profileImage,
             shopImage,
             isWorkingNow,
             lunchStart,
             lunchEnd,
-            district,
-            landmark,
-            coordinates
+            location
         };
 
         updateSessionUser(updatedUser);
@@ -107,7 +104,7 @@ function Settings() {
                     <div className="space-y-4">
                         <div>
                             <label className="label-base">Full Name</label>
-                            <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-base" />
+                            <input type="text" value={fullname} onChange={e => setFullname(e.target.value)} className="input-base" />
                         </div>
                         <div>
                             <label className="label-base">Mobile Number</label>
@@ -139,8 +136,8 @@ function Settings() {
                             </div>
                         </div>
                         <div>
-                            <label className="label-base">Barbershop Name</label>
-                            <input type="text" value={shopName} onChange={e => setShopName(e.target.value)} className="input-base" />
+                            <label className="label-base">Office Name</label>
+                            <input type="text" value={office_name} onChange={e => setOfficeName(e.target.value)} className="input-base" />
                         </div>
                         <div>
                             <label className="label-base">Working Hours</label>
@@ -161,7 +158,7 @@ function Settings() {
                         <div>
                             <label className="label-base">Average Price</label>
                             <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-standard)] px-5 border border-[var(--border-color)] focus-within:border-[var(--primary)] focus-within:bg-white transition-all h-[var(--input-height)]">
-                                <input type="text" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} className="w-full bg-transparent outline-none text-base text-black font-normal" />
+                                <input type="text" value={average_price} onChange={e => setAveragePrice(e.target.value)} className="w-full bg-transparent outline-none text-base text-black font-normal" />
                                 <span className="font-bold text-[var(--primary)] ml-2">UZS</span>
                             </div>
                         </div>
@@ -179,54 +176,18 @@ function Settings() {
                     </h2>
                     <div className="space-y-4">
                         <div>
-                            <label className="label-base">District</label>
-                            <select 
-                                value={district} 
-                                onChange={e => setDistrict(e.target.value)} 
-                                className="input-base"
-                            >
-                                <option value="">Select district</option>
-                                <option value="Yunusobod">Yunusobod</option>
-                                <option value="Chilonzor">Chilonzor</option>
-                                <option value="Sergeli">Sergeli</option>
-                                <option value="Mirzo-Ulugbek">Mirzo-Ulugbek</option>
-                                <option value="Shayxontoxur">Shayxontoxur</option>
-                                <option value="Yakkasaroy">Yakkasaroy</option>
-                                <option value="Mirobod">Mirobod</option>
-                                <option value="Bektemir">Bektemir</option>
-                                <option value="Olmazor">Olmazor</option>
-                                <option value="Uchtepa">Uchtepa</option>
-                                <option value="Chilanzar">Chilanzar</option>
-                                <option value="Sobirjon Rahimov">Sobirjon Rahimov</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label-base">Landmark <span className="text-gray-400 font-normal">(Optional)</span></label>
-                            <input 
-                                type="text" 
-                                value={landmark} 
-                                onChange={e => setLandmark(e.target.value)} 
-                                placeholder="e.g., Near Metro Station, Shopping Center"
-                                className="input-base" 
+                            <label className="label-base">Office Location</label>
+                            <MapPicker 
+                                onLocationChange={setLocation}
+                                initialLocation={location}
                             />
-                        </div>
-                        <div>
-                            <label className="label-base">Coordinates <span className="text-gray-400 font-normal">(Optional)</span></label>
-                            <input 
-                                type="text" 
-                                value={coordinates} 
-                                onChange={e => setCoordinates(e.target.value)} 
-                                placeholder="e.g., 41.3111, 69.2797"
-                                className="input-base" 
-                            />
-                            <p className="text-xs text-gray-500 mt-1">GPS coordinates for precise location</p>
                         </div>
                     </div>
                 </div>
 
                 {success && <div className="text-green-600 text-sm font-bold text-center mt-4 bg-green-50 py-2 rounded-xl border border-green-200">{success}</div>}
 
-                <button onClick={handleSave} disabled={!name || !phone || !shopName || !workingHoursStart || !workingHoursEnd || !avgPrice || !profileImage || !shopImage || !isPhoneValid} className="btn-primary mt-6">Save Changes</button>
+                <button onClick={handleSave} disabled={!fullname || !phone || !office_name || !workingHoursStart || !workingHoursEnd || !average_price || !profileImage || !shopImage || !isPhoneValid} className="btn-primary mt-6">Save Changes</button>
             </div>
 
             <button onClick={handleLogout} className="mt-10 py-4 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 transition-all cursor-pointer">
