@@ -1,211 +1,272 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getClients } from '../../api/clientApi.js';
-import { getBarbers } from '../../api/barberApi.js';
+import { loginBarber } from '../../api/barberApi.js';
+import { loginClient } from '../../api/clientApi.js';
+
+/* ─── Role selector styles (scoped, no global pollution) ─────────────────── */
+const roleSelectorStyles = `
+  .role-toggle {
+    display: flex;
+    background: #F3F4F6;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .role-toggle-btn {
+    flex: 1;
+    height: 40px;
+    border: none;
+    border-radius: 9px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+    background: transparent;
+    color: #6B7280;
+  }
+
+  .role-toggle-btn.active {
+    background: white;
+    color: #1D0065;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+
+  .role-toggle-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
 
 function Login() {
+    const [role, setRole] = useState('client');   // 'client' | 'barber'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Ref-based inflight guard to prevent race conditions / double-submits
+    const inFlight = useRef(false);
+
     const { login, isLoggingIn } = useAuth();
     const navigate = useNavigate();
 
     const handleSignIn = async () => {
-        if (loading || isLoggingIn) return;
-        if (!email || !password) {
+        // Double-click / concurrent request guard
+        if (inFlight.current || loading || isLoggingIn) return;
+
+        // Basic field validation
+        if (!email.trim() || !password.trim()) {
             setError('Fields cannot be empty.');
             return;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!emailRegex.test(email.trim())) {
             setError('Invalid email format.');
             return;
         }
 
-        // Normalize email and password for consistent comparison
         const normalizedEmail = email.trim().toLowerCase();
         const normalizedPassword = password.trim();
-        
+
+        inFlight.current = true;
         setLoading(true);
         setError('');
-        console.log('[LOGIN ATTEMPT] email:', normalizedEmail);
+
+        console.log('[LOGIN] request start ->', { role, email: normalizedEmail });
 
         try {
-            const [
-                { data: barberList, error: barberError },
-                { data: clientList, error: clientError }
-            ] = await Promise.all([getBarbers(), getClients()]);
-            console.log('[LOGIN FETCH] barbers:', barberList?.length || 0, 'error:', !!barberError);
-            console.log('[LOGIN FETCH] clients:', clientList?.length || 0, 'error:', !!clientError);
+            let result;
 
-            if (barberError && clientError) {
-                console.error('[LOGIN FAILURE] Both API calls failed');
-                setError('Network error. Please check your connection.');
-                setLoading(false);
-                return;
-            }
-
-            // Check for barber with normalized email comparison
-            const foundBarber = (barberList ?? []).find(u => {
-                const barberEmail = (u.email || '').trim().toLowerCase();
-                const barberPassword = (u.password || '').trim();
-                const match = barberEmail === normalizedEmail && barberPassword === normalizedPassword;
-                if (match) {
-                    console.log('[LOGIN MATCH] Found barber:', u.email);
-                }
-                return match;
-            });
-            
-            if (foundBarber) {
-                const userObj = {
-                    role: 'barber',
-                    id: foundBarber.id ?? foundBarber._id,
-                    email: foundBarber.email,
-                    name: foundBarber.fullname || foundBarber.name,
-                    phone: foundBarber.phone,
-                    shopName: foundBarber.office_name,
-                    workingHours: foundBarber.working_hours,
-                    avgPrice: foundBarber.average_price,
-                    ...foundBarber,
-                };
-                console.log('[LOGIN SUCCESS] Barber login successful:', userObj.email);
-                login(userObj);
-                navigate('/barber/dashboard');
-                setLoading(false);
-                return;
-            }
-
-            // Check for client with normalized email comparison
-            const foundClient = (clientList ?? []).find(u => {
-                const clientEmail = (u.email || '').trim().toLowerCase();
-                const clientPassword = (u.password || '').trim();
-                const match = clientEmail === normalizedEmail && clientPassword === normalizedPassword;
-                if (match) {
-                    console.log('[LOGIN MATCH] Found client:', u.email);
-                }
-                return match;
-            });
-
-            if (foundClient) {
-                const userObj = {
-                    role: 'client',
-                    id: foundClient.id ?? foundClient._id,
-                    email: foundClient.email,
-                    name: foundClient.fullname || foundClient.name,
-                    phone: foundClient.phone,
-                    ...foundClient,
-                };
-                console.log('[LOGIN SUCCESS] Client login successful:', userObj.email);
-                login(userObj);
-                navigate('/client/dashboard');
+            if (role === 'barber') {
+                result = await loginBarber(normalizedEmail, normalizedPassword);
             } else {
-                console.log('[LOGIN FAILURE] No user found with matching credentials');
-                setError('Invalid email or password.');
+                result = await loginClient(normalizedEmail, normalizedPassword);
+            }
+
+            const { data, error: apiError } = result;
+
+            if (apiError || !data) {
+                console.error('[LOGIN] api error ->', apiError);
+                setError(apiError || 'Login failed. Please try again.');
+                return;
+            }
+
+            const { token, user } = data;
+
+            // Ensure we have an id field (some endpoints return _id)
+            const userObj = {
+                role,
+                id: user?.id ?? user?._id ?? normalizedEmail,
+                email: user?.email ?? normalizedEmail,
+                ...user,
+                role,   // re-assert role so it's always correct
+            };
+
+            console.log('[LOGIN] success ->', { role, email: userObj.email, id: userObj.id, hasToken: !!token });
+
+            login(userObj, token ?? null);
+
+            if (role === 'barber') {
+                navigate('/barber/dashboard');
+            } else {
+                navigate('/client/dashboard');
             }
         } catch (err) {
-            console.error('[LOGIN ERROR] Unexpected error:', err);
+            // Should not normally reach here — loginBarber/loginClient catch internally
+            console.error('[LOGIN] unexpected error ->', err);
             setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+            inFlight.current = false;
         }
+    };
 
-        setLoading(false);
+    // Allow pressing Enter to submit
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') handleSignIn();
     };
 
     const isFormValid = email.trim() !== '' && password.trim() !== '';
+    const isBusy = loading || isLoggingIn;
 
     return (
-        <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
-            <button
-                onClick={() => navigate('/')}
-                className="btn-ghost self-start mb-6"
-            >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-                Back
-            </button>
-            
-            <div className="text-center mb-10">
-                <img src="./Scissor.png" alt="blue scissor icon" className="mx-auto mb-6 h-10 w-10" />
-                <h1 className="text-h1 mb-4">
-                    Login to your <br /> account
-                </h1>
-                <p className="text-body">
-                    Enter your email and password
-                </p>
-            </div>
+        <>
+            <style>{roleSelectorStyles}</style>
 
-            <div className="space-y-6">
-                <div>
-                    <label className="label-base required">Email</label>
-                    <input
-                        type="email"
-                        placeholder="Enter your email address"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        className="input-base"
-                        disabled={loading}
-                        autoComplete="email"
-                    />
+            <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
+                <button
+                    onClick={() => navigate('/')}
+                    className="btn-ghost self-start mb-6"
+                    disabled={isBusy}
+                    type="button"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                    Back
+                </button>
+
+                <div className="text-center mb-10">
+                    <img src="./Scissor.png" alt="blue scissor icon" className="mx-auto mb-6 h-10 w-10" />
+                    <h1 className="text-h1 mb-4">
+                        Login to your <br /> account
+                    </h1>
+                    <p className="text-body">
+                        Enter your email and password
+                    </p>
                 </div>
 
-                <div>
-                    <label className="label-base required">Password</label>
-                    <input
-                        type="password"
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        className="input-base"
-                        disabled={loading}
-                        autoComplete="current-password"
-                    />
-                </div>
-
-                {error && (
-                    <div className="error-container">
-                        <div className="error-container-header">
-                            <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="error-title">Login Failed</span>
-                        </div>
-                        <p className="error-message">{error}</p>
-                        <div className="error-actions">
+                <div className="space-y-6">
+                    {/* ── Role Selector ── */}
+                    <div>
+                        <label className="label-base" style={{ marginBottom: '0.5rem' }}>I am a…</label>
+                        <div className="role-toggle">
                             <button
-                                onClick={() => setError('')}
-                                className="btn-ghost btn-sm"
+                                type="button"
+                                id="role-client"
+                                className={`role-toggle-btn${role === 'client' ? ' active' : ''}`}
+                                onClick={() => { setRole('client'); setError(''); }}
+                                disabled={isBusy}
                             >
-                                Dismiss
+                                Client
+                            </button>
+                            <button
+                                type="button"
+                                id="role-barber"
+                                className={`role-toggle-btn${role === 'barber' ? ' active' : ''}`}
+                                onClick={() => { setRole('barber'); setError(''); }}
+                                disabled={isBusy}
+                            >
+                                Barber
                             </button>
                         </div>
                     </div>
-                )}
 
-                <button
-                    onClick={handleSignIn}
-                    disabled={!isFormValid || loading || isLoggingIn}
-                    className="btn-primary"
-                >
-                    {loading || isLoggingIn ? (
-                        <>
-                            <div className="spinner"></div>
-                            Signing in…
-                        </>
-                    ) : (
-                        'Sign In'
+                    {/* ── Email ── */}
+                    <div>
+                        <label className="label-base required">Email</label>
+                        <input
+                            id="login-email"
+                            type="email"
+                            placeholder="Enter your email address"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="input-base"
+                            disabled={isBusy}
+                            autoComplete="email"
+                        />
+                    </div>
+
+                    {/* ── Password ── */}
+                    <div>
+                        <label className="label-base required">Password</label>
+                        <input
+                            id="login-password"
+                            type="password"
+                            placeholder="Enter your password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            className="input-base"
+                            disabled={isBusy}
+                            autoComplete="current-password"
+                        />
+                    </div>
+
+                    {/* ── Error Banner ── */}
+                    {error && (
+                        <div className="error-container">
+                            <div className="error-container-header">
+                                <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="error-title">Login Failed</span>
+                            </div>
+                            <p className="error-message">{error}</p>
+                            <div className="error-actions">
+                                <button
+                                    type="button"
+                                    onClick={() => setError('')}
+                                    className="btn-ghost btn-sm"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
                     )}
-                </button>
 
-                <div className="text-center">
-                    <p className="text-small">
-                        Don&apos;t have an account?{' '}
-                        <Link to="/register" className="font-bold text-[var(--primary)] hover:underline transition-all">
-                            Sign Up
-                        </Link>
-                    </p>
+                    {/* ── Submit ── */}
+                    <button
+                        id="login-submit"
+                        type="button"
+                        onClick={handleSignIn}
+                        disabled={!isFormValid || isBusy}
+                        className="btn-primary"
+                    >
+                        {isBusy ? (
+                            <>
+                                <div className="spinner" />
+                                Signing in…
+                            </>
+                        ) : (
+                            'Sign In'
+                        )}
+                    </button>
+
+                    <div className="text-center">
+                        <p className="text-small">
+                            Don&apos;t have an account?{' '}
+                            <Link to="/register" className="font-bold text-[var(--primary)] hover:underline transition-all">
+                                Sign Up
+                            </Link>
+                        </p>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </>
     );
 }
 

@@ -9,7 +9,8 @@ function BarberOnboarding() {
     const [phone, setPhone] = useState('');
     const [office_name, setOfficeName] = useState('');
     const [office_description, setOfficeDescription] = useState('');
-    const [working_hours, setWorkingHours] = useState('');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
     const [average_price, setAveragePrice] = useState('');
     const [location, setLocation] = useState({ address: '', coordinates: [69.2401, 41.2995] }); // Default: Tashkent
     const [error, setError] = useState('');
@@ -29,7 +30,7 @@ function BarberOnboarding() {
     }, [navigate]);
 
     const handleFinish = async () => {
-        if (!fullname.trim() || !phone.trim() || !office_name.trim() || !working_hours.trim() || !average_price.trim()) {
+        if (!fullname.trim() || !phone.trim() || !office_name.trim() || !startTime.trim() || !endTime.trim() || !average_price.trim()) {
             setError("Please fill in all required fields.");
             return;
         }
@@ -41,33 +42,33 @@ function BarberOnboarding() {
             setError('Please provide your office address.');
             return;
         }
-        
+
         // Input length validation to prevent UI overflow
         if (fullname.trim().length > 100) {
             setError('Name must be less than 100 characters.');
             return;
         }
-        
+
         if (phone.trim().length > 20) {
             setError('Phone number must be less than 20 characters.');
             return;
         }
-        
+
         if (office_name.trim().length > 200) {
             setError('Office name must be less than 200 characters.');
             return;
         }
-        
+
         if (office_description.trim().length > 1000) {
             setError('Office description must be less than 1000 characters.');
             return;
         }
-        
-        if (working_hours.trim().length > 50) {
+
+        if (startTime.trim().length > 50) {
             setError('Working hours must be less than 50 characters.');
             return;
         }
-        
+
         if (location.address.length > 500) {
             setError('Address must be less than 500 characters.');
             return;
@@ -92,7 +93,7 @@ function BarberOnboarding() {
                 phone: `+998${phoneDigits}`,
                 office_name,
                 office_description,
-                working_hours,
+                working_hours: `${startTime} - ${endTime}`,
                 average_price,
                 status: 'active',
                 address: location.address,
@@ -213,7 +214,7 @@ function BarberOnboarding() {
                                 value={office_name}
                                 onChange={e => setOfficeName(e.target.value)}
                                 className="input-base"
-                                placeholder="e.g Jaska VIP Barbershop"
+                                placeholder="Barbershop Name"
                                 disabled={loading}
                             />
                         </div>
@@ -231,14 +232,74 @@ function BarberOnboarding() {
 
                         <div>
                             <label className="label-base">Working Hours</label>
-                            <input
-                                type="text"
-                                value={working_hours}
-                                onChange={e => setWorkingHours(e.target.value)}
-                                className="input-base"
-                                placeholder="e.g 09:00 AM - 08:00 PM"
-                                disabled={loading}
-                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-sm font-medium text-gray-600">
+                                        Opening
+                                    </span>
+
+                                    <input
+                                        type="time"
+                                        value={startTime}
+                                        onChange={(e) => setStartTime(e.target.value)}
+                                        disabled={loading}
+                                        className="
+                h-14
+                w-full
+                px-4
+                rounded-2xl
+                border border-gray-200
+                bg-white
+                text-gray-900
+                font-medium
+                outline-none
+                transition-all
+                duration-200
+                focus:border-violet-600
+                focus:ring-4
+                focus:ring-violet-100
+                disabled:opacity-50
+                disabled:cursor-not-allowed
+                shadow-sm
+            "
+                                    />
+                                </div>
+
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-sm font-medium text-gray-600">
+                                        Closing
+                                    </span>
+
+                                    <input
+                                        type="time"
+                                        value={endTime}
+                                        onChange={(e) => setEndTime(e.target.value)}
+                                        disabled={loading}
+                                        className="
+                h-14
+                w-full
+                px-4
+                rounded-2xl
+                border border-gray-200
+                bg-white
+                text-gray-900
+                font-medium
+                outline-none
+                transition-all
+                duration-200
+                focus:border-violet-600
+                focus:ring-4
+                focus:ring-violet-100
+                disabled:opacity-50
+                disabled:cursor-not-allowed
+                shadow-sm
+            "
+                                    />
+                                </div>
+
+                            </div>
                         </div>
 
                         <div>
@@ -258,7 +319,7 @@ function BarberOnboarding() {
 
                         <div>
                             <label className="label-base">Office Location</label>
-                            <MapPicker 
+                            <MapPicker
                                 onLocationChange={setLocation}
                                 initialLocation={location}
                             />
@@ -270,7 +331,7 @@ function BarberOnboarding() {
 
                 <button
                     onClick={handleFinish}
-                    disabled={!fullname.trim() || !phone.trim() || !office_name.trim() || !working_hours.trim() || !average_price.trim() || !location.address.trim() || !isPhoneValid || loading}
+                    disabled={!fullname.trim() || !phone.trim() || !office_name.trim() || !startTime.trim() || !endTime.trim() || !average_price.trim() || !location.address.trim() || !isPhoneValid || loading}
                     className="btn-primary"
                 >
                     {loading ? 'Creating account…' : 'Complete Registration'}

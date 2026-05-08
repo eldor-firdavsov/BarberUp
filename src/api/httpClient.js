@@ -13,6 +13,12 @@ export const httpClient = axios.create({
 httpClient.interceptors.request.use(
     (config) => {
         const method = (config.method || 'GET').toUpperCase();
+        // Attach token from localStorage if present
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers = config.headers ?? {};
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
         console.log(`[API] ${method} ${config.url} -> payload`, config.data ?? null);
         return config;
     },
