@@ -4,9 +4,14 @@ import { MapPin, Navigation, Search } from 'lucide-react';
 // Simple MapPicker component using OpenStreetMap (Leaflet alternative)
 // This is a lightweight implementation that doesn't require external map libraries
 function MapPicker({ onLocationChange, initialLocation = null }) {
-    const [location, setLocation] = useState(initialLocation || { 
-        address: '', 
-        coordinates: [69.2401, 41.2995] // Default: Tashkent
+    const DEFAULT_COORDS = [69.2401, 41.2995];
+    const [location, setLocation] = useState({
+        address: initialLocation?.address || '',
+        coordinates:
+            Array.isArray(initialLocation?.coordinates) &&
+                initialLocation.coordinates.length === 2
+                ? initialLocation.coordinates
+                : DEFAULT_COORDS
     });
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,7 +31,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
             async (position) => {
                 const { latitude, longitude } = position.coords;
                 const coords = [longitude, latitude]; // [lng, lat] format
-                
+
                 // Reverse geocode to get address
                 try {
                     const address = await reverseGeocode(latitude, longitude);
@@ -35,9 +40,9 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                     onLocationChange(newLocation);
                 } catch (error) {
                     console.error('Reverse geocoding failed:', error);
-                    const newLocation = { 
-                        address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`, 
-                        coordinates: coords 
+                    const newLocation = {
+                        address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+                        coordinates: coords
                     };
                     setLocation(newLocation);
                     onLocationChange(newLocation);
@@ -47,9 +52,9 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
             (error) => {
                 console.error('Error getting location:', error);
                 let errorMessage = 'Unable to get your location. Please enter address manually.';
-                
+
                 // Provide specific error messages based on error code
-                switch(error.code) {
+                switch (error.code) {
                     case error.PERMISSION_DENIED:
                         errorMessage = 'Location permission denied. Please enable location access and try again.';
                         break;
@@ -60,7 +65,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                         errorMessage = 'Location request timed out. Please check your connection and try again.';
                         break;
                 }
-                
+
                 alert(errorMessage);
                 setLoading(false);
             },
@@ -84,7 +89,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
     // Search for location by address
     const searchLocation = async () => {
         if (!searchQuery.trim()) return;
-        
+
         setIsSearching(true);
         try {
             const response = await fetch(
@@ -186,7 +191,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                     <input
                         type="text"
-                        value={location.address}
+                        value={location.coordinates?.[0] ?? ''}
                         onChange={(e) => handleAddressChange(e.target.value)}
                         placeholder="Enter address manually"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -201,7 +206,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                             <input
                                 type="number"
                                 step="0.000001"
-                                value={location.coordinates[0]}
+                                value={location.coordinates?.[0] ?? ''}
                                 onChange={(e) => handleCoordinateChange(0, e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             />
@@ -211,7 +216,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                             <input
                                 type="number"
                                 step="0.000001"
-                                value={location.coordinates[1]}
+                                value={location.coordinates?.[1] ?? ''}
                                 onChange={(e) => handleCoordinateChange(1, e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                             />
@@ -229,7 +234,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                             <div className="text-sm font-medium text-gray-700">Selected Location</div>
                             <div className="text-sm text-gray-600">{location.address}</div>
                             <div className="text-xs text-gray-500 mt-1">
-                                Coordinates: {location.coordinates[0].toFixed(6)}, {location.coordinates[1].toFixed(6)}
+                                Coordinates: {location.coordinates?.[0]?.toFixed(6) || '0.000000'}, {location.coordinates?.[1]?.toFixed(6) || '0.000000'}
                             </div>
                         </div>
                     </div>

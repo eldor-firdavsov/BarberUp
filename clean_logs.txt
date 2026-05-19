@@ -1,0 +1,11 @@
+Booking:6a058720a555ef67b51a13b7
+STATUS [approved]: FAILED -> Booking validation failed: status: `approved` is not a valid enum value for path `status`.
+STATUS [confirm]: FAILED -> Booking validation failed: status: `confirm` is not a valid enum value for path `status`.
+STATUS [active]: SUCCESS
+STATUS [accepted]: FAILED -> Booking validation failed: status: `accepted` is not a valid enum value for path `status`.
+STATUS [decline]: FAILED -> Booking validation failed: status: `decline` is not a valid enum value for path `status`.
+STATUS [deny]: FAILED -> Booking validation failed: status: `deny` is not a valid enum value for path `status`.
+STATUS [rejected]: SUCCESS
+STATUS [completed]: FAILED -> Booking validation failed: status: `completed` is not a valid enum value for path `status`.
+STATUS [cancelled]: FAILED -> Booking validation failed: status: `cancelled` is not a valid enum value for path `status`.
+STATUS [canceled]: FAILED -> Booking validation failed: status: `canceled` is not a valid enum value for path `status`.

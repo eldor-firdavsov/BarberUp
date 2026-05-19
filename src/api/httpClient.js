@@ -34,6 +34,15 @@ httpClient.interceptors.response.use(
         return response;
     },
     (error) => {
+        // Auto-logout on expired/invalid token
+        if (error?.response?.status === 401) {
+            console.warn('[API] 401 Unauthorized — clearing session and redirecting to /login');
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            localStorage.removeItem('onboarding_data');
+            window.location.href = '/login';
+            return Promise.reject(error);
+        }
         const message =
             error?.response?.data?.message ||
             error?.response?.data?.error ||

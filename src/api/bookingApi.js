@@ -40,11 +40,11 @@ export function normalizeBooking(raw) {
     if (!normalizedHours && raw.booking_hours != null) {
         console.warn('[BOOKING CHECK] Unparseable booking_hours, raw=', raw.booking_hours);
     }
-    
+
     // Handle both ID references and populated objects
     let barberId = null;
     let clientId = null;
-    
+
     if (raw.barber) {
         if (typeof raw.barber === 'string') {
             barberId = raw.barber;
@@ -52,7 +52,7 @@ export function normalizeBooking(raw) {
             barberId = raw.barber._id ?? raw.barber.id;
         }
     }
-    
+
     if (raw.client) {
         if (typeof raw.client === 'string') {
             clientId = raw.client;
@@ -60,15 +60,15 @@ export function normalizeBooking(raw) {
             clientId = raw.client._id ?? raw.client.id;
         }
     }
-    
-    // Normalize status - map "active" to "pending" for frontend compatibility
+
+    // Normalize status - backend uses 'active' for 'accepted'
     let normalizedStatus = raw.status ?? 'pending';
     if (normalizedStatus === 'active') {
-        normalizedStatus = 'pending';
+        normalizedStatus = 'accepted';
     }
-    
+
     console.log('[BOOKING NORMALIZE] id=', raw._id, 'barberId=', barberId, 'clientId=', clientId, 'status=', normalizedStatus);
-    
+
     return {
         ...raw,
         id: raw._id ?? raw.id ?? null,
@@ -112,15 +112,34 @@ export async function getBookings() {
     }
 }
 
+// Map frontend status names → backend enum values
+// Backend only accepts: pending | active | rejected | completed
+const STATUS_MAP = {
+    accepted:    'active',
+    in_progress: 'active',
+    cancelled:   'rejected',
+    completed:   'completed',
+    pending:     'pending',
+    rejected:    'rejected',
+};
+
 export async function updateBookingStatus(id, payload) {
     const safeId = normalizeBookingRefId(id);
     if (safeId == null || safeId === '') {
         console.error('[404 DEBUG] updateBookingStatus blocked: invalid id', id);
         return { data: null, error: 'Invalid booking id.' };
     }
-    console.log('[BOOKING PATCH]', safeId, payload);
+
+    // Normalize status to backend-accepted enum if payload contains a status field
+    let safePayload = payload;
+    if (payload && typeof payload === 'object' && payload.status) {
+        const mapped = STATUS_MAP[String(payload.status).toLowerCase()];
+        safePayload = { ...payload, status: mapped ?? payload.status };
+    }
+
+    console.log('[BOOKING PATCH]', safeId, safePayload);
     try {
-        const response = await httpClient.patch(`/booking/${safeId}`, payload);
+        const response = await httpClient.patch(`/booking/${safeId}`, safePayload);
         return { data: normalizeBooking(response?.data?.data ?? response?.data), error: null };
     } catch (error) {
         console.error('[404 DEBUG] PATCH /booking/:id failed', safeId, getApiError(error));

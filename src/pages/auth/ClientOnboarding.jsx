@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { createClient } from '../../api/clientApi.js';
+import { httpClient } from '../../api/httpClient.js';
+import { getApiError } from '../../api/httpClient.js';
 
 function ClientOnboarding() {
     const [fullname, setFullname] = useState('');
     const [phone, setPhone] = useState('');
-    const [profileImage, setProfileImage] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const cleanPhone = (value) => value.replace(/\D/g, '');
@@ -23,27 +23,8 @@ function ClientOnboarding() {
         }
     }, [navigate]);
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // Validate file size to prevent memory issues (5MB limit)
-            if (file.size > 5 * 1024 * 1024) {
-                setError('Image size must be less than 5MB.');
-                return;
-            }
-            
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                setError('Please upload a valid image file.');
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setProfileImage(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
+    const handleProfileImageUpload = (e) => {
+        // Removed as per request
     };
 
     const handleFinish = async () => {
@@ -55,13 +36,13 @@ function ClientOnboarding() {
             setError('Please enter a valid 9-digit phone number.');
             return;
         }
-        
+
         // Input length validation to prevent UI overflow
         if (fullname.trim().length > 100) {
             setError('Name must be less than 100 characters.');
             return;
         }
-        
+
         if (phone.trim().length > 20) {
             setError('Phone number must be less than 20 characters.');
             return;
@@ -79,40 +60,50 @@ function ClientOnboarding() {
             setLoading(true);
             setError('');
 
-            const payload = {
+            // Build request payload
+            let payload = {
                 fullname,
                 email: data.email,
                 password: data.password,
                 phone: `+998${phoneDigits}`,
             };
-            console.log('[ClientOnboarding] POST payload:', payload);
 
-            const { data: apiUser, error: apiError } = await createClient(payload);
+            console.log('[ClientOnboarding] POST payload created');
 
-            console.log('[ClientOnboarding] API response → data:', apiUser, '| error:', apiError);
+            let clientUser = null;
 
-            if (apiError) {
-                console.error('[ClientOnboarding] API error:', apiError);
-                setError(apiError);
+            try {
+                const response = await httpClient.post(
+                    '/client',
+                    payload,
+                    { headers: { 'Content-Type': 'application/json' } }
+                );
+                const raw = response?.data?.data ?? response?.data;
+                clientUser = {
+                    ...raw,
+                    id: raw?._id ?? raw?.id,
+                    role: 'client',
+                };
+                console.log('[ClientOnboarding] success:', clientUser?.email);
+            } catch (err) {
+                setError(getApiError(err, 'Failed to create account.'));
                 setLoading(false);
                 return;
             }
 
-            // Build the session user object from the API response
+            if (!clientUser || !clientUser.id) {
+                setError('Account creation failed. Please try again.');
+                setLoading(false);
+                return;
+            }
+
             const userObj = {
+                ...clientUser,
                 role: 'client',
-                email: apiUser?.email ?? data.email,
-                fullname: apiUser?.fullname ?? fullname,
-                phone: apiUser?.phone ?? `+998${phoneDigits}`,
-                profileImage,
-                id: apiUser?.id ?? apiUser?._id ?? null,
-                ...(apiUser ?? {}),
+                id: clientUser.id ?? clientUser._id,
             };
-            console.log('[ClientOnboarding] userObj for session:', userObj);
 
-            // Clean up temp onboarding data
             localStorage.removeItem('onboarding_data');
-
             login(userObj);
             navigate('/client/dashboard');
         } catch (err) {
@@ -180,19 +171,7 @@ function ClientOnboarding() {
                     )}
                 </div>
 
-                <div>
-                    <label className="label-base">Profile Image</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={loading}
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100"
-                    />
-                    {profileImage && (
-                        <img src={profileImage} alt="Preview" className="mt-3 w-16 h-16 rounded-full object-cover shadow-sm border border-gray-100" />
-                    )}
-                </div>
+
 
                 {error && <div className="text-red-500 text-sm font-medium mt-2 text-center">{error}</div>}
             </div>

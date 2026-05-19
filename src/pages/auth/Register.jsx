@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { getBarbers } from '../../api/barberApi.js';
-import { getClients } from '../../api/clientApi.js';
-
 function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,37 +41,10 @@ function Register() {
     setLoading(true);
     setError('');
 
-    try {
-      // Check for duplicate email based on role using normalized comparison
-      if (data?.role === "barber") {
-        const { data: barberList } = await getBarbers();
-        const normalizedEmail = email.trim().toLowerCase();
-        const userExists = (barberList ?? []).some(u => (u.email || '').trim().toLowerCase() === normalizedEmail);
-        if (userExists) {
-          setError("User already exists with this email.");
-          setLoading(false);
-          return;
-        }
-      } else if (data?.role === "client") {
-        const { data: clientList } = await getClients();
-        const normalizedEmail = email.trim().toLowerCase();
-        const userExists = (clientList ?? []).some(u => (u.email || '').trim().toLowerCase() === normalizedEmail);
-        console.log('[Register] client duplicate check:', userExists);
-        if (userExists) {
-          setError("A client with this email already exists.");
-          setLoading(false);
-          return;
-        }
-      }
-    } catch (err) {
-      console.error('[Register] duplicate check error:', err);
-      // Allow to proceed if the check fails — creation will catch true duplicates
-    }
-
     // Normalize email and password to match login normalization
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedPassword = password.trim();
-    
+
     const updatedData = { ...data, email: normalizedEmail, password: normalizedPassword };
     localStorage.setItem("onboarding_data", JSON.stringify(updatedData));
     setLoading(false);

@@ -32,7 +32,7 @@ function ClientLayout() {
             </header>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 py-15">
+            <main className="flex-1 py-20">
                 <Outlet />
             </main>
 

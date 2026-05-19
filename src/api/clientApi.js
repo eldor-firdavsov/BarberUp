@@ -3,12 +3,13 @@ import { httpClient } from './httpClient.js';
 function normalizeClient(raw) {
     if (!raw) return null;
     return {
+        ...raw,
         id: raw._id ?? raw.id ?? null,
         role: 'client',
         name: raw.fullname || raw.name || 'Unknown',
+        fullname: raw.fullname || raw.name || 'Unknown',
         email: raw.email ?? '',
         phone: raw.phone ?? '',
-        ...raw,
     };
 }
 

@@ -1,290 +1,277 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Play, UserCircle, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, CheckCircle, Coffee, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
+import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js'; // updateBookingStatus qo'shildi
 import { getClients } from '../../api/clientApi.js';
-import { compareTimes, formatTo24h, computeFinalWorkStatus } from '../../utils/time.js';
+import { compareTimes, formatTo24h, isWithinWorkingHours, getCurrentTime } from '../../utils/time.js';
 
 const WORK_STATUS_KEY = 'navbatgo_work_status';
 
-function restoreManualStatus() {
-    try {
-        const saved = JSON.parse(localStorage.getItem(WORK_STATUS_KEY));
-        if (saved && typeof saved.isWorking === 'boolean') {
-            console.log('[WORK STATUS RESTORE] Found saved state:', saved);
-            return saved.isWorking;
-        }
-    } catch (e) {
-        console.error('[WORK STATUS RESTORE] Invalid JSON in localStorage', e);
-        localStorage.removeItem(WORK_STATUS_KEY);
-    }
-    console.log('[WORK STATUS RESTORE] No saved state found — defaulting to OFF');
-    return false;
-}
-
-function persistManualStatus(isWorking) {
-    const payload = { isWorking, updatedAt: new Date().toISOString() };
-    localStorage.setItem(WORK_STATUS_KEY, JSON.stringify(payload));
-    console.log('[WORK STATUS TOGGLE] Saved:', payload);
-}
+// Oddiy avatar komponenti
+const SimpleAvatar = ({ name, size = "w-12 h-12" }) => (
+    <div className={`${size} rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shadow-sm`}>
+        <span className="text-primary font-bold text-lg">
+            {name?.charAt(0).toUpperCase() || 'C'}
+        </span>
+    </div>
+);
 
 function Dashboard() {
-    const { user, updateSessionUser } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
 
-    const [manualStatus, setManualStatus] = useState(() => restoreManualStatus());
+    const [isWorking, setIsWorking] = useState(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(WORK_STATUS_KEY));
+            if (saved && typeof saved.isWorking === 'boolean') return saved.isWorking;
+        } catch { localStorage.removeItem(WORK_STATUS_KEY); }
+        const wh = user?.working_hours || user?.workingHours || '';
+        return isWithinWorkingHours(wh);
+    });
+
     const [bookings, setBookings] = useState([]);
     const [clientsById, setClientsById] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const workingHours = user?.working_hours || '';
-    const lunchStart = user?.lunchStart || '';
-    const lunchEnd = user?.lunchEnd || '';
+    const loadDashboard = useCallback(async () => {
+        setLoading(true);
+        const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
+            getBookings(),
+            getClients(),
+        ]);
 
-    const isWorking = useMemo(() => {
-        return computeFinalWorkStatus(manualStatus, workingHours, lunchStart, lunchEnd);
-    }, [manualStatus, workingHours, lunchStart, lunchEnd]);
-
-    // Re-evaluate status every 30 seconds for time-based checks
-    const [, setTick] = useState(0);
-    useEffect(() => {
-        const interval = setInterval(() => setTick((t) => t + 1), 30000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const handleToggle = useCallback(() => {
-        const next = !manualStatus;
-        setManualStatus(next);
-        persistManualStatus(next);
-        updateSessionUser({ isWorkingNow: next });
-    }, [manualStatus, updateSessionUser]);
-
-    useEffect(() => {
-        let mounted = true;
-        async function loadDashboard() {
-            console.log('[DASHBOARD] Loading dashboard data...');
-            setLoading(true);
-            setError('');
-            const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
-                getBookings(),
-                getClients(),
-            ]);
-            if (!mounted) return;
-            if (bookingError) {
-                setError(bookingError);
-                setBookings([]);
-                setLoading(false);
-                return;
-            }
-            const filteredBookings = (bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id));
-            console.log('[DASHBOARD] Filtered bookings for barber:', filteredBookings.length);
-            setBookings(filteredBookings);
-            setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
+        if (bookingError) {
+            setError(bookingError);
             setLoading(false);
+            return;
         }
-        loadDashboard();
-        
-        // Set up periodic refresh for real-time updates
-        const refreshInterval = setInterval(loadDashboard, 10000); // Refresh every 10 seconds
-        
-        return () => {
-            mounted = false;
-            clearInterval(refreshInterval);
-        };
+
+        const filteredBookings = (bookingList ?? []).filter((booking) =>
+            bookingMatchesBarber(booking.barber, user?.id) ||
+            bookingMatchesBarber(booking.barber, user?._id)
+        );
+
+        setBookings(filteredBookings);
+        setClientsById(Object.fromEntries((clients ?? []).map((client) => [client.id, client])));
+        setLoading(false);
     }, [user?.id]);
 
-    const upcomingBookings = useMemo(
-        () => bookings
-            .filter((booking) => ['pending', 'accepted'].includes((booking.status || '').toLowerCase()))
+    useEffect(() => {
+        loadDashboard();
+        const refreshInterval = setInterval(loadDashboard, 15000);
+        return () => clearInterval(refreshInterval);
+    }, [loadDashboard]);
+
+    // Statusni o'zgartirish funksiyasi (Asosiy mantiq)
+    const handleStatusUpdate = useCallback(async (bookingId, newStatus) => {
+        try {
+            const { error } = await updateBookingStatus(bookingId, { status: newStatus });
+            if (!error) {
+                // Lokal holatni yangilash (darhol ko'rinishi uchun)
+                setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+            }
+        } catch (err) {
+            console.error("Status update failed", err);
+        }
+    }, []);
+
+    // Auto-cancel any pending/accepted bookings whose time has already passed
+    useEffect(() => {
+        if (bookings.length === 0) return;
+        const now = getCurrentTime();
+        const overdue = bookings.filter(b => {
+            const status = b.status?.toLowerCase();
+            const isActive = ['pending', 'accepted'].includes(status);
+            const bookingTime = formatTo24h(b.booking_hours);
+            return isActive && bookingTime && bookingTime < now;
+        });
+        overdue.forEach(b => handleStatusUpdate(b.id, 'cancelled'));
+    }, [bookings, handleStatusUpdate]);
+
+    const handleToggleWork = useCallback(() => {
+        setIsWorking(prev => {
+            const next = !prev;
+            localStorage.setItem(WORK_STATUS_KEY, JSON.stringify({ isWorking: next, updatedAt: new Date().toISOString() }));
+            return next;
+        });
+    }, []);
+
+    // 1. Current Session (Hozirgi mijoz - status: 'in_progress')
+    const activeSession = useMemo(() => {
+        const session = bookings.find(b => b.status === 'in_progress');
+        if (!session) return null;
+        const client = session.clientData || clientsById[session.client];
+        return { ...session, clientName: client?.name || client?.fullname || 'Mijoz' };
+    }, [bookings, clientsById]);
+
+    // 2. Upcoming Bookings (Navbatdagilar - status: 'pending' yoki 'accepted')
+    const upcomingBookings = useMemo(() =>
+        bookings
+            .filter(b => ['pending', 'accepted'].includes(b.status?.toLowerCase()))
             .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
         [bookings]
     );
 
-    const currentClient = useMemo(() => {
-        const first = upcomingBookings[0];
-        if (!first) return null;
-        // Use clientData from booking if available, otherwise fallback to clientsById
-        const client = first.clientData || clientsById[first.client];
-        console.log('[DASHBOARD] currentClient booking=', first, 'client=', client);
-        return {
-            id: first.id,
-            name: client?.name || client?.fullname || 'Client',
-            image: "https://i.pravatar.cc/150?u=active-client",
-            time: formatTo24h(first.booking_hours) || '--:--',
-        };
-    }, [upcomingBookings, clientsById]);
+    const nextClient = upcomingBookings[0];
+    const laterClients = upcomingBookings.slice(1, 4);
 
-    const nextClient = useMemo(() => {
-        const second = upcomingBookings[1];
-        if (!second) return null;
-        const client = second.clientData || clientsById[second.client];
-        return {
-            id: second.id,
-            name: client?.name || client?.fullname || 'Client',
-            image: "https://i.pravatar.cc/150?u=next-client",
-            time: formatTo24h(second.booking_hours) || '--:--',
-        };
-    }, [upcomingBookings, clientsById]);
+    // Auto-start nextClient when their time comes
+    useEffect(() => {
+        if (!nextClient) return;
 
-    const upcomingClients = useMemo(
-        () => upcomingBookings.slice(2).map((booking) => {
-            const client = booking.clientData || clientsById[booking.client];
-            return {
-                id: booking.id,
-                name: client?.name || client?.fullname || 'Client',
-                image: "https://i.pravatar.cc/150?u=later-client",
-                time: formatTo24h(booking.booking_hours) || '--:--',
-            };
-        }),
-        [upcomingBookings, clientsById]
-    );
+        const checkAutoStart = async () => {
+            const nextTime = formatTo24h(nextClient.booking_hours);
+            const currentTime = getCurrentTime();
+
+            if (nextTime && nextTime <= currentTime) {
+                if (nextClient.status !== 'in_progress') {
+                    await handleStatusUpdate(nextClient.id, 'in_progress');
+                }
+            }
+        };
+
+        checkAutoStart();
+        const interval = setInterval(checkAutoStart, 30000); // Check every 30 seconds
+        return () => clearInterval(interval);
+    }, [nextClient, handleStatusUpdate]);
 
     return (
-        <div className="px-6 py-4 space-y-8 page-animate h-full pb-24">
-
+        <div className="px-6 py-4 space-y-8 page-animate h-full pb-24 max-w-2xl mx-auto">
             {/* Header */}
-            <div>
-                <h1 className="text-h1">Dashboard</h1>
-                <p className="text-body text-muted">Manage your active sessions</p>
-                {loading && <div className="skeleton-text small mt-2"></div>}
-                {error && (
-                    <div className="error-container mt-4">
-                        <div className="error-container-header">
-                            <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="error-title">Dashboard Error</span>
-                        </div>
-                        <p className="error-message">{error}</p>
-                    </div>
-                )}
-            </div>
-
-            {/* WORK STATUS */}
-            <div className="card-base">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h2 className="text-h2 mb-2">Work Status</h2>
-                        <p className="text-body text-muted">
-                            {isWorking ? "You are available for bookings" : "You are currently unavailable"}
-                        </p>
-                    </div>
+            <div className="flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                    <p className="text-gray-500 font-medium">Bugungi navbatlar nazorati</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs uppercase text-gray-400 font-bold tracking-widest">Holat</p>
                     <button
-                        onClick={handleToggle}
-                        className={`w-16 h-9 rounded-full flex items-center p-1 transition-all duration-300 hover:scale-105 ${isWorking ? 'bg-green-500' : 'bg-gray-300'}`}
+                        onClick={handleToggleWork}
+                        className={`mt-1 px-3 py-1 rounded-full text-xs font-bold transition-all ${isWorking ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}
                     >
-                        <div className={`bg-white w-7 h-7 rounded-full shadow-lg transform transition-transform duration-300 ${isWorking ? 'translate-x-7' : 'translate-x-0'}`}></div>
+                        {isWorking ? "● ISHLAYAPMAN" : "● TANAFFUS"}
                     </button>
                 </div>
-
-                {(lunchStart || lunchEnd) && (
-                <div className="pt-6 border-t border-[var(--border-color)]">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Clock size={16} className="text-muted" />
-                        <p className="text-label">Lunch Break (Auto-unavailable)</p>
-                    </div>
-                    <p className="text-body text-muted">
-                        {lunchStart && lunchEnd ? `${lunchStart} — ${lunchEnd}` : 'Partially configured'}
-                    </p>
-                </div>
-                )}
             </div>
 
-            {/* CURRENT CLIENT */}
-            <div>
-                <h2 className="text-label uppercase tracking-wider mb-4">Current Session</h2>
-                {currentClient ? (
-                    <div className="card-base bg-gradient-to-r from-[var(--primary)] to-purple-600 text-white relative overflow-hidden hover:transform hover:-translate-y-1 transition-all">
-                        <div className="absolute -right-4 -top-4 opacity-10">
-                            <Clock size={120} />
-                        </div>
+            {/* CURRENT SESSION CARD */}
+            <section>
+                <h2 className="text-xs font-bold uppercase text-gray-400 mb-4 tracking-widest">Hozirgi Jarayon</h2>
+                {activeSession ? (
+                    <div className="bg-primary rounded-3xl p-6 text-white shadow-xl shadow-primary/20 relative overflow-hidden">
                         <div className="flex items-center gap-4 relative z-10">
-                            <div className="relative">
-                                <img src={currentClient.image} alt={currentClient.name} className="w-16 h-16 rounded-full border-3 border-white/20 shadow-lg" />
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
-                            </div>
+                            <SimpleAvatar name={activeSession.clientName} size="w-16 h-16 bg-white/20" />
                             <div className="flex-1">
-                                <h3 className="text-h2 text-white mb-2">{currentClient.name}</h3>
-                                <div className="flex items-center gap-2">
-                                    <span className="status-badge success">In Progress</span>
+                                <h3 className="text-xl font-bold">{activeSession.clientName}</h3>
+                                <div className="flex items-center gap-2 mt-1 opacity-90">
+                                    <Clock size={14} />
+                                    <span className="text-sm font-medium">{formatTo24h(activeSession.booking_hours)} da boshlangan</span>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-small text-white/60 mb-1">Session Time</p>
-                                <p className="text-h3 text-white">{currentClient.time}</p>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="empty-state">
-                        <div className="empty-state-icon">
-                            <UserCircle size={40} className="text-gray-400" />
-                        </div>
-                        <h3 className="empty-state-title">No active client</h3>
-                        <p className="empty-state-description">
-                            You don't have any active sessions right now
-                        </p>
-                    </div>
-                )}
-            </div>
-
-            {/* NEXT CLIENT */}
-            {nextClient && (
-                <div>
-                    <h2 className="text-label uppercase tracking-wider mb-4">Up Next</h2>
-                    <div className="card-base hover:transform hover:-translate-y-1 transition-all">
-                        <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <img src={nextClient.image} alt={nextClient.name} className="w-14 h-14 rounded-full shadow-md" />
-                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-orange-400 rounded-full border-2 border-white"></div>
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-h2 mb-1">{nextClient.name}</h3>
-                                <p className="text-body text-primary font-medium">{nextClient.time}</p>
-                            </div>
                             <button
-                                onClick={() => navigate('/barber/appointments')}
-                                className="btn-primary btn-sm flex items-center gap-2 hover:scale-105 transition-transform"
+                                onClick={() => handleStatusUpdate(activeSession.id, 'completed')}
+                                className="bg-white text-primary p-3 rounded-2xl font-bold hover:bg-gray-100 active:scale-95 transition-all shadow-lg flex flex-col items-center gap-1"
                             >
-                                <Play size={16} fill="currentColor" />
-                                Start Session
+                                <CheckCircle size={20} />
+                                <span className="text-[10px]">TUGATISH</span>
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl p-8 text-center">
+                        <Coffee className="mx-auto text-gray-300 mb-2" size={32} />
+                        <p className="text-gray-500 font-medium text-sm">Hozircha hech kim yo'q. <br />Navbatdagi mijozni boshlang.</p>
+                    </div>
+                )}
+            </section>
 
-            {/* UPCOMING PREVIEW */}
-            {upcomingClients.length > 0 && (
-                <div>
+            {/* NEXT CLIENT CARD */}
+            {nextClient && (() => {
+                const nextTime = formatTo24h(nextClient.booking_hours);
+                const now = getCurrentTime();
+                const isOverdue = nextTime && nextTime < now;
+                return (
+                    <section>
+                        <h2 className="text-xs font-bold uppercase text-gray-400 mb-4 tracking-widest">Navbatdagi Mijoz</h2>
+                        <div className={`bg-white border rounded-3xl p-5 shadow-sm flex items-center gap-4 ${isOverdue ? 'border-red-100 bg-red-50/30' : 'border-gray-100'}`}>
+                            <SimpleAvatar name={nextClient.clientData?.name || "C"} />
+                            <div className="flex-1">
+                                <h3 className="font-bold text-gray-800">{nextClient.clientData?.name || 'Mijoz'}</h3>
+                                <p className={`font-bold text-sm ${isOverdue ? 'text-red-400' : 'text-primary'}`}>
+                                    {formatTo24h(nextClient.booking_hours)}
+                                    {isOverdue && <span className="ml-2 text-[10px] uppercase tracking-wider">• Kechikdi</span>}
+                                </p>
+                            </div>
+                            {isOverdue ? (
+                                <button
+                                    onClick={() => handleStatusUpdate(nextClient.id, 'cancelled')}
+                                    className="flex flex-col items-center gap-1 p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 active:scale-95 transition-all"
+                                >
+                                    <XCircle size={20} />
+                                    <span className="text-[10px] font-black uppercase">Bekor</span>
+                                </button>
+                            ) : (
+                                <div className="flex flex-col items-end gap-1">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                        Kutilmoqda...
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                );
+            })()}
+
+            {/* LATER TODAY LIST */}
+            {laterClients.length > 0 && (
+                <section>
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-label uppercase tracking-wider">Later Today</h2>
-                        <button
-                            onClick={() => navigate('/barber/clients')}
-                            className="btn-ghost btn-sm flex items-center gap-1 text-primary hover:scale-105 transition-transform"
-                        >
-                            See All <ChevronRight size={16} />
+                        <h2 className="text-xs font-bold uppercase text-gray-400 tracking-widest">Keyingi Navbatlar</h2>
+                        <button onClick={() => navigate('/barber/appointments')} className="text-primary text-xs font-bold flex items-center gap-1">
+                            Hammasi <ChevronRight size={14} />
                         </button>
                     </div>
-                    <div className="card-base overflow-hidden">
-                        {upcomingClients.map((client, index) => (
-                            <div key={client.id} className={`flex items-center gap-4 p-4 transition-colors hover:bg-gray-50 ${index !== upcomingClients.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                                <img src={client.image} alt={client.name} className="w-12 h-12 rounded-full shadow-sm" />
-                                <div className="flex-1">
-                                    <h3 className="text-body font-semibold">{client.name}</h3>
+                    <div className="space-y-3">
+                        {laterClients.map((booking) => {
+                            const bTime = formatTo24h(booking.booking_hours);
+                            const now = getCurrentTime();
+                            const isOverdue = bTime && bTime < now;
+                            return (
+                                <div key={booking.id} className={`flex items-center gap-4 p-3 rounded-2xl border transition-all ${isOverdue ? 'bg-red-50/40 border-red-100' : 'bg-white/50 border-gray-50'}`}>
+                                    <SimpleAvatar name={booking.clientData?.name || "C"} size="w-10 h-10" />
+                                    <div className="flex-1">
+                                        <h4 className="text-sm font-bold text-gray-700">{booking.clientData?.name || 'Mijoz'}</h4>
+                                        <p className={`text-xs font-bold ${isOverdue ? 'text-red-400' : 'text-gray-400'}`}>
+                                            {bTime}{isOverdue && ' • Kechikdi'}
+                                        </p>
+                                    </div>
+                                    {isOverdue && (
+                                        <button
+                                            onClick={() => handleStatusUpdate(booking.id, 'cancelled')}
+                                            className="p-2 bg-red-50 text-red-400 rounded-xl hover:bg-red-100 active:scale-95 transition-all"
+                                        >
+                                            <XCircle size={16} />
+                                        </button>
+                                    )}
+                                    {!isOverdue && (
+                                        <div className="text-sm font-bold text-gray-400">
+                                            {bTime}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="text-body text-muted font-medium">
-                                    {client.time}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
-                </div>
+                </section>
             )}
         </div>
     );
 }
 
 export default Dashboard;
+
+
+
+

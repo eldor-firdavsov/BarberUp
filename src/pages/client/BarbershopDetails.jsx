@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Clock } from "lucide-react";
 import { getBarbers } from "../../api/barberApi.js";
-import { bookingMatchesBarber, createBooking, getBookings } from "../../api/bookingApi.js";
+import { bookingMatchesBarber, createBooking, getBookings, bookingMatchesClient } from "../../api/bookingApi.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { compareTimes, formatTo24h, isSlotTaken } from "../../utils/time.js";
+import { compareTimes, formatTo24h, isSlotTaken, getCurrentTime } from "../../utils/time.js";
+
+
+
 
 export default function BarbershopDetails() {
     const { id } = useParams();
@@ -19,6 +23,7 @@ export default function BarbershopDetails() {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [retrying, setRetrying] = useState(false);
+    const [isTomorrow, setIsTomorrow] = useState(false);
 
     function generateSlots(barberData) {
         if (barberData.isWorkingNow === false) {
@@ -26,7 +31,7 @@ export default function BarbershopDetails() {
             return;
         }
 
-        const hours = barberData.workingHours;
+        const hours = barberData.working_hours || barberData.workingHours;
         if (!hours || !hours.includes('-')) return;
         const [startStr, endStr] = hours.split('-').map(s => s.trim());
 
@@ -47,8 +52,11 @@ export default function BarbershopDetails() {
             lEnd = leH * 60 + leM;
         }
 
-        const newSlots = [];
+        const allSlots = [];
+        const todaySlots = [];
         let count = 0;
+        const now = getCurrentTime();
+
         while ((curHour < endHour || (curHour === endHour && curMin < endMin)) && count < 100) {
             const timeMins = curHour * 60 + curMin;
             const isLunch = lStart !== -1 && (timeMins >= lStart && timeMins < lEnd);
@@ -56,7 +64,13 @@ export default function BarbershopDetails() {
             if (!isLunch) {
                 const timeString = `${curHour.toString().padStart(2, '0')}:${curMin.toString().padStart(2, '0')}`;
                 const normalized = formatTo24h(timeString);
-                if (normalized) newSlots.push(normalized);
+                
+                if (normalized) {
+                    allSlots.push(normalized);
+                    if (normalized >= now) {
+                        todaySlots.push(normalized);
+                    }
+                }
             }
 
             curMin += 30;
@@ -66,18 +80,25 @@ export default function BarbershopDetails() {
             }
             count++;
         }
-        setSlots(newSlots);
+
+        if (todaySlots.length === 0 && allSlots.length > 0) {
+            setSlots(allSlots);
+            setIsTomorrow(true);
+        } else {
+            setSlots(todaySlots);
+            setIsTomorrow(false);
+        }
     }
 
     async function refreshBookingState(targetBarberId) {
         console.log('[BOOKING REFETCH] barberId=', targetBarberId);
-        
+
         if (!targetBarberId || String(targetBarberId).trim() === '') {
             console.error('[BOOKING REFETCH] Invalid barber ID provided');
             setError('Invalid barber ID');
             return { latestBookings: [], latestError: 'Invalid barber ID' };
         }
-        
+
         const { data: latestBookings, error: latestError } = await getBookings();
         if (latestError) {
             setError('Something went wrong');
@@ -128,7 +149,7 @@ export default function BarbershopDetails() {
                 setLoading(false);
                 return;
             }
-            
+
             // Match by email or by _id/id
             const found = (data ?? []).find(
                 u => u.email === decodedId || u.id === decodedId || u._id === decodedId
@@ -207,6 +228,20 @@ export default function BarbershopDetails() {
             setBookingLoading(false);
             return;
         }
+
+        // Check if user already has an active booking
+        const hasExistingBooking = latestBookings.some(booking => {
+            const isClientBooking = bookingMatchesClient(booking.client, user.id);
+            const isActive = !['rejected', 'cancelled', 'completed'].includes(String(booking.status || '').toLowerCase());
+            return isClientBooking && isActive;
+        });
+
+        if (hasExistingBooking) {
+            setError('You already have an active appointment booked. You can only book once a day.');
+            setBookingLoading(false);
+            return;
+        }
+
         console.log('[BOOKING CHECK] pre-POST slot=', safeSelectedSlot, 'taken=', isSlotTaken(latestBookings, safeSelectedSlot, barberKey));
         if (isSlotTaken(latestBookings, safeSelectedSlot, barberKey)) {
             setError('This time slot is already booked.');
@@ -267,57 +302,86 @@ export default function BarbershopDetails() {
             <div className="w-full max-w-md bg-[var(--card-bg)] rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden relative transition-all duration-500">
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-5 left-5 z-20 w-10 h-10 bg-[var(--card-bg)] opacity-90 rounded-full flex items-center justify-center shadow-sm backdrop-blur-md cursor-pointer hover:opacity-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
+                    className="absolute top-4 left-4 z-10 bg-black/40 hover:bg-black/60 backdrop-blur-sm w-10 h-10 rounded-full flex items-center justify-center transition-all"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
                 </button>
-                <div className="relative h-64 w-full">
+                <div className="relative h-72 w-full">
                     <img
-                        src={barber.shopImage || barber.profileImage || "https://placehold.co/600x400/purple/white?text=Shop+Cover"}
+                        src={
+                            (barber.office_img && barber.office_img !== '')
+                                ? barber.office_img
+                                : (barber.shopImage && barber.shopImage !== '')
+                                    ? barber.shopImage
+                                    : 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'
+                        }
                         alt="barber"
                         className="w-full h-full object-cover rounded-b-[2rem]"
-                        onError={(e) => { e.currentTarget.src = "https://placehold.co/600x400/purple/white?text=Shop+Cover"; }}
+                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'; }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent w-full h-full object-cover rounded-b-[2rem]"></div>
                 </div>
 
                 <div className="p-6 space-y-7 -mt-4 relative z-10 bg-[var(--card-bg)] rounded-[2rem]">
-                    <div>
-                        <h2 className="text-2xl font-extrabold text-[var(--text-primary)] tracking-tight leading-tight">
-                            {barber.shopName || "Gentleman's Atelier"}
-                        </h2>
-                        <p className="text-sm font-medium text-[var(--text-secondary)] mt-1">{barber.name || "Barber"}</p>
+                    <div className="flex items-center gap-4">
+                        {(barber.profile_img && barber.profile_img.trim() !== '') ? (
+                            <img
+                                src={barber.profile_img}
+                                alt={barber.fullname || barber.name || 'B'}
+                                className="w-14 h-14 rounded-full object-cover border-2 border-[var(--border)] bg-gray-100 flex-shrink-0"
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                }}
+                            />
+                        ) : (
+                            <div className="w-14 h-14 rounded-full bg-[#1D0065] flex items-center justify-center flex-shrink-0 border-2 border-[var(--border)]">
+                                <span className="text-white text-lg font-bold">
+                                    {(barber.fullname || barber.name || 'B').charAt(0).toUpperCase()}
+                                </span>
+                            </div>
+                        )}
+                        <div>
+                            <h2 className="text-2xl font-extrabold text-[var(--text-primary)] tracking-tight leading-tight">
+                                {barber.office_name || barber.shopName || "Gentleman's Atelier"}
+                            </h2>
+                            <p className="text-sm font-medium text-[var(--text-secondary)] mt-1">
+                                {barber.fullname || barber.name || "Barber"}
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex justify-between items-center bg-[var(--background)] opacity-90 rounded-2xl p-4 text-sm border border-[var(--border)]">
-                        <div className="flex flex-col gap-1">
-                            <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase">Average Price</p>
-                            <p className="font-bold text-[var(--text-primary)] text-base">{barber.avgPrice || "150,000 UZS"}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[var(--background)] rounded-2xl p-4 border border-[var(--border)]">
+                            <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase mb-1">Average Price</p>
+                            <p className="font-bold text-[var(--text-primary)] text-lg">
+                                {(barber.average_price ?? barber.avgPrice ?? 0).toLocaleString()} UZS
+                            </p>
                         </div>
-                        <div className="w-[1px] h-8 bg-[var(--border)]"></div>
-                        <div className="flex flex-col gap-1 items-end">
-                            <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase">Today</p>
-                            <p className="font-bold text-[var(--text-primary)] text-base">{barber.workingHours || "09:00 - 21:00"}</p>
+                        <div className="bg-[var(--background)] rounded-2xl p-4 border border-[var(--border)]">
+                            <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase mb-1">Working Hours</p>
+                            <p className="font-bold text-[var(--text-primary)] text-base">
+                                {barber.working_hours || barber.workingHours || "09:00 - 21:00"}
+                            </p>
                         </div>
                     </div>
 
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-[var(--text-primary)] text-lg">
-                                Available Slots
+                                Available Slots {isTomorrow && <span className="text-sm text-primary ml-2 font-medium bg-primary/10 px-2 py-1 rounded-lg">Tomorrow</span>}
                             </h3>
                         </div>
 
-                        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-64 overflow-y-auto pb-3 pr-2 scrollbar-thin">
                             {slots.length > 0 ? slots.map((time) => (
                                 <label
                                     key={time}
-                                    className={`min-w-[100px] flex flex-col items-center justify-center px-4 py-4 rounded-2xl border cursor-pointer transition-all duration-200 hover:scale-105
+                                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border cursor-pointer transition-all duration-200 hover:scale-105
                   ${bookedSlots.includes(time)
                                             ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60"
                                             : selectedSlot === time
-                                            ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-lg transform scale-105"
-                                            : "bg-white text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--primary)] hover:shadow-md"
+                                                ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-lg transform scale-105"
+                                                : "bg-white text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--primary)] hover:shadow-md"
                                         }`}
                                 >
                                     <span className="text-small font-medium uppercase tracking-wider">
@@ -355,11 +419,13 @@ export default function BarbershopDetails() {
                     <div>
                         <p className="text-[10px] font-bold text-[var(--text-secondary)] tracking-wider uppercase mb-1">Location</p>
                         <p className="text-sm font-medium text-[var(--text-primary)] mb-3">
-                            {barber.location || "Amir Temur Avenue 108, Tashkent"}
+                            {barber.address || "Amir Temur Avenue 108, Tashkent"}
                         </p>
 
-                        <div className="w-full h-28 bg-[var(--background)] border border-[var(--border)] rounded-2xl flex items-center justify-center text-[var(--text-secondary)] text-sm font-medium">
-                            Map Preview
+                        <div className="mt-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <p className="text-sm text-gray-500 font-medium">
+                                📍 {barber.address || barber.location?.address || 'Address not provided'}
+                            </p>
                         </div>
                     </div>
 
@@ -403,20 +469,29 @@ export default function BarbershopDetails() {
                             </p>
                         </div>
                     )}
-                    <button
-                        onClick={handleBookSession}
-                        disabled={!selectedSlot || bookingLoading || isBookingInProgress}
-                        className="btn-primary w-full"
-                    >
-                        {bookingLoading || isBookingInProgress ? (
-                            <>
-                                <div className="spinner"></div>
-                                Booking...
-                            </>
-                        ) : (
-                            'Book Now'
-                        )}
-                    </button>
+                    {successMessage ? (
+                        <button
+                            onClick={() => navigate('/client/dashboard')}
+                            className="btn-primary w-full"
+                        >
+                            Home
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleBookSession}
+                            disabled={!selectedSlot || bookingLoading || isBookingInProgress}
+                            className="btn-primary w-full"
+                        >
+                            {bookingLoading || isBookingInProgress ? (
+                                <>
+                                    <div className="spinner"></div>
+                                    Booking...
+                                </>
+                            ) : (
+                                'Book Now'
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

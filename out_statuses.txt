@@ -1,0 +1,1 @@
+Setup failed: {"success":false,"message":"Bu ma'lumotlar (email, telefon yoki salon nomi) allaqachon tizimda mavjud. Iltimos, tekshirib qaytadan kiriting."}

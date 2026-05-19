@@ -1,0 +1,39 @@
+=== BARBER IMAGE AUDIT ===
+profile_img: ""
+profileImage: 
+office_img: ""
+shopImage: 
+=== BARBER LOCATION AUDIT ===
+coordinates: 
+location: {"address":"Library, проспект Алишера Навои, Urgut, Urgut District, Samarqand Region, 140000, Uzbekistan","type":"Point"}
+address: 
+=== FULL BARBER OBJECT ===
+{
+  "location": {
+    "address": "Library, проспект Алишера Навои, Urgut, Urgut District, Samarqand Region, 140000, Uzbekistan",
+    "type": "Point"
+  },
+  "_id": "6a02ea07f4d1c128046520b2",
+  "fullname": "Musa Isomov",
+  "email": "barber1@gmail.com",
+  "phone": "+998987654432",
+  "profile_img": "",
+  "office_name": "Musa barber",
+  "office_description": "",
+  "working_hours": "09:00 - 22:00",
+  "average_price": "70000",
+  "status": "closed",
+  "office_img": "",
+  "__v": 0,
+  "id": "6a02ea07f4d1c128046520b2",
+  "role": "barber",
+  "name": "Musa Isomov",
+  "shopName": "Musa barber",
+  "workingHours": "09:00 - 22:00",
+  "avgPrice": "70000"
+}
+=== CLIENT COORDS SET === 41.2995 69.2401
+=== DISTANCE CALC ===
+clientCoords: { lat: 41.2995, lng: 69.2401 }
+barber.coordinates: 
+barber.location: {"address":"Library, проспект Алишера Навои, Urgut, Urgut District, Samarqand Region, 140000, Uzbekistan","type":"Point"}

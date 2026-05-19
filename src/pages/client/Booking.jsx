@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, X, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { bookingMatchesClient, getBookings } from '../../api/bookingApi.js';
+import { bookingMatchesClient, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getBarbers } from '../../api/barberApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
 
@@ -60,27 +60,22 @@ function Booking() {
         setCancelModal({ open: true, bookingId });
     };
 
-    const confirmCancelBooking = () => {
+    const confirmCancelBooking = async () => {
         const { bookingId } = cancelModal;
-        console.log('[BOOKING CANCEL] Confirming cancellation for:', bookingId);
-        
-        // Update booking locally
-        setBookings(prevBookings => 
-            prevBookings.map(booking => 
-                booking.id === bookingId 
-                    ? { ...booking, status: 'cancelled' }
-                    : booking
-            )
-        );
-        
-        // Close modal and show success message
         setCancelModal({ open: false, bookingId: null });
-        setSuccessMessage('Booking cancelled successfully');
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccessMessage(''), 3000);
-        
-        console.log('[BOOKING CANCEL] Success - booking marked as cancelled');
+        const { data, error: updateError } = await updateBookingStatus(
+            bookingId,
+            { status: 'rejected' }
+        );
+        if (updateError) {
+            setError(updateError);
+        } else if (data) {
+            setBookings(prev =>
+                prev.map(b => b.id === bookingId ? data : b)
+            );
+            setSuccessMessage('Booking cancelled successfully');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        }
     };
 
     const canCancelBooking = (booking) => {
@@ -94,9 +89,9 @@ function Booking() {
     const handleRebook = (booking) => {
         const barber = barbersById[booking.barber];
         if (!barber) return;
-        
+
         console.log('[REBOOK] Navigating to barber details for rebooking:', barber.id);
-        
+
         // Navigate to barber details page with rebooking context
         navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`, {
             state: {
@@ -179,15 +174,14 @@ function Booking() {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <p className="text-xs font-bold uppercase tracking-wider">
-                                        <span className={`px-2 py-1 rounded-md ${
-                                            booking.status === 'cancelled' 
-                                                ? 'bg-red-100 text-red-700' 
-                                                : booking.status === 'accepted'
+                                        <span className={`px-2 py-1 rounded-md ${booking.status === 'cancelled'
+                                            ? 'bg-red-100 text-red-700'
+                                            : booking.status === 'accepted'
                                                 ? 'bg-green-100 text-green-700'
                                                 : booking.status === 'rejected'
-                                                ? 'bg-gray-100 text-gray-700'
-                                                : 'bg-orange-100 text-orange-700'
-                                        }`}>
+                                                    ? 'bg-gray-100 text-gray-700'
+                                                    : 'bg-orange-100 text-orange-700'
+                                            }`}>
                                             {booking.status || 'pending'}
                                         </span>
                                     </p>

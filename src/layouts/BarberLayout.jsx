@@ -28,28 +28,28 @@ function BarberLayout() {
                     getBookings(),
                     getClients(),
                 ]);
-                
+
                 if (!mounted) return;
-                
+
                 // Filter pending bookings for current barber
-                const pending = (bookingList ?? []).filter(booking => 
+                const pending = (bookingList ?? []).filter(booking =>
                     booking.barber === user?.id && booking.status === 'pending'
                 );
-                
+
                 setPendingBookings(pending);
                 setClientsById(Object.fromEntries((clients ?? []).map(client => [client.id, client])));
-                
+
                 console.log('[NOTIFICATIONS] Pending bookings:', pending.length);
             } catch (error) {
                 console.error('[NOTIFICATIONS] Error fetching:', error);
             }
         }
-        
+
         fetchNotifications();
-        
+
         // Refresh notifications every 10 seconds
         const interval = setInterval(fetchNotifications, 10000);
-        
+
         return () => {
             mounted = false;
             clearInterval(interval);
@@ -146,7 +146,7 @@ function BarberLayout() {
 
                     {/* Notification Dropdown */}
                     {notificationsOpen && (
-                        <div className="absolute right-0 mt-3 w-96 card-base shadow-2xl z-50 max-h-96 overflow-y-auto animate-in slide-in-from-top-2 fade-in-0 duration-200">
+                        <div className="absolute z-90 right-0 mt-3 w-96 card-base shadow-2xl z-50 max-h-96 overflow-y-auto animate-in slide-in-from-top-2 fade-in-0 duration-200">
                             <div className="p-6 border-b border-gray-100">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -163,7 +163,7 @@ function BarberLayout() {
                                     </button>
                                 </div>
                             </div>
-                            
+
                             {pendingBookings.length === 0 ? (
                                 <div className="empty-state">
                                     <div className="empty-state-icon">
@@ -175,7 +175,7 @@ function BarberLayout() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="divide-y divide-gray-100">
+                                <div className="divide-y divide-gray-100 ">
                                     {pendingBookings.map((booking) => {
                                         const client = clientsById[booking.client] || booking.clientData;
                                         return (
@@ -206,7 +206,7 @@ function BarberLayout() {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        
+
                                                         <div className="flex gap-3 mt-4">
                                                             <button
                                                                 onClick={() => handleAcceptBooking(booking.id)}
@@ -256,7 +256,7 @@ function BarberLayout() {
             </header>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 py-15">
+            <main className="flex-1 py-20">
                 <Outlet />
             </main>
 

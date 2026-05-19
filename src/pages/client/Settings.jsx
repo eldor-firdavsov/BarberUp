@@ -1,29 +1,47 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { httpClient } from '../../api/httpClient.js';
 
 function Settings() {
     const { logout, user, updateSessionUser } = useAuth();
-    const [name, setName] = useState(user?.name || '');
+    const [name, setName] = useState(user?.fullname || '');
     const [phone, setPhone] = useState((user?.phone || '').replace(/\D/g, '').replace(/^998/, '').slice(-9));
-    const [profileImage, setProfileImage] = useState(user?.profileImage || null);
     const [success, setSuccess] = useState('');
     const cleanPhone = (value) => value.replace(/\D/g, '');
     const isPhoneValid = cleanPhone(phone).length === 9;
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setProfileImage(reader.result);
-            reader.readAsDataURL(file);
-        }
-    };
+    const handleProfileImageUpload = () => { };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!name || !phone || !isPhoneValid) return;
-        const updatedUser = { ...user, name, phone: `+998${cleanPhone(phone)}`, profileImage };
 
-        updateSessionUser(updatedUser);
+        const formData = new FormData();
+        formData.append('fullname', name);
+        formData.append('phone', `+998${cleanPhone(phone)}`);
+
+
+        try {
+            const response = await httpClient.put(
+                `/client/${user?.id || user?._id}`,
+                formData
+            );
+            const raw = response?.data?.data ??
+                response?.data;
+            updateSessionUser({
+                ...user,
+                fullname: name,
+                name,
+                phone: `+998${cleanPhone(phone)}`,
+            });
+        } catch (err) {
+            console.error('[CLIENT SETTINGS] failed:', err);
+            updateSessionUser({
+                ...user,
+                fullname: name,
+                name,
+                phone: `+998${cleanPhone(phone)}`,
+            });
+        }
 
         setSuccess('Profile updated successfully!');
         setTimeout(() => setSuccess(''), 3000);
@@ -38,11 +56,7 @@ function Settings() {
             <h1 className="text-3xl font-bold text-[#1D0065] leading-tight mb-8">Client Settings</h1>
 
             <div className="space-y-6 flex-grow">
-                <div>
-                    <label className="label-base">Profile Image</label>
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-50 file:text-[#1D0065] hover:file:bg-gray-100" />
-                    {profileImage && <img src={profileImage} alt="Profile" className="mt-3 w-20 h-20 rounded-full object-cover shadow-sm border border-gray-100" />}
-                </div>
+
 
                 <div>
                     <label className="label-base">Full Name</label>

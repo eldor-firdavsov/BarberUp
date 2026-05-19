@@ -22,18 +22,18 @@ function ClientProfileModal({ client, isOpen, onClose }) {
         try {
             setLoading(true);
             const { data: bookings } = await getBookings();
-            
+
             if (bookings) {
                 const clientBookings = bookings.filter(b => b.client === client.id);
                 const completedBookings = clientBookings.filter(b => b.status === 'completed');
                 const cancelledBookings = clientBookings.filter(b => b.status === 'cancelled');
                 const noShows = clientBookings.filter(b => b.status === 'rejected' || b.status === 'no-show');
-                
+
                 // Sort by date to get last booking
-                const sortedBookings = clientBookings.sort((a, b) => 
+                const sortedBookings = clientBookings.sort((a, b) =>
                     new Date(b.createdAt) - new Date(a.createdAt)
                 );
-                
+
                 setStats({
                     totalVisits: clientBookings.length,
                     cancellations: cancelledBookings.length,
@@ -62,10 +62,10 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                     >
                         <X size={20} />
                     </button>
-                    
+
                     <div className="flex items-center gap-4">
                         <img
-                            src="https://i.pravatar.cc/150?u=client"
+                            src={client.avatar || 'https://i.pravatar.cc/150?u=client'}
                             alt={client.name || client.fullname || 'Client'}
                             className="w-20 h-20 rounded-full border-4 border-white/20"
                         />
@@ -155,15 +155,14 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                                     </div>
                                 </div>
                                 <div className="mt-3">
-                                    <span className={`px-2 py-1 text-xs font-bold rounded-md ${
-                                        stats.lastBooking.status === 'completed' 
-                                            ? 'bg-green-100 text-green-700' 
+                                    <span className={`px-2 py-1 text-xs font-bold rounded-md ${stats.lastBooking.status === 'completed'
+                                            ? 'bg-green-100 text-green-700'
                                             : stats.lastBooking.status === 'cancelled'
-                                            ? 'bg-red-100 text-red-700'
-                                            : stats.lastBooking.status === 'rejected'
-                                            ? 'bg-gray-100 text-gray-700'
-                                            : 'bg-orange-100 text-orange-700'
-                                    }`}>
+                                                ? 'bg-red-100 text-red-700'
+                                                : stats.lastBooking.status === 'rejected'
+                                                    ? 'bg-gray-100 text-gray-700'
+                                                    : 'bg-orange-100 text-orange-700'
+                                        }`}>
                                         {stats.lastBooking.status || 'pending'}
                                     </span>
                                 </div>
@@ -178,28 +177,28 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm text-gray-600">Show-up Rate</span>
                                 <span className="font-bold text-gray-900">
-                                    {stats.totalVisits > 0 
-                                        ? Math.round((stats.completedBookings / stats.totalVisits) * 100) 
+                                    {stats.totalVisits > 0
+                                        ? Math.round((stats.completedBookings / stats.totalVisits) * 100)
                                         : 0}%
                                 </span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
+                                <div
                                     className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                                    style={{ 
-                                        width: `${stats.totalVisits > 0 
-                                            ? (stats.completedBookings / stats.totalVisits) * 100 
-                                            : 0}%` 
+                                    style={{
+                                        width: `${stats.totalVisits > 0
+                                            ? (stats.completedBookings / stats.totalVisits) * 100
+                                            : 0}%`
                                     }}
                                 />
                             </div>
                             <p className="text-xs text-gray-500 mt-2">
-                                {stats.totalVisits > 0 
-                                    ? stats.completedBookings >= stats.totalVisits * 0.8 
+                                {stats.totalVisits > 0
+                                    ? stats.completedBookings >= stats.totalVisits * 0.8
                                         ? 'Excellent reliability'
                                         : stats.completedBookings >= stats.totalVisits * 0.6
-                                        ? 'Good reliability'
-                                        : 'Needs improvement'
+                                            ? 'Good reliability'
+                                            : 'Needs improvement'
                                     : 'No booking history yet'
                                 }
                             </p>

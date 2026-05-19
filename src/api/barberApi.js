@@ -1,4 +1,4 @@
-import { httpClient } from './httpClient.js';
+import { httpClient, getApiError } from './httpClient.js';
 import { formatTo24h } from '../utils/time.js';
 
 export function normalizeBarber(raw) {
@@ -8,17 +8,17 @@ export function normalizeBarber(raw) {
     const start = formatTo24h(startRaw);
     const end = formatTo24h(endRaw);
     return {
+        ...raw,
         id: raw._id ?? raw.id ?? null,
         role: 'barber',
         name: raw.fullname || raw.name || 'Unknown',
         shopName: raw.office_name || raw.shopName || 'Unnamed Shop',
         workingHours: start && end ? `${start} - ${end}` : 'N/A',
         avgPrice: raw.average_price ?? raw.avgPrice ?? 0,
-        profileImage: raw.profile_img ?? raw.profileImage ?? '',
-        shopImage: raw.office_img ?? raw.shopImage ?? '',
+        profile_img: raw.profile_img ?? raw.profileImage ?? '',
+        office_img: raw.office_img ?? raw.shopImage ?? '',
         email: raw.email ?? '',
         phone: raw.phone ?? '',
-        ...raw,
     };
 }
 

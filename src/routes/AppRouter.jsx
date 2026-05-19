@@ -28,8 +28,8 @@ function AppRouter() {
                 <Route path="/" element={<PublicRoute><RoleSelection /></PublicRoute>} />
                 <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-                <Route path="/onboarding/client" element={<ClientOnboarding />} />
-                <Route path="/onboarding/barber" element={<BarberOnboarding />} />
+                <Route path="/onboarding/client" element={<PublicRoute><ClientOnboarding /></PublicRoute>} />
+                <Route path="/onboarding/barber" element={<PublicRoute><BarberOnboarding /></PublicRoute>} />
 
                 <Route
                     path="/barber/:id"

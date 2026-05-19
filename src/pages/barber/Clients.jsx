@@ -1,145 +1,126 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Search, Calendar as CalendarIcon, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Search, CheckCircle2, XCircle, User, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
-import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { compareTimes } from '../../utils/time.js';
 
 function Clients() {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('upcoming');
-    const [upcomingClients, setUpcomingClients] = useState([]);
-    const [historyClients, setHistoryClients] = useState([]);
+    const [bookings, setBookings] = useState([]);
+    const [clientsById, setClientsById] = useState({});
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        let mounted = true;
-        async function load() {
-            setLoading(true);
-            setError('');
-            const [{ data: bookingList, error: bookingError }, { data: clients }] = await Promise.all([
-                getBookings(),
-                getClients(),
-            ]);
-            if (!mounted) return;
-            if (bookingError) {
-                setError(bookingError);
-                setLoading(false);
-                return;
+    const loadData = useCallback(async () => {
+        const [{ data: bookingList }, { data: clients }] = await Promise.all([
+            getBookings(),
+            getClients(),
+        ]);
+
+        const own = (bookingList ?? []).filter((b) =>
+            bookingMatchesBarber(b.barber, user?.id) || bookingMatchesBarber(b.barber, user?._id)
+        );
+
+        setBookings(own);
+        setClientsById(Object.fromEntries((clients ?? []).map((c) => [c.id, c])));
+        setLoading(false);
+    }, [user?.id, user?._id]);
+
+    useEffect(() => { loadData(); }, [loadData]);
+
+    const filteredList = useMemo(() => {
+        return bookings.filter(b => {
+            const status = b.status?.toLowerCase();
+            const client = b.clientData || clientsById[b.client];
+            const nameMatch = (client?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+            if (activeTab === 'upcoming') {
+                return nameMatch && ['pending', 'accepted', 'in_progress'].includes(status);
+            } else {
+                return nameMatch && ['completed', 'rejected', 'cancelled'].includes(status);
             }
-            const clientsById = Object.fromEntries((clients ?? []).map((client) => [client.id, client]));
-            const own = (bookingList ?? []).filter((booking) => bookingMatchesBarber(booking.barber, user?.id));
-            const formatted = own.map((booking) => ({
-                id: booking.id,
-                name: clientsById[booking.client]?.name || 'Client',
-                image: "https://i.pravatar.cc/150?u=client-list",
-                date: 'Today',
-                time: booking.booking_hours || '--:--',
-                services: 'Session',
-                status: (booking.status || 'pending').toLowerCase(),
-            }));
-
-            setUpcomingClients(formatted.filter((item) => ['pending', 'accepted'].includes(item.status)));
-            setHistoryClients(formatted.filter((item) => ['rejected', 'cancelled', 'completed'].includes(item.status)));
-            setLoading(false);
-        }
-        load();
-        return () => {
-            mounted = false;
-        };
-    }, [user?.id]);
-
-    const currentList = useMemo(
-        () => (activeTab === 'upcoming' ? upcomingClients : historyClients).slice().sort((a, b) => compareTimes(a.time, b.time)),
-        [activeTab, upcomingClients, historyClients]
-    );
+        }).sort((a, b) => compareTimes(a.booking_hours, b.booking_hours));
+    }, [bookings, activeTab, searchQuery, clientsById]);
 
     return (
-        <div className="px-6 py-4 space-y-6 page-animate h-full pb-24">
+        <div className="px-6 py-6 space-y-6 max-w-2xl mx-auto pb-24">
+            <header>
+                <h1 className="text-2xl font-black text-gray-900">Mijozlar</h1>
+                <p className="text-gray-500 text-sm">Baza va tashriflar tarixi</p>
+            </header>
 
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-[var(--primary)]">Clients</h1>
-                <p className="text-[var(--text-light)] text-sm mt-1">Manage your schedule and history</p>
-            </div>
-
-            {/* Search (Optional UI element for completeness) */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-light)]" size={20} />
+            {/* Qidiruv */}
+            <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
                 <input
                     type="text"
-                    placeholder="Search clients..."
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-[var(--primary)] transition-colors"
+                    placeholder="Mijoz ismini yozing..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
                 />
             </div>
 
-            {/* Tabs */}
-            <div className="flex p-1 bg-gray-100 rounded-xl">
-                <button
-                    onClick={() => setActiveTab('upcoming')}
-                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'upcoming' ? 'bg-white shadow-sm text-[var(--primary)]' : 'text-gray-500'}`}
-                >
-                    Upcoming
-                </button>
-                <button
-                    onClick={() => setActiveTab('history')}
-                    className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'history' ? 'bg-white shadow-sm text-[var(--primary)]' : 'text-gray-500'}`}
-                >
-                    History
-                </button>
+            {/* Tablar */}
+            <div className="flex p-1.5 bg-gray-100 rounded-2xl">
+                {['upcoming', 'history'].map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === tab ? 'bg-white shadow-sm text-primary' : 'text-gray-500'
+                            }`}
+                    >
+                        {tab === 'upcoming' ? 'Navbatdagilar' : 'Tarix'}
+                    </button>
+                ))}
             </div>
 
-            {/* List */}
-            <div className="space-y-4">
-                {loading && <p className="text-[var(--text-muted)] font-medium">Loading clients...</p>}
-                {error && <p className="text-red-500 font-medium">{error}</p>}
-                {!loading && !error && currentList.map(client => (
-                    <div key={client.id} className="bg-white p-4 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)] flex items-center gap-4">
-                        <img src={client.image} alt={client.name} className="w-12 h-12 rounded-full" />
-                        <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-[var(--text-main)] truncate">{client.name}</h3>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text-light)]">
-                                <CalendarIcon size={12} />
-                                <span>{client.date} • {formatTo24h(client.time) || '--:--'}</span>
-                            </div>
-                        </div>
+            {/* Ro'yxat */}
+            <div className="space-y-3">
+                {loading ? (
+                    <div className="text-center py-10 text-gray-400">Yuklanmoqda...</div>
+                ) : filteredList.length > 0 ? (
+                    filteredList.map((b) => {
+                        const client = b.clientData || clientsById[b.client];
+                        const status = b.status?.toLowerCase();
 
-                        {/* Status/Action area based on tab */}
-                        {activeTab === 'upcoming' ? (
-                            <div className="text-right">
-                                <p className="text-xs font-semibold text-[var(--primary)] bg-indigo-50 px-2 py-1 rounded-md inline-block">
-                                    {client.services}
-                                </p>
-                            </div>
-                        ) : (
-                            <div>
-                                {client.status === 'completed' ? (
-                                    <div className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-md">
+                        return (
+                            <div key={b.id} className="bg-white p-4 rounded-3xl border border-gray-50 shadow-sm flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
+                                    <User size={24} />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="font-bold text-gray-900 leading-none mb-1">{client?.name || 'Nomaʼlum'}</h3>
+                                    <p className="text-[11px] text-gray-400 font-bold">{b.booking_hours} • Bugun</p>
+                                </div>
+
+                                {status === 'completed' ? (
+                                    <div className="flex items-center gap-1 text-green-500 bg-green-50 px-2 py-1 rounded-lg">
                                         <CheckCircle2 size={14} />
-                                        <span className="text-xs font-bold uppercase tracking-wider">Done</span>
+                                        <span className="text-[10px] font-black uppercase">OK</span>
+                                    </div>
+                                ) : status === 'rejected' || status === 'cancelled' ? (
+                                    <div className="flex items-center gap-1 text-red-400 bg-red-50 px-2 py-1 rounded-lg">
+                                        <XCircle size={14} />
+                                        <span className="text-[10px] font-black uppercase">X</span>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-1 text-red-500 bg-red-50 px-2 py-1 rounded-md">
-                                        <XCircle size={14} />
-                                        <span className="text-xs font-bold uppercase tracking-wider">Cancelled</span>
+                                    <div className="text-primary font-black text-[10px] bg-primary/5 px-2 py-1 rounded-lg uppercase">
+                                        Kutilmoqda
                                     </div>
                                 )}
                             </div>
-                        )}
-                    </div>
-                ))}
-
-                {!loading && !error && currentList.length === 0 && (
-                    <div className="text-center py-10">
-                        <div className="inline-block p-4 rounded-full bg-gray-50 mb-3">
-                            <Clock size={32} className="text-gray-300" />
-                        </div>
-                        <p className="text-[var(--text-muted)] font-medium">No clients found</p>
+                        );
+                    })
+                ) : (
+                    <div className="text-center py-20">
+                        <Clock className="mx-auto text-gray-200 mb-2" size={40} />
+                        <p className="text-gray-400 font-medium">Hech narsa topilmadi</p>
                     </div>
                 )}
             </div>
-
         </div>
     );
 }

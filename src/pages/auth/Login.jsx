@@ -97,7 +97,6 @@ function Login() {
 
             // Ensure we have an id field (some endpoints return _id)
             const userObj = {
-                role,
                 id: user?.id ?? user?._id ?? normalizedEmail,
                 email: user?.email ?? normalizedEmail,
                 ...user,
