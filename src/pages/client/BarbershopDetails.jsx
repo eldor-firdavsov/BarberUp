@@ -229,19 +229,6 @@ export default function BarbershopDetails() {
             return;
         }
 
-        // Check if user already has an active booking
-        const hasExistingBooking = latestBookings.some(booking => {
-            const isClientBooking = bookingMatchesClient(booking.client, user.id);
-            const isActive = !['rejected', 'cancelled', 'completed'].includes(String(booking.status || '').toLowerCase());
-            return isClientBooking && isActive;
-        });
-
-        if (hasExistingBooking) {
-            setError('You already have an active appointment booked. You can only book once a day.');
-            setBookingLoading(false);
-            return;
-        }
-
         console.log('[BOOKING CHECK] pre-POST slot=', safeSelectedSlot, 'taken=', isSlotTaken(latestBookings, safeSelectedSlot, barberKey));
         if (isSlotTaken(latestBookings, safeSelectedSlot, barberKey)) {
             setError('This time slot is already booked.');

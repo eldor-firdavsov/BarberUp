@@ -65,7 +65,7 @@ function Booking() {
         setCancelModal({ open: false, bookingId: null });
         const { data, error: updateError } = await updateBookingStatus(
             bookingId,
-            { status: 'rejected' }
+            { status: 'cancelled' }
         );
         if (updateError) {
             setError(updateError);
@@ -79,7 +79,7 @@ function Booking() {
     };
 
     const canCancelBooking = (booking) => {
-        return booking.status === 'pending';
+        return booking.status === 'pending' || booking.status === 'accepted';
     };
 
     const canRebook = (booking) => {
