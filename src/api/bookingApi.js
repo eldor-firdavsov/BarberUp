@@ -76,9 +76,17 @@ export function normalizeBooking(raw) {
         client: normalizeId(clientId),
         booking_hours: normalizedHours ?? '',
         status: normalizedStatus,
-        // Keep original objects for reference if needed
-        barberData: typeof raw.barber === 'object' ? raw.barber : null,
-        clientData: typeof raw.client === 'object' ? raw.client : null,
+        // Keep original objects for reference if needed, with normalized name fields
+        barberData: typeof raw.barber === 'object' ? {
+            ...raw.barber,
+            id: raw.barber._id ?? raw.barber.id ?? null,
+            name: raw.barber.fullname || raw.barber.name || 'Unknown',
+        } : null,
+        clientData: typeof raw.client === 'object' ? {
+            ...raw.client,
+            id: raw.client._id ?? raw.client.id ?? null,
+            name: raw.client.fullname || raw.client.name || 'Unknown',
+        } : null,
     };
 }
 
