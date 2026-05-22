@@ -1,5 +1,5 @@
-/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../api/supabase.js';
 
 const AuthContext = createContext();
 
@@ -62,6 +62,22 @@ export function AuthProvider({ children }) {
         } finally {
             setLoading(false);
         }
+
+        // Supabase session listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('[AUTH STATE CHANGE]', event);
+            if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+                setUser(null);
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+                localStorage.removeItem('onboarding_data');
+                window.location.href = '/';
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     /* ── login({ user, token? }) ──────────────────────────────────────────── */
@@ -133,8 +149,9 @@ export function AuthProvider({ children }) {
     };
 
     /* ── logout ───────────────────────────────────────────────────────────── */
-    const logout = () => {
+    const logout = async () => {
         console.log('[SESSION LOGOUT] start');
+        await supabase.auth.signOut().catch(console.error);
         setUser(null);
         localStorage.removeItem('user');
         localStorage.removeItem('token');

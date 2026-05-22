@@ -116,17 +116,20 @@ function BarberLayout() {
     }, [notificationsOpen]);
 
     return (
-        <div className="w-full min-h-screen flex flex-col justify-between bg-white">
+        <div className="w-full min-h-screen flex flex-col justify-between bg-[#f5f5f7]">
 
             {/* HEADER */}
-            <header className="w-full fixed  top-0 z-10  flex items-center justify-between px-6 py-4 bg-gray-100">
-                <div className="flex items-center gap-4">
-                    <img
-                        src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
-                        alt="avatar"
-                        className="w-14 h-14 rounded-full"
-                    />
-                    <h1 className="text-3xl font-bold text-indigo-700">
+            <header className="w-full fixed top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-black/5">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-2xl bg-black flex items-center justify-center">
+                        <img
+                            src="/Scissor.png"
+                            alt="logo"
+                            className="w-5 h-5 object-contain invert"
+                            onError={e => e.target.style.display = 'none'}
+                        />
+                    </div>
+                    <h1 className="text-lg font-bold text-[#111] tracking-[-0.03em]">
                         NavbatGo
                     </h1>
                 </div>
@@ -134,11 +137,11 @@ function BarberLayout() {
                 <div className="relative" ref={notificationRef}>
                     <button
                         onClick={() => setNotificationsOpen(!notificationsOpen)}
-                        className="relative text-indigo-700 hover:text-indigo-800 transition-colors"
+                        className="relative w-10 h-10 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center hover:bg-[#f0f0f0] transition-all duration-200"
                     >
-                        <Bell size={28} />
+                        <Bell size={18} className="text-[#111]" />
                         {notificationCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            <span className="absolute -top-1 -right-1 bg-black text-white text-[10px] font-bold rounded-full w-4.5 h-4.5 min-w-[18px] h-[18px] flex items-center justify-center px-1">
                                 {notificationCount}
                             </span>
                         )}
@@ -146,100 +149,83 @@ function BarberLayout() {
 
                     {/* Notification Dropdown */}
                     {notificationsOpen && (
-                        <div className="absolute z-90 right-0 mt-3 w-96 card-base shadow-2xl z-50 max-h-96 overflow-y-auto animate-in slide-in-from-top-2 fade-in-0 duration-200">
-                            <div className="p-6 border-b border-gray-100">
+                        <div className="absolute right-0 mt-3 w-96 bg-white rounded-[28px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.1)] z-50 max-h-[480px] overflow-y-auto">
+                            <div className="p-6 border-b border-black/5 sticky top-0 bg-white rounded-t-[28px]">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-h2">New Bookings</h3>
-                                        <p className="text-body text-muted">
+                                        <h3 className="text-[18px] font-bold text-[#111] tracking-[-0.02em]">New Bookings</h3>
+                                        <p className="text-sm text-[#666] font-medium mt-0.5">
                                             {notificationCount} pending booking{notificationCount !== 1 ? 's' : ''}
                                         </p>
                                     </div>
                                     <button
                                         onClick={() => setNotificationsOpen(false)}
-                                        className="btn-ghost btn-sm p-2"
+                                        className="w-8 h-8 bg-[#f8f8f8] border border-black/5 rounded-full flex items-center justify-center hover:bg-[#f0f0f0] transition-all"
                                     >
-                                        <X size={16} />
+                                        <X size={14} className="text-[#111]" />
                                     </button>
                                 </div>
                             </div>
 
                             {pendingBookings.length === 0 ? (
-                                <div className="empty-state">
-                                    <div className="empty-state-icon">
-                                        <Bell size={32} className="text-gray-400" />
+                                <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+                                    <div className="w-14 h-14 bg-[#f8f8f8] rounded-3xl flex items-center justify-center mb-4 border border-black/5">
+                                        <Bell size={24} className="text-[#999]" />
                                     </div>
-                                    <h3 className="empty-state-title">No pending bookings</h3>
-                                    <p className="empty-state-description">
-                                        All caught up! You don't have any pending bookings right now.
-                                    </p>
+                                    <p className="font-bold text-[#111] text-sm">No pending bookings</p>
+                                    <p className="text-xs text-[#666] mt-1 font-medium">All caught up! No pending requests.</p>
                                 </div>
                             ) : (
-                                <div className="divide-y divide-gray-100 ">
+                                <div className="divide-y divide-black/5">
                                     {pendingBookings.map((booking) => {
                                         const client = clientsById[booking.client] || booking.clientData;
                                         return (
-                                            <div key={booking.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                            <div key={booking.id} className="p-5 hover:bg-[#fafafa] transition-colors">
                                                 <div className="flex items-start gap-4">
-                                                    <div className="relative">
-                                                        <img
-                                                            src="https://i.pravatar.cc/150?u=client"
-                                                            alt={client?.name || client?.fullname || 'Client'}
-                                                            className="w-12 h-12 rounded-full shadow-md"
-                                                        />
-                                                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-orange-400 rounded-full border-2 border-white"></div>
+                                                    <div className="w-10 h-10 rounded-2xl bg-[#f8f8f8] border border-black/5 flex items-center justify-center shrink-0">
+                                                        <span className="text-[#111] font-bold text-sm">
+                                                            {(client?.name || client?.fullname || 'C').charAt(0).toUpperCase()}
+                                                        </span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="text-body font-semibold truncate mb-2">
+                                                        <h4 className="font-bold text-[#111] text-sm truncate">
                                                             {client?.name || client?.fullname || 'Client'}
                                                         </h4>
-                                                        <div className="space-y-2">
-                                                            <div className="flex items-center gap-2 text-small text-muted">
-                                                                <Clock size={14} />
+                                                        <div className="flex items-center gap-3 mt-1">
+                                                            <div className="flex items-center gap-1 text-xs text-[#666] font-medium">
+                                                                <Clock size={12} />
                                                                 <span>{booking.booking_hours}</span>
-                                                                <span className="status-badge warning">Pending</span>
                                                             </div>
-                                                            {client?.phone && (
-                                                                <div className="flex items-center gap-2 text-small text-muted">
-                                                                    <Phone size={14} />
-                                                                    <span>{client.phone}</span>
-                                                                </div>
-                                                            )}
+                                                            <span className="text-[10px] bg-[#f8f8f8] border border-black/5 text-[#666] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pending</span>
                                                         </div>
+                                                        {client?.phone && (
+                                                            <div className="flex items-center gap-1 text-xs text-[#666] font-medium mt-1">
+                                                                <Phone size={12} />
+                                                                <span>{client.phone}</span>
+                                                            </div>
+                                                        )}
 
-                                                        <div className="flex gap-3 mt-4">
+                                                        <div className="flex gap-2 mt-3">
                                                             <button
                                                                 onClick={() => handleAcceptBooking(booking.id)}
-                                                                className="btn-primary btn-sm flex items-center justify-center gap-2 hover:scale-105 transition-transform"
+                                                                className="flex-1 h-9 bg-black text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#111] transition-all disabled:opacity-50"
                                                                 disabled={pendingUpdateId === booking.id}
                                                             >
                                                                 {pendingUpdateId === booking.id ? (
-                                                                    <>
-                                                                        <div className="spinner"></div>
-                                                                        Accepting...
-                                                                    </>
+                                                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                                                 ) : (
-                                                                    <>
-                                                                        <Check size={14} />
-                                                                        Accept
-                                                                    </>
+                                                                    <><Check size={12} />Accept</>
                                                                 )}
                                                             </button>
                                                             <button
                                                                 onClick={() => handleRejectBooking(booking.id)}
-                                                                className="btn-secondary btn-sm flex items-center justify-center gap-2 hover:scale-105 transition-transform"
+                                                                className="flex-1 h-9 bg-[#f8f8f8] border border-black/5 text-[#111] rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#f0f0f0] transition-all disabled:opacity-50"
                                                                 disabled={pendingUpdateId === booking.id}
                                                             >
                                                                 {pendingUpdateId === booking.id ? (
-                                                                    <>
-                                                                        <div className="spinner"></div>
-                                                                        Rejecting...
-                                                                    </>
+                                                                    <div className="w-3 h-3 border-2 border-black/10 border-t-[#111] rounded-full animate-spin" />
                                                                 ) : (
-                                                                    <>
-                                                                        <X size={14} />
-                                                                        Reject
-                                                                    </>
+                                                                    <><X size={12} />Reject</>
                                                                 )}
                                                             </button>
                                                         </div>
@@ -256,12 +242,12 @@ function BarberLayout() {
             </header>
 
             {/* MAIN CONTENT */}
-            <main className="flex-1 py-20">
+            <main className="flex-1 pt-[72px] pb-[80px]">
                 <Outlet />
             </main>
 
             {/* FOOTER NAV */}
-            <footer className="w-full fixed bottom-0 bg-gray-100 p-4 flex justify-around items-center rounded-t-2xl">
+            <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-4 py-3 flex justify-around items-center">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
 
@@ -270,14 +256,14 @@ function BarberLayout() {
                             key={tab.id}
                             to={tab.path}
                             className={({ isActive }) =>
-                                `flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200
+                                `flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-200
                                 ${isActive
-                                    ? "bg-blue-100 text-blue-600"
-                                    : "text-gray-400"}`
+                                    ? "bg-black text-white"
+                                    : "text-[#888] hover:text-[#111]"}`
                             }
                         >
-                            <Icon size={22} />
-                            <span className="text-[10px] font-semibold tracking-wider">
+                            <Icon size={20} />
+                            <span className="text-[9px] font-bold tracking-[0.08em]">
                                 {tab.label}
                             </span>
                         </NavLink>

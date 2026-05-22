@@ -118,11 +118,10 @@ function Appointments() {
                             <button
                                 key={offset}
                                 onClick={() => setDayOffset(offset)}
-                                className={`flex-1 flex flex-col items-center py-3 rounded-2xl transition-all font-bold border ${
-                                    isSelected
-                                        ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
-                                        : 'bg-white text-gray-500 border-gray-100 hover:border-primary/30'
-                                }`}
+                                className={`flex-1 flex flex-col items-center py-3 rounded-2xl transition-all font-bold border ${isSelected
+                                    ? 'bg-primary text-gray-500 border-primary shadow-lg shadow-primary/20'
+                                    : 'bg-white text-gray-500 border-gray-100 hover:border-primary/30'
+                                    }`}
                             >
                                 <span className="text-[10px] uppercase tracking-wider leading-none mb-1 opacity-80">
                                     {label ?? d.toLocaleDateString('uz-UZ', { weekday: 'short' })}
@@ -184,7 +183,9 @@ function Appointments() {
                                             <h3 className="font-bold text-gray-800 text-sm leading-tight">
                                                 {client?.name || 'Mijoz'}
                                             </h3>
-                                            <p className="text-[11px] text-gray-400 font-medium">Soch turmagi</p>
+                                            <p className="text-[11px] text-gray-400 font-medium">
+                                                {booking.service_name || 'Soch turmagi'} {booking.service_price ? `(${Number(booking.service_price).toLocaleString()} UZS)` : ''}
+                                            </p>
                                         </div>
                                     </div>
 
@@ -208,17 +209,16 @@ function Appointments() {
                                                 </button>
                                             </>
                                         ) : (
-                                            <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider ${
-                                                status === 'accepted'   ? 'bg-blue-50 text-blue-600'   :
-                                                status === 'completed'  ? 'bg-green-50 text-green-600' :
-                                                status === 'in_progress'? 'bg-primary/10 text-primary'  :
-                                                'bg-gray-100 text-gray-400'
-                                            }`}>
-                                                {status === 'accepted'    ? 'Tasdiqlandi' :
-                                                 status === 'completed'   ? 'Tugadi'      :
-                                                 status === 'in_progress' ? 'Jarayonda'   :
-                                                 status === 'rejected'    ? 'Rad etildi'  :
-                                                 status}
+                                            <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider ${status === 'accepted' ? 'bg-blue-50 text-blue-600' :
+                                                status === 'completed' ? 'bg-green-50 text-green-600' :
+                                                    status === 'in_progress' ? 'bg-primary/10 text-primary' :
+                                                        'bg-gray-100 text-gray-400'
+                                                }`}>
+                                                {status === 'accepted' ? 'Tasdiqlandi' :
+                                                    status === 'completed' ? 'Tugadi' :
+                                                        status === 'in_progress' ? 'Jarayonda' :
+                                                            status === 'rejected' ? 'Rad etildi' :
+                                                                status}
                                             </span>
                                         )}
                                     </div>

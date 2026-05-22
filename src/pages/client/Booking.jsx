@@ -45,9 +45,7 @@ function Booking() {
             setLoading(false);
         }
         load();
-        return () => {
-            mounted = false;
-        };
+        return () => { mounted = false; };
     }, [user?.id]);
 
     const sortedBookings = useMemo(
@@ -92,7 +90,6 @@ function Booking() {
 
         console.log('[REBOOK] Navigating to barber details for rebooking:', barber.id);
 
-        // Navigate to barber details page with rebooking context
         navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`, {
             state: {
                 rebookFrom: booking.booking_hours,
@@ -101,96 +98,115 @@ function Booking() {
         });
     };
 
+    const statusStyles = {
+        cancelled: { bg: 'bg-red-50', text: 'text-red-600', label: 'Cancelled' },
+        accepted: { bg: 'bg-[#f8f8f8]', text: 'text-[#111]', label: 'Accepted' },
+        rejected: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Rejected' },
+        pending: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Pending' },
+        completed: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Completed' },
+        in_progress: { bg: 'bg-black', text: 'text-white', label: 'In Progress' },
+    };
+
     return (
-        <div className="px-6 py-4 space-y-6 page-animate h-full pb-24">
+        <div className="px-4 py-8 sm:px-6 space-y-6 page-animate max-w-md mx-auto pb-24">
             <div>
-                <h1 className="text-2xl font-bold text-[var(--primary)]">Bookings</h1>
-                <p className="text-[var(--text-light)] text-sm mt-1">Your current and past sessions</p>
+                <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">Bookings</h1>
+                <p className="text-sm text-[#666] font-medium mt-1">Your current and past sessions</p>
             </div>
 
+            {/* Loading */}
             {loading && (
-                <div className="text-center py-8">
-                    <p className="text-[var(--text-muted)] font-medium">Loading bookings...</p>
+                <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="h-28 skeleton rounded-3xl" />
+                    ))}
                 </div>
             )}
 
+            {/* Error */}
             {error && !loading && (
-                <div className="text-center py-8">
-                    <p className="text-red-500 font-medium">{error}</p>
+                <div className="rounded-3xl border border-red-100 bg-red-50 p-5">
+                    <p className="font-semibold text-red-700 text-sm">{error}</p>
                 </div>
             )}
 
+            {/* Success */}
             {successMessage && (
-                <div className="text-center py-4">
-                    <p className="text-green-600 font-medium bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-                        {successMessage}
-                    </p>
+                <div className="rounded-3xl border border-green-100 bg-green-50 p-5">
+                    <p className="font-semibold text-green-700 text-sm">{successMessage}</p>
                 </div>
             )}
 
+            {/* Empty */}
             {!loading && !error && sortedBookings.length === 0 && (
-                <div className="text-center py-8">
-                    <p className="text-[var(--text-muted)] font-medium">No bookings yet</p>
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-16 h-16 bg-white border border-black/5 rounded-3xl flex items-center justify-center mb-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+                        <Calendar className="text-[#ccc]" size={28} />
+                    </div>
+                    <p className="font-bold text-[#111] text-sm">No bookings yet</p>
+                    <p className="text-[#666] text-xs mt-1 font-medium">Your sessions will appear here</p>
                 </div>
             )}
 
+            {/* Booking List */}
             {!loading && !error && sortedBookings.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {sortedBookings.map((booking) => {
                         const barber = barbersById[booking.barber];
                         const isCancellable = canCancelBooking(booking);
                         const canRebookBooking = canRebook(booking);
+                        const statusKey = booking.status?.toLowerCase() || 'pending';
+                        const statusStyle = statusStyles[statusKey] ?? statusStyles.pending;
+
                         return (
-                            <div key={booking.id} className="bg-white p-4 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border border-[var(--border-color)]">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                        <h3 className="font-bold text-[var(--text-main)]">{barber?.shopName || barber?.name || 'Barbershop'}</h3>
-                                        <p className="text-sm text-[var(--text-muted)]">{barber?.name || 'Barber'}</p>
+                            <div key={booking.id} className="bg-white rounded-[24px] p-5 border border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_40px_rgba(0,0,0,0.06)] transition-all duration-200">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex-1 min-w-0 mr-3">
+                                        <h3 className="font-bold text-[#111] truncate">{barber?.office_name || barber?.shopName || 'Barbershop'}</h3>
+                                        <p className="text-sm text-[#666] font-medium mt-0.5">{barber?.fullname || barber?.name || 'Barber'}</p>
+                                        {booking.service_name && (
+                                            <p className="text-xs text-[#888] mt-1 font-semibold">
+                                                {booking.service_name}{booking.service_price ? ` · ${Number(booking.service_price).toLocaleString()} UZS` : ''}
+                                            </p>
+                                        )}
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1.5 shrink-0">
                                         {isCancellable && (
                                             <button
                                                 onClick={() => handleCancelBooking(booking.id)}
-                                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                                className="w-9 h-9 flex items-center justify-center bg-[#f8f8f8] border border-black/5 text-[#888] rounded-xl hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all"
                                                 title="Cancel booking"
                                             >
-                                                <X size={16} />
+                                                <X size={15} />
                                             </button>
                                         )}
                                         {canRebookBooking && (
                                             <button
                                                 onClick={() => handleRebook(booking)}
-                                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                                                className="w-9 h-9 flex items-center justify-center bg-[#f8f8f8] border border-black/5 text-[#888] rounded-xl hover:bg-[#f0f0f0] hover:text-[#111] transition-all"
                                                 title="Book again"
                                             >
-                                                <RefreshCw size={16} />
+                                                <RefreshCw size={15} />
                                             </button>
                                         )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 text-sm text-[var(--text-light)] mb-3">
-                                    <span className="flex items-center gap-1"><Calendar size={14} /> Today</span>
-                                    <span className="flex items-center gap-1"><Clock size={14} /> {formatTo24h(booking.booking_hours) || '--:--'}</span>
+
+                                <div className="flex items-center gap-4 text-sm text-[#888] font-medium mb-4">
+                                    <span className="flex items-center gap-1.5"><Calendar size={13} /> Today</span>
+                                    <span className="flex items-center gap-1.5"><Clock size={13} /> {formatTo24h(booking.booking_hours) || '--:--'}</span>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <p className="text-xs font-bold uppercase tracking-wider">
-                                        <span className={`px-2 py-1 rounded-md ${booking.status === 'cancelled'
-                                            ? 'bg-red-100 text-red-700'
-                                            : booking.status === 'accepted'
-                                                ? 'bg-green-100 text-green-700'
-                                                : booking.status === 'rejected'
-                                                    ? 'bg-gray-100 text-gray-700'
-                                                    : 'bg-orange-100 text-orange-700'
-                                            }`}>
-                                            {booking.status || 'pending'}
-                                        </span>
-                                    </p>
+
+                                <div className="flex items-center justify-between pt-4 border-t border-black/5">
+                                    <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider border border-black/5 ${statusStyle.bg} ${statusStyle.text}`}>
+                                        {statusStyle.label}
+                                    </span>
                                     {canRebookBooking && (
                                         <button
                                             onClick={() => handleRebook(booking)}
-                                            className="text-blue-500 hover:text-blue-700 text-sm font-medium flex items-center gap-1 transition-colors"
+                                            className="text-[#111] text-xs font-bold flex items-center gap-1.5 hover:opacity-70 transition-opacity"
                                         >
-                                            <RefreshCw size={14} />
+                                            <RefreshCw size={13} />
                                             Rebook
                                         </button>
                                     )}
@@ -201,29 +217,29 @@ function Booking() {
                 </div>
             )}
 
-            {/* Cancel Booking Confirmation Modal */}
+            {/* Cancel Confirmation Modal */}
             {cancelModal.open && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                <AlertCircle className="text-red-600" size={20} />
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
+                    <div className="bg-white rounded-[32px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-md w-full p-7">
+                        <div className="flex items-center gap-4 mb-5">
+                            <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center">
+                                <AlertCircle className="text-[#888]" size={22} />
                             </div>
-                            <h3 className="text-lg font-bold text-[var(--text-main)]">Cancel Booking</h3>
+                            <h3 className="text-[18px] font-bold text-[#111] tracking-[-0.02em]">Cancel Booking</h3>
                         </div>
-                        <p className="text-[var(--text-light)] mb-6">
+                        <p className="text-sm text-[#666] font-medium mb-7 leading-relaxed">
                             Are you sure you want to cancel this booking? This action cannot be undone.
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setCancelModal({ open: false, bookingId: null })}
-                                className="flex-1 px-4 py-2 border border-[var(--border-color)] rounded-lg text-[var(--text-main)] hover:bg-gray-50 transition-colors"
+                                className="flex-1 h-13 px-4 py-3 border border-black/5 rounded-2xl text-[#111] font-semibold text-sm hover:bg-[#f8f8f8] transition-all bg-white shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
                             >
                                 Keep Booking
                             </button>
                             <button
                                 onClick={confirmCancelBooking}
-                                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                className="flex-1 h-13 px-4 py-3 bg-black text-white rounded-2xl font-semibold text-sm hover:bg-[#111] transition-all shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
                             >
                                 Cancel Booking
                             </button>

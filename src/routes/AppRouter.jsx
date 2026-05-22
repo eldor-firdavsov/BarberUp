@@ -11,6 +11,7 @@ import ClientDashboard from '../pages/client/Dashboard.jsx';
 import ClientSettings from '../pages/client/Settings.jsx';
 import ClientBooking from '../pages/client/Booking.jsx';
 import BarbershopDetails from '../pages/client/BarbershopDetails.jsx';
+import BookingStatus from '../pages/client/BookingStatus.jsx';
 
 import BarberLayout from '../layouts/BarberLayout.jsx';
 import BarberDashboard from '../pages/barber/Dashboard.jsx';
@@ -51,6 +52,7 @@ function AppRouter() {
                     <Route path="dashboard" element={<ClientDashboard />} />
                     <Route path="bookings" element={<ClientBooking />} />
                     <Route path="settings" element={<ClientSettings />} />
+                    <Route path="booking-status/:id" element={<BookingStatus />} />
                 </Route>
 
                 <Route

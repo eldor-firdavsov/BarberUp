@@ -51,157 +51,143 @@ function ClientProfileModal({ client, isOpen, onClose }) {
 
     if (!isOpen || !client) return null;
 
+    const showupRate = stats.totalVisits > 0
+        ? Math.round((stats.completedBookings / stats.totalVisits) * 100)
+        : 0;
+
+    const reliabilityLabel = stats.totalVisits > 0
+        ? stats.completedBookings >= stats.totalVisits * 0.8
+            ? 'Excellent reliability'
+            : stats.completedBookings >= stats.totalVisits * 0.6
+                ? 'Good reliability'
+                : 'Needs improvement'
+        : 'No booking history yet';
+
+    const lastBookingStatusStyle = {
+        completed: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Completed' },
+        cancelled: { bg: 'bg-red-50', text: 'text-red-500', label: 'Cancelled' },
+        rejected: { bg: 'bg-[#f8f8f8]', text: 'text-[#888]', label: 'Rejected' },
+        pending: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Pending' },
+    };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
+            <div className="bg-white rounded-[32px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-md w-full max-h-[90vh] overflow-y-auto">
+
                 {/* Header */}
-                <div className="relative bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-t-2xl">
+                <div className="relative p-6 border-b border-black/5">
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-white transition-colors"
+                        className="absolute top-5 right-5 w-9 h-9 bg-[#f8f8f8] border border-black/5 rounded-full flex items-center justify-center hover:bg-[#f0f0f0] transition-all"
                     >
-                        <X size={20} />
+                        <X size={16} className="text-[#111]" />
                     </button>
 
-                    <div className="flex items-center gap-4">
-                        <img
-                            src={client.avatar || 'https://i.pravatar.cc/150?u=client'}
-                            alt={client.name || client.fullname || 'Client'}
-                            className="w-20 h-20 rounded-full border-4 border-white/20"
-                        />
-                        <div className="text-white">
-                            <h2 className="text-2xl font-bold mb-1">
+                    <div className="flex items-center gap-4 pr-12">
+                        <div className="w-16 h-16 rounded-[20px] bg-[#f8f8f8] border border-black/5 flex items-center justify-center">
+                            {client.avatar
+                                ? <img src={client.avatar} alt={client.name || client.fullname || 'Client'} className="w-16 h-16 rounded-[20px] object-cover" />
+                                : <span className="text-[#111] font-bold text-2xl">
+                                    {(client.name || client.fullname || 'C').charAt(0).toUpperCase()}
+                                </span>
+                            }
+                        </div>
+                        <div>
+                            <h2 className="text-[20px] font-bold text-[#111] tracking-[-0.02em]">
                                 {client.name || client.fullname || 'Client'}
                             </h2>
-                            <p className="text-white/90">Client since {new Date(client.createdAt).getFullYear()}</p>
+                            <p className="text-sm text-[#666] font-medium mt-0.5">
+                                Client since {client.createdAt ? new Date(client.createdAt).getFullYear() : '—'}
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-6 space-y-6">
+
                     {/* Basic Info */}
-                    <div className="space-y-4 mb-6">
-                        <div className="flex items-center gap-3 text-gray-600">
-                            <Phone size={18} />
-                            <span>{client.phone || '+998 XX XXX XX XX'}</span>
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3 bg-[#f8f8f8] border border-black/5 rounded-2xl px-4 py-3">
+                            <Phone size={15} className="text-[#888] shrink-0" />
+                            <span className="text-sm font-medium text-[#555]">{client.phone || '+998 XX XXX XX XX'}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-gray-600">
-                            <User size={18} />
-                            <span>{client.email || 'client@example.com'}</span>
+                        <div className="flex items-center gap-3 bg-[#f8f8f8] border border-black/5 rounded-2xl px-4 py-3">
+                            <User size={15} className="text-[#888] shrink-0" />
+                            <span className="text-sm font-medium text-[#555]">{client.email || 'client@example.com'}</span>
                         </div>
                     </div>
 
                     {/* Stats */}
-                    <div className="mb-6">
-                        <h3 className="font-bold text-gray-900 mb-4">Booking History</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                    <Calendar size={16} />
-                                    <span className="text-sm">Total Visits</span>
+                    <div>
+                        <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">Booking History</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {[
+                                { icon: <Calendar size={14} />, label: 'Total Visits', value: stats.totalVisits },
+                                { icon: <TrendingUp size={14} />, label: 'Completed', value: stats.completedBookings },
+                                { icon: <X size={14} />, label: 'Cancellations', value: stats.cancellations },
+                                { icon: <AlertCircle size={14} />, label: 'No Shows', value: stats.noShows },
+                            ].map(({ icon, label, value }) => (
+                                <div key={label} className="bg-[#f8f8f8] border border-black/5 rounded-2xl p-4">
+                                    <div className="flex items-center gap-2 text-[#888] mb-2">
+                                        {icon}
+                                        <span className="text-xs font-semibold text-[#888]">{label}</span>
+                                    </div>
+                                    <p className="text-2xl font-bold text-[#111]">
+                                        {loading ? '—' : value}
+                                    </p>
                                 </div>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {loading ? '...' : stats.totalVisits}
-                                </p>
-                            </div>
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                    <TrendingUp size={16} />
-                                    <span className="text-sm">Completed</span>
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {loading ? '...' : stats.completedBookings}
-                                </p>
-                            </div>
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                    <X size={16} />
-                                    <span className="text-sm">Cancellations</span>
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {loading ? '...' : stats.cancellations}
-                                </p>
-                            </div>
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                    <AlertCircle size={16} />
-                                    <span className="text-sm">No Shows</span>
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {loading ? '...' : stats.noShows}
-                                </p>
-                            </div>
+                            ))}
                         </div>
                     </div>
 
                     {/* Last Booking */}
                     {stats.lastBooking && (
-                        <div className="mb-6">
-                            <h3 className="font-bold text-gray-900 mb-3">Last Booking</h3>
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <div className="flex justify-between items-center">
+                        <div>
+                            <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">Last Booking</p>
+                            <div className="bg-[#f8f8f8] border border-black/5 rounded-2xl p-4">
+                                <div className="flex justify-between items-center mb-3">
                                     <div>
-                                        <p className="text-sm text-gray-600">Date</p>
-                                        <p className="font-medium text-gray-900">
+                                        <p className="text-[10px] text-[#888] font-semibold uppercase tracking-wider mb-1">Date</p>
+                                        <p className="font-bold text-[#111] text-sm">
                                             {new Date(stats.lastBooking.createdAt).toLocaleDateString()}
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm text-gray-600">Time</p>
-                                        <p className="font-medium text-gray-900">
+                                        <p className="text-[10px] text-[#888] font-semibold uppercase tracking-wider mb-1">Time</p>
+                                        <p className="font-bold text-[#111] text-sm">
                                             {stats.lastBooking.booking_hours}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="mt-3">
-                                    <span className={`px-2 py-1 text-xs font-bold rounded-md ${stats.lastBooking.status === 'completed'
-                                            ? 'bg-green-100 text-green-700'
-                                            : stats.lastBooking.status === 'cancelled'
-                                                ? 'bg-red-100 text-red-700'
-                                                : stats.lastBooking.status === 'rejected'
-                                                    ? 'bg-gray-100 text-gray-700'
-                                                    : 'bg-orange-100 text-orange-700'
-                                        }`}>
-                                        {stats.lastBooking.status || 'pending'}
-                                    </span>
-                                </div>
+                                {(() => {
+                                    const s = stats.lastBooking.status?.toLowerCase() || 'pending';
+                                    const cfg = lastBookingStatusStyle[s] ?? lastBookingStatusStyle.pending;
+                                    return (
+                                        <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider border border-black/5 ${cfg.bg} ${cfg.text}`}>
+                                            {cfg.label}
+                                        </span>
+                                    );
+                                })()}
                             </div>
                         </div>
                     )}
 
-                    {/* Client Reliability */}
+                    {/* Reliability Score */}
                     <div>
-                        <h3 className="font-bold text-gray-900 mb-3">Reliability Score</h3>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-gray-600">Show-up Rate</span>
-                                <span className="font-bold text-gray-900">
-                                    {stats.totalVisits > 0
-                                        ? Math.round((stats.completedBookings / stats.totalVisits) * 100)
-                                        : 0}%
-                                </span>
+                        <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">Reliability Score</p>
+                        <div className="bg-[#f8f8f8] border border-black/5 rounded-2xl p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-sm font-medium text-[#666]">Show-up Rate</span>
+                                <span className="font-bold text-[#111]">{loading ? '—' : `${showupRate}%`}</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-black/5 rounded-full h-2 mb-2">
                                 <div
-                                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                                    style={{
-                                        width: `${stats.totalVisits > 0
-                                            ? (stats.completedBookings / stats.totalVisits) * 100
-                                            : 0}%`
-                                    }}
+                                    className="bg-black h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${loading ? 0 : showupRate}%` }}
                                 />
                             </div>
-                            <p className="text-xs text-gray-500 mt-2">
-                                {stats.totalVisits > 0
-                                    ? stats.completedBookings >= stats.totalVisits * 0.8
-                                        ? 'Excellent reliability'
-                                        : stats.completedBookings >= stats.totalVisits * 0.6
-                                            ? 'Good reliability'
-                                            : 'Needs improvement'
-                                    : 'No booking history yet'
-                                }
-                            </p>
+                            <p className="text-xs text-[#888] font-medium">{loading ? '—' : reliabilityLabel}</p>
                         </div>
                     </div>
                 </div>

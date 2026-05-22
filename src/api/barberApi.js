@@ -1,4 +1,4 @@
-import { httpClient, getApiError } from './httpClient.js';
+import { supabase } from './supabase.js';
 import { formatTo24h } from '../utils/time.js';
 
 export function normalizeBarber(raw) {
@@ -7,18 +7,41 @@ export function normalizeBarber(raw) {
     const [startRaw, endRaw] = String(workingHoursRaw).split('-').map((v) => v.trim());
     const start = formatTo24h(startRaw);
     const end = formatTo24h(endRaw);
+
+    let officeImgUrl = '';
+    let servicesList = [];
+
+    const rawOfficeImg = raw.office_img ?? raw.shopImage ?? '';
+    if (rawOfficeImg && (rawOfficeImg.trim().startsWith('{') || rawOfficeImg.trim().startsWith('['))) {
+        try {
+            const parsed = JSON.parse(rawOfficeImg);
+            if (parsed && typeof parsed === 'object') {
+                officeImgUrl = parsed.url || '';
+                servicesList = parsed.services || [];
+            } else {
+                officeImgUrl = rawOfficeImg;
+            }
+        } catch (e) {
+            officeImgUrl = rawOfficeImg;
+        }
+    } else {
+        officeImgUrl = rawOfficeImg;
+    }
+
     return {
         ...raw,
-        id: raw._id ?? raw.id ?? null,
+        id: raw.id ?? null,
         role: 'barber',
         name: raw.fullname || raw.name || 'Unknown',
         shopName: raw.office_name || raw.shopName || 'Unnamed Shop',
         workingHours: start && end ? `${start} - ${end}` : 'N/A',
         avgPrice: raw.average_price ?? raw.avgPrice ?? 0,
         profile_img: raw.profile_img ?? raw.profileImage ?? '',
-        office_img: raw.office_img ?? raw.shopImage ?? '',
+        office_img: officeImgUrl,
+        shopImage: officeImgUrl,
         email: raw.email ?? '',
         phone: raw.phone ?? '',
+        services: servicesList.length > 0 ? servicesList : (raw.services ?? []),
     };
 }
 
@@ -26,7 +49,6 @@ export async function createBarber(data) {
     const payload = {
         fullname: data.name ?? data.fullname ?? '',
         email: data.email ?? '',
-        password: data.password ?? '',
         phone: data.phone ?? '',
         office_name: data.shopName ?? data.office_name ?? '',
         working_hours: (() => {
@@ -37,61 +59,77 @@ export async function createBarber(data) {
             return start && end ? `${start} - ${end}` : '';
         })(),
         average_price: data.avgPrice ?? data.average_price ?? '',
+        profile_img: data.profile_img ?? '',
+        office_img: (() => {
+            const url = data.office_img ?? data.officeImage ?? '';
+            const services = data.services ?? [];
+            if (services.length > 0) {
+                return JSON.stringify({ url, services });
+            }
+            return url;
+        })()
     };
 
     try {
-        const response = await httpClient.post('/barber', payload);
-        const barber = normalizeBarber(response?.data?.data ?? response?.data);
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: data.email,
+            password: data.password,
+        });
+
+        if (authError) return { data: null, error: authError.message };
+        if (!authData.user) return { data: null, error: 'Failed to create user.' };
+
+        const { data: barberData, error: insertError } = await supabase
+            .from('barbers')
+            .insert([{ id: authData.user.id, ...payload }])
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('[CREATE BARBER] insert error', insertError);
+            return { data: null, error: 'Failed to save barber profile.' };
+        }
+
+        const barber = normalizeBarber(barberData);
         return { data: barber, error: null };
     } catch (error) {
-        return { data: null, error: getApiError(error, 'Failed to create barber account.') };
+        return { data: null, error: 'Failed to create barber account.' };
     }
 }
 
 export async function getBarbers() {
     try {
-        const response = await httpClient.get('/barber');
-        const rawList = Array.isArray(response?.data) ? response.data : (response?.data?.data ?? []);
-        return { data: rawList.map(normalizeBarber), error: null };
+        const { data, error } = await supabase.from('barbers').select('*');
+        if (error) return { data: null, error: error.message };
+        return { data: (data || []).map(normalizeBarber), error: null };
     } catch (error) {
-        return { data: null, error: mapLoginError(error, 'Failed to load barbers.') };
+        return { data: null, error: 'Failed to load barbers.' };
     }
 }
 
-/**
- * Maps HTTP error codes to human-readable login messages.
- */
-function mapLoginError(error) {
-    if (error?.code === 'ECONNABORTED') return 'Request timeout. Please try again.';
-    if (!error?.response) return 'Cannot connect to server. Check your connection.';
-    const status = error.response.status;
-    if (status === 401) return 'Invalid email or password.';
-    if (status === 403) return 'Account access denied.';
-    if (status === 404) return 'Account not found.';
-    if (status >= 500) return 'Server error. Please try again.';
-    return error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Something went wrong.';
-}
-
-/**
- * POST /barber/login
- * Returns { data: { token, user }, error }
- */
 export async function loginBarber(email, password) {
     console.log('[LOGIN BARBER] request start ->', { email });
     try {
-        const response = await httpClient.post('/barber/login', { email, password });
-        console.log('[LOGIN BARBER] response success ->', response.data);
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
 
-        const raw = response?.data?.data ?? response?.data ?? {};
-        const token = raw.token ?? response?.data?.token ?? null;
-        const userData = raw.barber ?? raw.user ?? raw;
-        const user = normalizeBarber(userData);
+        if (authError) return { data: null, error: authError.message };
 
-        console.log('[LOGIN BARBER] token stored ->', !!token, '| user ->', user?.email);
-        return { data: { token, user }, error: null };
+        const { data: barberData, error: profileError } = await supabase
+            .from('barbers')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError || !barberData) {
+            return { data: null, error: 'Barber profile not found.' };
+        }
+
+        const user = normalizeBarber(barberData);
+        return { data: { token: authData.session.access_token, user }, error: null };
     } catch (error) {
-        const msg = mapLoginError(error);
-        console.error('[LOGIN BARBER] error ->', msg, error?.response?.data ?? '');
-        return { data: null, error: msg };
+        return { data: null, error: 'Something went wrong.' };
     }
 }

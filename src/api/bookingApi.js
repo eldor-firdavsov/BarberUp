@@ -1,18 +1,10 @@
-import { getApiError, httpClient } from './httpClient.js';
+import { supabase } from './supabase.js';
 import { formatTo24h } from '../utils/time.js';
 
-/** Same rules as time-layer ref matching: string id or populated { _id } */
 export function normalizeBookingRefId(value) {
     if (value == null || value === '') return null;
-    if (typeof value === 'string') {
-        const t = value.trim();
-        return t || null;
-    }
-    if (typeof value === 'object') {
-        const nested = value._id ?? value.id ?? value.$oid;
-        if (nested != null && nested !== value) return normalizeBookingRefId(nested);
-        if (typeof nested === 'string') return nested.trim() || null;
-    }
+    if (typeof value === 'string') return value.trim() || null;
+    if (typeof value === 'object') return value.id || value._id || null;
     return String(value);
 }
 
@@ -30,98 +22,94 @@ export function bookingMatchesClient(bookingClientField, clientId) {
     return String(a) === String(b);
 }
 
-function normalizeId(value) {
-    return normalizeBookingRefId(value);
-}
-
 export function normalizeBooking(raw) {
     if (!raw) return null;
     const normalizedHours = formatTo24h(raw.booking_hours);
-    if (!normalizedHours && raw.booking_hours != null) {
-        console.warn('[BOOKING CHECK] Unparseable booking_hours, raw=', raw.booking_hours);
+
+    // map Supabase relation objects
+    let barberData = null;
+    let clientData = null;
+
+    if (raw.barbers) {
+        barberData = {
+            ...raw.barbers,
+            name: raw.barbers.fullname || raw.barbers.name || 'Unknown',
+        };
     }
 
-    // Handle both ID references and populated objects
-    let barberId = null;
-    let clientId = null;
-
-    if (raw.barber) {
-        if (typeof raw.barber === 'string') {
-            barberId = raw.barber;
-        } else if (typeof raw.barber === 'object') {
-            barberId = raw.barber._id ?? raw.barber.id;
-        }
+    if (raw.clients) {
+        clientData = {
+            ...raw.clients,
+            name: raw.clients.fullname || raw.clients.name || 'Unknown',
+        };
     }
 
-    if (raw.client) {
-        if (typeof raw.client === 'string') {
-            clientId = raw.client;
-        } else if (typeof raw.client === 'object') {
-            clientId = raw.client._id ?? raw.client.id;
-        }
-    }
+    // fallback mapping if old data shapes are passed
+    if (!barberData && raw.barberData) barberData = raw.barberData;
+    if (!clientData && raw.clientData) clientData = raw.clientData;
 
-    // Normalize status - backend uses 'active' for 'accepted'
     let normalizedStatus = raw.status ?? 'pending';
-    if (normalizedStatus === 'active') {
-        normalizedStatus = 'accepted';
-    }
-
-    console.log('[BOOKING NORMALIZE] id=', raw._id, 'barberId=', barberId, 'clientId=', clientId, 'status=', normalizedStatus);
+    if (normalizedStatus === 'active') normalizedStatus = 'accepted';
 
     return {
         ...raw,
-        id: raw._id ?? raw.id ?? null,
-        barber: normalizeId(barberId),
-        client: normalizeId(clientId),
+        id: raw.id ?? null,
+        barber: raw.barber_id ?? raw.barber ?? null,
+        client: raw.client_id ?? raw.client ?? null,
         booking_hours: normalizedHours ?? '',
         status: normalizedStatus,
-        // Keep original objects for reference if needed, with normalized name fields
-        barberData: typeof raw.barber === 'object' ? {
-            ...raw.barber,
-            id: raw.barber._id ?? raw.barber.id ?? null,
-            name: raw.barber.fullname || raw.barber.name || 'Unknown',
-        } : null,
-        clientData: typeof raw.client === 'object' ? {
-            ...raw.client,
-            id: raw.client._id ?? raw.client.id ?? null,
-            name: raw.client.fullname || raw.client.name || 'Unknown',
-        } : null,
+        service_name: raw.service_name ?? '',
+        service_price: raw.service_price ?? '',
+        barberData,
+        clientData,
     };
 }
 
 export async function createBooking(payload) {
     const safePayload = {
-        ...payload,
-        booking_hours: formatTo24h(payload?.booking_hours) ?? payload?.booking_hours,
+        barber_id: normalizeBookingRefId(payload.barber),
+        client_id: normalizeBookingRefId(payload.client),
+        booking_hours: formatTo24h(payload.booking_hours),
+        status: 'pending',
+        service_name: payload.service_name ?? null,
+        service_price: payload.service_price ?? null
     };
-    console.log('[BOOKING POST]', safePayload);
+    
     try {
-        const response = await httpClient.post('/booking', safePayload);
-        const data = normalizeBooking(response?.data?.data ?? response?.data);
-        console.log('[BOOKING POST] ok', data);
-        return { data, error: null };
-    } catch (error) {
-        console.error('[BOOKING POST] failed', getApiError(error));
-        return { data: null, error: getApiError(error, 'Failed to create booking.') };
+        const { data, error } = await supabase
+            .from('bookings')
+            .insert([safePayload])
+            .select('*, barbers(*), clients(*)')
+            .single();
+
+        if (error) {
+            console.error('[BOOKING POST] Supabase error:', error);
+            return { data: null, error: error.message };
+        }
+
+        return { data: normalizeBooking(data), error: null };
+    } catch (err) {
+        return { data: null, error: 'Failed to create booking.' };
     }
 }
 
 export async function getBookings() {
     try {
-        const response = await httpClient.get('/booking');
-        const rawList = Array.isArray(response?.data) ? response.data : (response?.data?.data ?? []);
-        const list = rawList.map(normalizeBooking);
-        console.log('[BOOKING REFETCH] count=', list.length);
-        return { data: list, error: null };
-    } catch (error) {
-        console.error('[BOOKING REFETCH] GET failed', getApiError(error));
-        return { data: null, error: getApiError(error, 'Failed to fetch bookings.') };
+        const { data, error } = await supabase
+            .from('bookings')
+            .select('*, barbers(*), clients(*)');
+
+        if (error) {
+            console.error('[BOOKING GET] Supabase error:', error);
+            return { data: null, error: error.message };
+        }
+
+        return { data: (data || []).map(normalizeBooking), error: null };
+    } catch (err) {
+        return { data: null, error: 'Failed to fetch bookings.' };
     }
 }
 
-// Map frontend status names → backend enum values
-// Backend only accepts: pending | active | rejected | completed
 const STATUS_MAP = {
     accepted:    'active',
     in_progress: 'active',
@@ -133,24 +121,28 @@ const STATUS_MAP = {
 
 export async function updateBookingStatus(id, payload) {
     const safeId = normalizeBookingRefId(id);
-    if (safeId == null || safeId === '') {
-        console.error('[404 DEBUG] updateBookingStatus blocked: invalid id', id);
-        return { data: null, error: 'Invalid booking id.' };
+    if (!safeId) return { data: null, error: 'Invalid booking id.' };
+
+    let mappedStatus = payload.status;
+    if (payload.status) {
+        mappedStatus = STATUS_MAP[String(payload.status).toLowerCase()] ?? payload.status;
     }
 
-    // Normalize status to backend-accepted enum if payload contains a status field
-    let safePayload = payload;
-    if (payload && typeof payload === 'object' && payload.status) {
-        const mapped = STATUS_MAP[String(payload.status).toLowerCase()];
-        safePayload = { ...payload, status: mapped ?? payload.status };
-    }
-
-    console.log('[BOOKING PATCH]', safeId, safePayload);
     try {
-        const response = await httpClient.patch(`/booking/${safeId}`, safePayload);
-        return { data: normalizeBooking(response?.data?.data ?? response?.data), error: null };
-    } catch (error) {
-        console.error('[404 DEBUG] PATCH /booking/:id failed', safeId, getApiError(error));
-        return { data: null, error: getApiError(error, 'Failed to update booking.') };
+        const { data, error } = await supabase
+            .from('bookings')
+            .update({ status: mappedStatus })
+            .eq('id', safeId)
+            .select('*, barbers(*), clients(*)')
+            .single();
+
+        if (error) {
+            console.error('[BOOKING PATCH] Supabase error:', error);
+            return { data: null, error: error.message };
+        }
+
+        return { data: normalizeBooking(data), error: null };
+    } catch (err) {
+        return { data: null, error: 'Failed to update booking.' };
     }
 }

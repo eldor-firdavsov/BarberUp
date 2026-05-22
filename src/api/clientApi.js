@@ -1,10 +1,10 @@
-import { httpClient } from './httpClient.js';
+import { supabase } from './supabase.js';
 
-function normalizeClient(raw) {
+export function normalizeClient(raw) {
     if (!raw) return null;
     return {
         ...raw,
-        id: raw._id ?? raw.id ?? null,
+        id: raw.id ?? null,
         role: 'client',
         name: raw.fullname || raw.name || 'Unknown',
         fullname: raw.fullname || raw.name || 'Unknown',
@@ -13,60 +13,74 @@ function normalizeClient(raw) {
     };
 }
 
-/**
- * Maps HTTP error codes to human-readable login messages.
- */
-function mapLoginError(error) {
-    if (error?.code === 'ECONNABORTED') return 'Request timeout. Please try again.';
-    if (!error?.response) return 'Cannot connect to server. Check your connection.';
-    const status = error.response.status;
-    if (status === 401) return 'Invalid email or password.';
-    if (status === 403) return 'Account access denied.';
-    if (status === 404) return 'Account not found.';
-    if (status >= 500) return 'Server error. Please try again.';
-    return error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Something went wrong.';
-}
-
 export async function createClient(payload) {
     try {
-        const response = await httpClient.post('/client', payload);
-        const client = normalizeClient(response?.data?.data ?? response?.data);
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: payload.email,
+            password: payload.password,
+        });
+
+        if (authError) return { data: null, error: authError.message };
+        if (!authData.user) return { data: null, error: 'Failed to create user.' };
+
+        const clientPayload = {
+            fullname: payload.fullname || payload.name || '',
+            email: payload.email || '',
+            phone: payload.phone || '',
+            profile_img: payload.profile_img || ''
+        };
+
+        const { data: clientData, error: insertError } = await supabase
+            .from('clients')
+            .insert([{ id: authData.user.id, ...clientPayload }])
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error('[CREATE CLIENT] insert error', insertError);
+            return { data: null, error: 'Failed to save client profile.' };
+        }
+
+        const client = normalizeClient(clientData);
         return { data: client, error: null };
     } catch (error) {
-        return { data: null, error: mapLoginError(error) };
+        return { data: null, error: 'Failed to create client account.' };
     }
 }
 
 export async function getClients() {
     try {
-        const response = await httpClient.get('/client');
-        const rawList = Array.isArray(response?.data) ? response.data : (response?.data?.data ?? []);
-        return { data: rawList.map(normalizeClient), error: null };
+        const { data, error } = await supabase.from('clients').select('*');
+        if (error) return { data: null, error: error.message };
+        return { data: (data || []).map(normalizeClient), error: null };
     } catch (error) {
-        return { data: null, error: mapLoginError(error) };
+        return { data: null, error: 'Failed to load clients.' };
     }
 }
 
-/**
- * POST /client/login
- * Returns { data: { token, user }, error }
- */
 export async function loginClient(email, password) {
     console.log('[LOGIN CLIENT] request start ->', { email });
     try {
-        const response = await httpClient.post('/client/login', { email, password });
-        console.log('[LOGIN CLIENT] response success ->', response.data);
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
 
-        const raw = response?.data?.data ?? response?.data ?? {};
-        const token = raw.token ?? response?.data?.token ?? null;
-        const userData = raw.client ?? raw.user ?? raw;
-        const user = normalizeClient(userData);
+        if (authError) return { data: null, error: authError.message };
 
-        console.log('[LOGIN CLIENT] token stored ->', !!token, '| user ->', user?.email);
-        return { data: { token, user }, error: null };
+        const { data: clientData, error: profileError } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError || !clientData) {
+            return { data: null, error: 'Client profile not found.' };
+        }
+
+        const user = normalizeClient(clientData);
+        return { data: { token: authData.session.access_token, user }, error: null };
     } catch (error) {
-        const msg = mapLoginError(error);
-        console.error('[LOGIN CLIENT] error ->', msg, error?.response?.data ?? '');
-        return { data: null, error: msg };
+        return { data: null, error: 'Something went wrong.' };
     }
 }

@@ -8,29 +8,30 @@ import { loginClient } from '../../api/clientApi.js';
 const roleSelectorStyles = `
   .role-toggle {
     display: flex;
-    background: #F3F4F6;
-    border-radius: 12px;
+    background: #f8f8f8;
+    border-radius: 16px;
     padding: 4px;
     gap: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
   }
 
   .role-toggle-btn {
     flex: 1;
-    height: 40px;
+    height: 44px;
     border: none;
-    border-radius: 9px;
+    border-radius: 12px;
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+    transition: all 200ms ease;
     background: transparent;
-    color: #6B7280;
+    color: #666666;
   }
 
   .role-toggle-btn.active {
-    background: white;
-    color: #1D0065;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+    background: #000000;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 
   .role-toggle-btn:disabled {
@@ -134,134 +135,122 @@ function Login() {
         <>
             <style>{roleSelectorStyles}</style>
 
-            <section className="page-animate min-h-screen flex flex-col px-6 py-12 max-w-md mx-auto">
-                <button
-                    onClick={() => navigate('/')}
-                    className="btn-ghost self-start mb-6"
-                    disabled={isBusy}
-                    type="button"
-                >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                    Back
-                </button>
-
-                <div className="text-center mb-10">
-                    <img src="./Scissor.png" alt="blue scissor icon" className="mx-auto mb-6 h-10 w-10" />
-                    <h1 className="text-h1 mb-4">
-                        Login to your <br /> account
-                    </h1>
-                    <p className="text-body">
-                        Enter your email and password
-                    </p>
-                </div>
-
-                <div className="space-y-6">
-                    {/* ── Role Selector ── */}
-                    <div>
-                        <label className="label-base" style={{ marginBottom: '0.5rem' }}>I am a…</label>
-                        <div className="role-toggle">
-                            <button
-                                type="button"
-                                id="role-client"
-                                className={`role-toggle-btn${role === 'client' ? ' active' : ''}`}
-                                onClick={() => { setRole('client'); setError(''); }}
-                                disabled={isBusy}
-                            >
-                                Client
-                            </button>
-                            <button
-                                type="button"
-                                id="role-barber"
-                                className={`role-toggle-btn${role === 'barber' ? ' active' : ''}`}
-                                onClick={() => { setRole('barber'); setError(''); }}
-                                disabled={isBusy}
-                            >
-                                Barber
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* ── Email ── */}
-                    <div>
-                        <label className="label-base required">Email</label>
-                        <input
-                            id="login-email"
-                            type="email"
-                            placeholder="Enter your email address"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="input-base"
+            <section className="min-h-screen bg-[#f5f5f7] flex justify-center items-center px-4 py-8 sm:px-6 sm:py-12">
+                <div className="w-full max-w-md bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+                    <div className="px-6 py-8 sm:px-8 sm:py-10 space-y-8">
+                        <button
+                            onClick={() => navigate('/')}
+                            className="w-11 h-11 rounded-full bg-[#f8f8f8] flex items-center justify-center hover:bg-[#f0f0f0] transition-all duration-200 border border-black/5"
                             disabled={isBusy}
-                            autoComplete="email"
-                        />
-                    </div>
+                            type="button"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                        </button>
 
-                    {/* ── Password ── */}
-                    <div>
-                        <label className="label-base required">Password</label>
-                        <input
-                            id="login-password"
-                            type="password"
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="input-base"
-                            disabled={isBusy}
-                            autoComplete="current-password"
-                        />
-                    </div>
+                        <div className="text-center">
+                            <img src="./Scissor.png" alt="scissor icon" className="mx-auto mb-6 h-10 w-10" />
+                            <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
+                                Login to your account
+                            </h1>
+                            <p className="text-sm text-[#666] font-medium">
+                                Enter your email and password
+                            </p>
+                        </div>
 
-                    {/* ── Error Banner ── */}
-                    {error && (
-                        <div className="error-container">
-                            <div className="error-container-header">
-                                <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span className="error-title">Login Failed</span>
+                        <div className="space-y-6">
+                            {/* ── Role Selector ── */}
+                            <div>
+                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">I am a…</label>
+                                <div className="role-toggle">
+                                    <button
+                                        type="button"
+                                        id="role-client"
+                                        className={`role-toggle-btn${role === 'client' ? ' active' : ''}`}
+                                        onClick={() => { setRole('client'); setError(''); }}
+                                        disabled={isBusy}
+                                    >
+                                        Client
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="role-barber"
+                                        className={`role-toggle-btn${role === 'barber' ? ' active' : ''}`}
+                                        onClick={() => { setRole('barber'); setError(''); }}
+                                        disabled={isBusy}
+                                    >
+                                        Barber
+                                    </button>
+                                </div>
                             </div>
-                            <p className="error-message">{error}</p>
-                            <div className="error-actions">
-                                <button
-                                    type="button"
-                                    onClick={() => setError('')}
-                                    className="btn-ghost btn-sm"
-                                >
-                                    Dismiss
-                                </button>
+
+                            {/* ── Email ── */}
+                            <div>
+                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Email</label>
+                                <input
+                                    id="login-email"
+                                    type="email"
+                                    placeholder="Enter your email address"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                    disabled={isBusy}
+                                    autoComplete="email"
+                                />
+                            </div>
+
+                            {/* ── Password ── */}
+                            <div>
+                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Password</label>
+                                <input
+                                    id="login-password"
+                                    type="password"
+                                    placeholder="Enter your password"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                    disabled={isBusy}
+                                    autoComplete="current-password"
+                                />
+                            </div>
+
+                            {/* ── Error Banner ── */}
+                            {error && (
+                                <div className="rounded-3xl border border-red-100 bg-red-50 p-5">
+                                    <p className="font-semibold text-red-700 text-sm">{error}</p>
+                                </div>
+                            )}
+
+                            {/* ── Submit ── */}
+                            <button
+                                id="login-submit"
+                                type="button"
+                                onClick={handleSignIn}
+                                disabled={!isFormValid || isBusy}
+                                className="w-full h-14 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                            >
+                                {isBusy ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Signing in…
+                                    </>
+                                ) : (
+                                    'Sign In'
+                                )}
+                            </button>
+
+                            <div className="text-center">
+                                <p className="text-sm text-[#666]">
+                                    Don&apos;t have an account?{' '}
+                                    <Link to="/register" className="font-bold text-[#111] hover:underline transition-all">
+                                        Sign Up
+                                    </Link>
+                                </p>
                             </div>
                         </div>
-                    )}
-
-                    {/* ── Submit ── */}
-                    <button
-                        id="login-submit"
-                        type="button"
-                        onClick={handleSignIn}
-                        disabled={!isFormValid || isBusy}
-                        className="btn-primary"
-                    >
-                        {isBusy ? (
-                            <>
-                                <div className="spinner" />
-                                Signing in…
-                            </>
-                        ) : (
-                            'Sign In'
-                        )}
-                    </button>
-
-                    <div className="text-center">
-                        <p className="text-small">
-                            Don&apos;t have an account?{' '}
-                            <Link to="/register" className="font-bold text-[var(--primary)] hover:underline transition-all">
-                                Sign Up
-                            </Link>
-                        </p>
                     </div>
                 </div>
             </section>

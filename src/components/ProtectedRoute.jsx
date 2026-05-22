@@ -6,11 +6,10 @@ function ProtectedRoute({ children, requiredRole }) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[var(--background)] flex justify-center items-center p-4">
-                <div className="w-full max-w-md">
-                    <div className="skeleton-card"></div>
-                    <div className="skeleton-text medium mt-4"></div>
-                    <div className="skeleton-text small mt-2"></div>
+            <div className="min-h-screen bg-[#f5f5f7] flex justify-center items-center p-6">
+                <div className="flex flex-col items-center">
+                    <div className="w-12 h-12 border-2 border-black/10 border-t-black rounded-full animate-spin mb-4"></div>
+                    <p className="text-sm font-semibold text-[#666] tracking-[-0.01em]">Loading your experience...</p>
                 </div>
             </div>
         );
@@ -32,4 +31,3 @@ function ProtectedRoute({ children, requiredRole }) {
 }
 
 export default ProtectedRoute;
-

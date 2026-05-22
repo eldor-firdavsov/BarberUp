@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getBarbers } from '../../api/barberApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { formatTo24h } from '../../utils/time.js';
-import { Heart } from 'lucide-react';
+import { Heart, MapPin } from 'lucide-react';
 import BarberProfileModal from '../../components/BarberProfileModal.jsx';
 
 
@@ -306,29 +306,25 @@ function Client() {
 
 
     return (
-        <section className="page-animate max-w-md mx-auto px-6 py-8 flex flex-col">
-
-
-
-
-            <h1 className="text-4xl font-black text-gray-900 leading-tight mb-3">
-                <span className="text-primary">Elevate your <br /></span>Grooming.
+        <section className="min-h-screen bg-[#f5f5f7] max-w-md mx-auto px-4 py-8 sm:px-6 sm:py-12 flex flex-col">
+            <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
+                Elevate your<br />Grooming.
             </h1>
-            <p className="text-sm text-gray-500 font-medium mb-8">
-                Discover the finest ateliers in the city. <br />Hand-picked masters of the craft, ready <br />for your next transformation.
+            <p className="text-sm text-[#666] font-medium mb-8">
+                Discover the finest ateliers in the city. Hand-picked masters of the craft, ready for your next transformation.
             </p>
 
-            <div className="flex bg-gray-100 p-1.5 rounded-2xl mb-8">
+            <div className="flex bg-[#f8f8f8] p-1.5 rounded-2xl mb-8 border border-black/5">
                 <button
                     onClick={() => setActiveTab('nearby')}
-                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'nearby' ? 'bg-white shadow-sm text-primary' : 'text-gray-500'
+                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'nearby' ? 'bg-white shadow-sm text-[#111]' : 'text-[#666]'
                         }`}
                 >
                     Nearby
                 </button>
                 <button
                     onClick={() => setActiveTab('favorites')}
-                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'favorites' ? 'bg-white shadow-sm text-primary' : 'text-gray-500'
+                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'favorites' ? 'bg-white shadow-sm text-[#111]' : 'text-[#666]'
                         }`}
                 >
                     Favorites {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
@@ -399,9 +395,9 @@ function Client() {
                         <div
                             key={barber.id ?? index}
                             onClick={() => navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`)}
-                            className="card-base cursor-pointer group min-h-[120px]"
+                            className="bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] cursor-pointer group min-h-[120px] transition-all duration-200 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)]"
                         >
-                            <div className="relative overflow-hidden rounded-t-2xl">
+                            <div className="relative overflow-hidden rounded-t-[32px]">
                                 <img
                                     src={
                                         (barber.office_img && barber.office_img !== '')
@@ -423,56 +419,56 @@ function Client() {
                                     </button>
                                 </div>
                                 <div className="absolute bottom-4 left-4">
-                                    <span className={getBarberStatus(barber) === 'Available' ? "bg-green-500 text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full" : "bg-gray-800 text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full"}>
+                                    <span className={getBarberStatus(barber) === 'Available' ? "bg-green-500 text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full" : "bg-[#111] text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full"}>
                                         {getBarberStatus(barber)}
                                     </span>
                                 </div>
                             </div>
-                            <div className="p-5">
+                            <div className="p-6">
                                 <div className="mb-4">
-                                    <h3 className="text-xl mb-1 font-black text-gray-900 truncate">{barber.office_name || barber.shopName || 'Barbershop'}</h3>
+                                    <h3 className="text-xl mb-1 font-bold text-[#111] truncate">{barber.office_name || barber.shopName || 'Barbershop'}</h3>
                                     <div className="flex items-center gap-3 mt-2">
                                         <div className="flex items-center gap-2">
                                             {(barber.profile_img && barber.profile_img.trim() !== '') ? (
                                                 <img
                                                     src={barber.profile_img}
                                                     alt={barber.fullname || barber.name || 'B'}
-                                                    className="w-7 h-7 rounded-full object-cover bg-gray-100 flex-shrink-0 border border-gray-200"
+                                                    className="w-7 h-7 rounded-full object-cover bg-[#f8f8f8] flex-shrink-0 border border-black/5"
                                                     onError={(e) => {
                                                         e.target.style.display = 'none';
                                                     }}
                                                 />
                                             ) : (
-                                                <div className="w-7 h-7 bg-[var(--primary)]/10 rounded-full flex items-center justify-center flex-shrink-0 border border-[var(--primary)]/20">
-                                                    <span className="text-[var(--primary)] text-xs font-black">
+                                                <div className="w-7 h-7 bg-[#f8f8f8] rounded-full flex items-center justify-center flex-shrink-0 border border-black/5">
+                                                    <span className="text-[#111] text-xs font-bold">
                                                         {(barber.fullname || barber.name || 'B').charAt(0).toUpperCase()}
                                                     </span>
                                                 </div>
                                             )}
-                                            <span className="font-bold text-sm text-gray-700 truncate">{barber.fullname || barber.name || 'Barber'}</span>
+                                            <span className="font-semibold text-sm text-[#666] truncate">{barber.fullname || barber.name || 'Barber'}</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 mt-3">
-                                        <div className="bg-gray-50 px-2.5 py-1 rounded-lg text-xs font-bold text-gray-600">
+                                        <div className="bg-[#f8f8f8] px-2.5 py-1 rounded-xl text-xs font-semibold text-[#666] border border-black/5">
                                             {(barber.average_price ?? barber.avgPrice ?? 0).toLocaleString()} UZS
                                         </div>
-                                        <div className="bg-gray-50 px-2.5 py-1 rounded-lg text-xs font-bold text-gray-600">
+                                        <div className="bg-[#f8f8f8] px-2.5 py-1 rounded-xl text-xs font-semibold text-[#666] border border-black/5">
                                             {barber.working_hours || barber.workingHours || '09:00 - 21:00'}
                                         </div>
                                     </div>
                                 </div>
-                                <div className="pt-4 border-t border-gray-100 flex flex-col gap-4">
+                                <div className="pt-4 border-t border-black/5 flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+                                            <h2 className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-0.5">
                                                 {activeTab === 'nearby' ? 'Distance' : 'Status'}
                                             </h2>
                                             {activeTab === 'nearby' ? (
-                                                <span className="text-sm font-black text-gray-800">
-                                                    📍 {barber._dist !== null && barber._dist !== undefined ? `${Number(barber._dist).toFixed(1)} km away` : 'Location not set'}
+                                                <span className="text-sm font-bold text-[#111] flex items-center gap-1">
+                                                    <MapPin size={16} className="text-[#111]" /> {barber._dist !== null && barber._dist !== undefined ? `${Number(barber._dist).toFixed(1)} km away` : 'Location not set'}
                                                 </span>
                                             ) : (
-                                                <span className="text-sm font-black text-gray-800">
+                                                <span className="text-sm font-bold text-[#111]">
                                                     {getBarberStatus(barber)}
                                                 </span>
                                             )}
@@ -484,12 +480,12 @@ function Client() {
                                                 e.stopPropagation();
                                                 openProfileModal(barber);
                                             }}
-                                            className="btn-secondary !h-11 !text-xs !font-bold rounded-xl"
+                                            className="h-11 rounded-2xl bg-white border border-black/5 text-[#111] font-semibold text-xs transition-all duration-200 hover:bg-[#f8f8f8] hover:border-black/10 shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
                                         >
                                             View Profile
                                         </button>
                                         <button
-                                            className="btn-primary !h-11 !text-xs !font-bold rounded-xl"
+                                            className="h-11 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`);
@@ -510,7 +506,7 @@ function Client() {
             {/* Empty State */}
             {!loading && !error && barbers.length === 0 && (
                 <div className="py-10 text-center">
-                    <p className="text-base text-[var(--text-muted)] font-semibold">No barbers available</p>
+                    <p className="text-base text-[#666] font-semibold">No barbers available</p>
                 </div>
             )}
 

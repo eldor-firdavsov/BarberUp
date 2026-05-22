@@ -1,0 +1,30 @@
+/* NavbatGo — Global App Styles */
+
+/* Remove default tap highlight on mobile */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Remove default button/input outline ring on click (keep for keyboard nav) */
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Prevent iOS text-size adjustment */
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Image rendering */
+img {
+    display: block;
+    max-width: 100%;
+}
