@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesClient, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getBarbers } from '../../api/barberApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { t, getStatusLabel } from '../../utils/i18n.js';
 
 function Booking() {
     const { user } = useAuth();
@@ -71,7 +72,7 @@ function Booking() {
             setBookings(prev =>
                 prev.map(b => b.id === bookingId ? data : b)
             );
-            setSuccessMessage('Booking cancelled successfully');
+            setSuccessMessage(t('client.bookings.cancelSuccess'));
             setTimeout(() => setSuccessMessage(''), 3000);
         }
     };
@@ -99,19 +100,19 @@ function Booking() {
     };
 
     const statusStyles = {
-        cancelled: { bg: 'bg-red-50', text: 'text-red-600', label: 'Cancelled' },
-        accepted: { bg: 'bg-[#f8f8f8]', text: 'text-[#111]', label: 'Accepted' },
-        rejected: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Rejected' },
-        pending: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Pending' },
-        completed: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Completed' },
-        in_progress: { bg: 'bg-black', text: 'text-white', label: 'In Progress' },
+        cancelled: { bg: 'bg-red-50', text: 'text-red-600', label: getStatusLabel('cancelled') },
+        accepted: { bg: 'bg-[#f8f8f8]', text: 'text-[#111]', label: getStatusLabel('accepted') },
+        rejected: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: getStatusLabel('rejected') },
+        pending: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: getStatusLabel('pending') },
+        completed: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: getStatusLabel('completed') },
+        in_progress: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]', label: getStatusLabel('in_progress') },
     };
 
     return (
         <div className="px-4 py-8 sm:px-6 space-y-6 page-animate max-w-md mx-auto pb-24">
             <div>
-                <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">Bookings</h1>
-                <p className="text-sm text-[#666] font-medium mt-1">Your current and past sessions</p>
+                <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('client.bookings.title')}</h1>
+                <p className="text-sm text-[#666] font-medium mt-1">{t('client.bookings.subtitle')}</p>
             </div>
 
             {/* Loading */}
@@ -143,8 +144,8 @@ function Booking() {
                     <div className="w-16 h-16 bg-white border border-black/5 rounded-3xl flex items-center justify-center mb-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
                         <Calendar className="text-[#ccc]" size={28} />
                     </div>
-                    <p className="font-bold text-[#111] text-sm">No bookings yet</p>
-                    <p className="text-[#666] text-xs mt-1 font-medium">Your sessions will appear here</p>
+                    <p className="font-bold text-[#111] text-sm">{t('client.bookings.emptyTitle')}</p>
+                    <p className="text-[#666] text-xs mt-1 font-medium">{t('client.bookings.emptyDesc')}</p>
                 </div>
             )}
 
@@ -162,8 +163,8 @@ function Booking() {
                             <div key={booking.id} className="bg-white rounded-[24px] p-5 border border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_40px_rgba(0,0,0,0.06)] transition-all duration-200">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex-1 min-w-0 mr-3">
-                                        <h3 className="font-bold text-[#111] truncate">{barber?.office_name || barber?.shopName || 'Barbershop'}</h3>
-                                        <p className="text-sm text-[#666] font-medium mt-0.5">{barber?.fullname || barber?.name || 'Barber'}</p>
+                                        <h3 className="font-bold text-[#111] truncate">{barber?.office_name || barber?.shopName || t('common.barbershop')}</h3>
+                                        <p className="text-sm text-[#666] font-medium mt-0.5">{barber?.fullname || barber?.name || t('common.barber')}</p>
                                         {booking.service_name && (
                                             <p className="text-xs text-[#888] mt-1 font-semibold">
                                                 {booking.service_name}{booking.service_price ? ` · ${Number(booking.service_price).toLocaleString()} UZS` : ''}
@@ -175,7 +176,7 @@ function Booking() {
                                             <button
                                                 onClick={() => handleCancelBooking(booking.id)}
                                                 className="w-9 h-9 flex items-center justify-center bg-[#f8f8f8] border border-black/5 text-[#888] rounded-xl hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all"
-                                                title="Cancel booking"
+                                                title={t('client.bookings.cancelBookingTitle')}
                                             >
                                                 <X size={15} />
                                             </button>
@@ -184,7 +185,7 @@ function Booking() {
                                             <button
                                                 onClick={() => handleRebook(booking)}
                                                 className="w-9 h-9 flex items-center justify-center bg-[#f8f8f8] border border-black/5 text-[#888] rounded-xl hover:bg-[#f0f0f0] hover:text-[#111] transition-all"
-                                                title="Book again"
+                                                title={t('client.bookings.rebookTitle')}
                                             >
                                                 <RefreshCw size={15} />
                                             </button>
@@ -193,7 +194,7 @@ function Booking() {
                                 </div>
 
                                 <div className="flex items-center gap-4 text-sm text-[#888] font-medium mb-4">
-                                    <span className="flex items-center gap-1.5"><Calendar size={13} /> Today</span>
+                                    <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('common.today')}</span>
                                     <span className="flex items-center gap-1.5"><Clock size={13} /> {formatTo24h(booking.booking_hours) || '--:--'}</span>
                                 </div>
 
@@ -207,7 +208,7 @@ function Booking() {
                                             className="text-[#111] text-xs font-bold flex items-center gap-1.5 hover:opacity-70 transition-opacity"
                                         >
                                             <RefreshCw size={13} />
-                                            Rebook
+                                            {t('client.bookings.rebook')}
                                         </button>
                                     )}
                                 </div>
@@ -225,23 +226,23 @@ function Booking() {
                             <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center">
                                 <AlertCircle className="text-[#888]" size={22} />
                             </div>
-                            <h3 className="text-[18px] font-bold text-[#111] tracking-[-0.02em]">Cancel Booking</h3>
+                            <h3 className="text-[18px] font-bold text-[#111] tracking-[-0.02em]">{t('client.bookings.cancelTitle')}</h3>
                         </div>
                         <p className="text-sm text-[#666] font-medium mb-7 leading-relaxed">
-                            Are you sure you want to cancel this booking? This action cannot be undone.
+                            {t('client.bookings.cancelConfirm')}
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setCancelModal({ open: false, bookingId: null })}
                                 className="flex-1 h-13 px-4 py-3 border border-black/5 rounded-2xl text-[#111] font-semibold text-sm hover:bg-[#f8f8f8] transition-all bg-white shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
                             >
-                                Keep Booking
+                                {t('client.bookings.keepBooking')}
                             </button>
                             <button
                                 onClick={confirmCancelBooking}
-                                className="flex-1 h-13 px-4 py-3 bg-black text-white rounded-2xl font-semibold text-sm hover:bg-[#111] transition-all shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
+                                className="flex-1 h-13 px-4 py-3 bg-[#378ADD] text-white rounded-2xl font-semibold text-sm hover:bg-[#185FA5] transition-all shadow-[0_8px_20px_rgba(55,138,221,0.25)]"
                             >
-                                Cancel Booking
+                                {t('client.bookings.cancelBooking')}
                             </button>
                         </div>
                     </div>

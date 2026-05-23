@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { createClient } from '../../api/clientApi.js';
 import { uploadImage } from '../../api/uploadApi.js';
+import { t } from '../../utils/i18n.js';
 
 function ClientOnboarding() {
     const [fullname, setFullname] = useState('');
@@ -31,22 +32,22 @@ function ClientOnboarding() {
 
     const handleFinish = async () => {
         if (!fullname.trim() || !phone.trim()) {
-            setError("Please fill in all required fields.");
+            setError(t('auth.errors.fillRequired'));
             return;
         }
         if (!isPhoneValid) {
-            setError('Please enter a valid 9-digit phone number.');
+            setError(t('auth.errors.phoneNineDigitsShort'));
             return;
         }
 
         // Input length validation to prevent UI overflow
         if (fullname.trim().length > 100) {
-            setError('Name must be less than 100 characters.');
+            setError(t('auth.errors.nameMax'));
             return;
         }
 
         if (phone.trim().length > 20) {
-            setError('Phone number must be less than 20 characters.');
+            setError(t('auth.errors.phoneMax'));
             return;
         }
 
@@ -66,7 +67,7 @@ function ClientOnboarding() {
             if (profileFile) {
                 const { url, error: uploadErr } = await uploadImage(profileFile, 'profiles');
                 if (uploadErr) {
-                    setError('Failed to upload profile image: ' + uploadErr);
+                    setError(t('auth.errors.uploadProfileFailed', { error: uploadErr }));
                     setLoading(false);
                     return;
                 }
@@ -98,13 +99,13 @@ function ClientOnboarding() {
                 clientUser = clientUserRes;
                 console.log('[ClientOnboarding] success:', clientUser?.email);
             } catch (err) {
-                setError('Failed to create account.');
+                setError(t('auth.errors.createAccountFailed'));
                 setLoading(false);
                 return;
             }
 
             if (!clientUser || !clientUser.id) {
-                setError('Account creation failed. Please try again.');
+                setError(t('auth.errors.accountCreationFailed'));
                 setLoading(false);
                 return;
             }
@@ -120,7 +121,7 @@ function ClientOnboarding() {
             navigate('/client/dashboard');
         } catch (err) {
             console.error('[ClientOnboarding] unexpected error:', err);
-            setError('Something went wrong. Please try again.');
+            setError(t('auth.errors.somethingWrong'));
         } finally {
             setLoading(false);
         }
@@ -144,50 +145,50 @@ function ClientOnboarding() {
                     <header>
                         <div className="flex items-center gap-2 mb-4">
                             <img src="./Scissor.png" alt="scissor icon" className="w-4 h-4" />
-                            <p className="text-[#111] text-sm font-bold uppercase tracking-[0.12em]">Join NavbatGo</p>
+                            <p className="text-[#111] text-sm font-bold uppercase tracking-[0.12em]">{t('auth.clientOnboarding.joinTitle')}</p>
                         </div>
                         <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">
-                            Set Up Your Client Profile
+                            {t('auth.clientOnboarding.setupTitle')}
                         </h1>
                     </header>
 
                     <div className="space-y-6">
                         <h2 className="flex items-center gap-2 text-lg font-bold text-[#111] mb-2">
-                            <img src="./Icon.png" alt="" className="h-5 w-5" /> Personal Information
+                            <img src="./Icon.png" alt="" className="h-5 w-5" /> {t('auth.clientOnboarding.personalInfo')}
                         </h2>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Full Name</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.fullName')}</label>
                             <input
                                 type="text"
                                 value={fullname}
                                 onChange={e => setFullname(e.target.value)}
-                                placeholder="e.g Aziz Raghimov"
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                placeholder={t('auth.clientOnboarding.namePlaceholder')}
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
                                 disabled={loading}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Mobile Number</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.mobileNumber')}</label>
                             <div className="flex items-center bg-[#f8f8f8] rounded-2xl px-5 border border-black/5 focus-within:border-black/20 focus-within:bg-white transition-all h-14">
                                 <span className="text-[#111] font-medium text-base pt-[1px]">+998</span>
                                 <input
                                     type="tel"
                                     value={phone}
                                     onChange={e => setPhone(e.target.value)}
-                                    placeholder=" 90 123 45 67"
+                                    placeholder={t('auth.clientOnboarding.phonePlaceholder')}
                                     className="w-full ml-2 text-base font-normal text-[#111] bg-transparent outline-none h-full"
                                     disabled={loading}
                                 />
                             </div>
                             {phone.trim() !== '' && !isPhoneValid && (
-                                <p className="text-red-500 text-xs mt-1">Please enter 9 digits after +998</p>
+                                <p className="text-red-500 text-xs mt-1">{t('auth.errors.phoneNineDigits')}</p>
                             )}
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Profile Image (Optional)</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.clientOnboarding.profileImageOptional')}</label>
                             <div className="flex items-center gap-4">
                                 {profilePreview && (
                                     <img src={profilePreview} alt="Profile preview" className="w-16 h-16 rounded-full object-cover border border-black/5" />
@@ -202,7 +203,7 @@ function ClientOnboarding() {
                                             setProfilePreview(URL.createObjectURL(file));
                                         }
                                     }}
-                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-[#111]"
+                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#378ADD] file:text-white hover:file:bg-[#185FA5]"
                                     disabled={loading}
                                 />
                             </div>
@@ -218,9 +219,9 @@ function ClientOnboarding() {
                     <button
                         onClick={handleFinish}
                         disabled={!isFormValid || loading}
-                        className="w-full h-14 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
                     >
-                        {loading ? 'Creating account…' : 'Continue'}
+                        {loading ? t('auth.clientOnboarding.creatingAccount') : t('common.continue')}
                     </button>
                 </div>
             </div>

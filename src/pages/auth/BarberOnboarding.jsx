@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { createBarber } from '../../api/barberApi.js';
 import { uploadImage } from '../../api/uploadApi.js';
+import { t } from '../../utils/i18n.js';
 
 function BarberOnboarding() {
     const [fullname, setFullname] = useState('');
@@ -60,12 +61,12 @@ function BarberOnboarding() {
             !average_price.trim() ||
             !isPhoneValid
         ) {
-            setError('Please fill in all required fields.');
+            setError(t('auth.errors.fillRequired'));
             return;
         }
 
         if (validServices.length === 0) {
-            setError('Please add at least one valid service with a name and price.');
+            setError(t('auth.errors.addValidService'));
             return;
         }
 
@@ -73,7 +74,7 @@ function BarberOnboarding() {
             const dataStr = localStorage.getItem('onboarding_data');
 
             if (!dataStr) {
-                setError('Missing onboarding data.');
+                setError(t('auth.errors.missingOnboarding'));
                 return;
             }
 
@@ -114,7 +115,7 @@ function BarberOnboarding() {
             const { data: barberUser, error: createError } = await createBarber(payload);
 
             if (createError || !barberUser) {
-                setError(createError || 'Failed to create account.');
+                setError(createError || t('auth.errors.createAccountFailed'));
                 return;
             }
 
@@ -125,7 +126,7 @@ function BarberOnboarding() {
             navigate('/barber/dashboard');
 
         } catch (err) {
-            setError('Failed to create account.');
+            setError(t('auth.errors.createAccountFailed'));
         } finally {
             setLoading(false);
         }
@@ -146,29 +147,29 @@ function BarberOnboarding() {
 
                     <header>
                         <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
-                            Set Up Your Barber Profile
+                            {t('auth.barberOnboarding.title')}
                         </h1>
                         <p className="text-sm text-[#666] font-medium">
-                            Build your professional presence and start accepting bookings.
+                            {t('auth.barberOnboarding.subtitle')}
                         </p>
                     </header>
 
                     <div className="space-y-6">
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Full Name</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.fullName')}</label>
                             <input
                                 type="text"
                                 value={fullname}
                                 onChange={(e) => setFullname(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
-                                placeholder="Aziz Raghimov"
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                                placeholder={t('auth.barberOnboarding.namePlaceholder')}
                                 disabled={loading}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Phone Number</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.phone')}</label>
                             <div className="flex items-center bg-[#f8f8f8] rounded-2xl px-5 border border-black/5 focus-within:border-black/20 focus-within:bg-white transition-all h-14">
                                 <span className="text-[#111] font-medium text-base pt-[1px]">+998</span>
                                 <input
@@ -176,30 +177,30 @@ function BarberOnboarding() {
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
                                     className="w-full ml-2 text-base font-normal text-[#111] bg-transparent outline-none h-full"
-                                    placeholder="901234567"
+                                    placeholder={t('auth.barberOnboarding.phonePlaceholder')}
                                     disabled={loading}
                                 />
                             </div>
                             {phone && !isPhoneValid && (
                                 <p className="text-red-500 text-sm mt-1">
-                                    Please enter 9 digits.
+                                    {t('auth.errors.phoneNineDigitsShort')}
                                 </p>
                             )}
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Office Name</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.officeName')}</label>
                             <input
                                 type="text"
                                 value={office_name}
                                 onChange={(e) => setOfficeName(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
                                 disabled={loading}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Profile Image (Optional)</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.profileImageOptional')}</label>
                             <div className="flex items-center gap-4">
                                 {profilePreview && (
                                     <img src={profilePreview} alt="Profile preview" className="w-16 h-16 rounded-full object-cover border border-black/5" />
@@ -214,14 +215,14 @@ function BarberOnboarding() {
                                             setProfilePreview(URL.createObjectURL(file));
                                         }
                                     }}
-                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-[#111]"
+                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#378ADD] file:text-white hover:file:bg-[#185FA5]"
                                     disabled={loading}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Office Image (Optional)</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.officeImageOptional')}</label>
                             <div className="flex items-center gap-4">
                                 {officePreview && (
                                     <img src={officePreview} alt="Office preview" className="w-16 h-16 rounded-xl object-cover border border-black/5" />
@@ -236,7 +237,7 @@ function BarberOnboarding() {
                                             setOfficePreview(URL.createObjectURL(file));
                                         }
                                     }}
-                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-[#111]"
+                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#378ADD] file:text-white hover:file:bg-[#185FA5]"
                                     disabled={loading}
                                 />
                             </div>
@@ -245,7 +246,7 @@ function BarberOnboarding() {
 
 
                         <div className="w-full flex flex-col gap-1">
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Services</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.services')}</label>
                             <div className="space-y-4">
                                 {services.map((service, index) => (
                                     <div key={service.id} className="p-4 bg-[#f8f8f8] rounded-2xl border border-black/5 relative">
@@ -253,7 +254,7 @@ function BarberOnboarding() {
                                             <button
                                                 onClick={() => handleRemoveService(service.id)}
                                                 className="absolute top-2 right-2 text-red-500 bg-red-50 hover:bg-red-100 w-6 h-6 rounded-full flex justify-center items-center font-bold text-sm"
-                                                title="Remove service"
+                                                title={t('auth.barberOnboarding.removeService')}
                                             >
                                                 &times;
                                             </button>
@@ -264,8 +265,8 @@ function BarberOnboarding() {
                                                     type="text"
                                                     value={service.name}
                                                     onChange={(e) => handleUpdateService(service.id, 'name', e.target.value)}
-                                                    placeholder="Service Name (e.g., Haircut)"
-                                                    className="w-full bg-white border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-black/20"
+                                                    placeholder={t('auth.barberOnboarding.serviceNamePlaceholder')}
+                                                    className="w-full bg-white border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40"
                                                     disabled={loading}
                                                 />
                                             </div>
@@ -274,16 +275,16 @@ function BarberOnboarding() {
                                                     <select
                                                         value={service.duration}
                                                         onChange={(e) => handleUpdateService(service.id, 'duration', e.target.value)}
-                                                        className="w-full bg-white border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-black/20"
+                                                        className="w-full bg-white border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40"
                                                         disabled={loading}
                                                     >
-                                                        <option value="15">15 mins</option>
-                                                        <option value="30">30 mins</option>
-                                                        <option value="45">45 mins</option>
-                                                        <option value="60">1 hr</option>
-                                                        <option value="75">1 hr 15 mins</option>
-                                                        <option value="90">1 hr 30 mins</option>
-                                                        <option value="120">2 hrs</option>
+                                                        <option value="15">{t('auth.barberOnboarding.duration15')}</option>
+                                                        <option value="30">{t('auth.barberOnboarding.duration30')}</option>
+                                                        <option value="45">{t('auth.barberOnboarding.duration45')}</option>
+                                                        <option value="60">{t('auth.barberOnboarding.duration60')}</option>
+                                                        <option value="75">{t('auth.barberOnboarding.duration75')}</option>
+                                                        <option value="90">{t('auth.barberOnboarding.duration90')}</option>
+                                                        <option value="120">{t('auth.barberOnboarding.duration120')}</option>
                                                     </select>
                                                 </div>
                                                 <div className="flex-1 relative">
@@ -291,11 +292,11 @@ function BarberOnboarding() {
                                                         type="number"
                                                         value={service.price}
                                                         onChange={(e) => handleUpdateService(service.id, 'price', e.target.value)}
-                                                        placeholder="Price"
+                                                        placeholder={t('auth.barberOnboarding.pricePlaceholder')}
                                                         className="w-full bg-white border border-black/5 rounded-xl px-3 py-2 text-sm outline-none pl-7 focus:border-black/20"
                                                         disabled={loading}
                                                     />
-                                                    <span className="absolute left-3 top-[10px] text-gray-500 text-sm">$</span>
+                                                    <span className="absolute left-3 top-[10px] text-gray-500 text-sm">{t('common.uzs')}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -307,38 +308,38 @@ function BarberOnboarding() {
                                     className="w-full py-2 bg-[#f8f8f8] text-[#111] font-bold rounded-xl border border-black/5 hover:bg-[#f0f0f0] transition-colors"
                                     disabled={loading}
                                 >
-                                    + Add Another Service
+                                    {t('auth.barberOnboarding.addService')}
                                 </button>
                             </div>
                         </div>
 
                         <div className="w-full flex flex-col gap-1">
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3" htmlFor="start">Start Time</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3" htmlFor="start">{t('auth.barberOnboarding.startTime')}</label>
                             <input
                                 type="time"
                                 value={startTime}
                                 onChange={(e) => setStartTime(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
                                 disabled={loading}
                             />
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3 mt-4" htmlFor="end">End Time</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3 mt-4" htmlFor="end">{t('auth.barberOnboarding.endTime')}</label>
                             <input
                                 type="time"
                                 value={endTime}
                                 onChange={(e) => setEndTime(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
                                 disabled={loading}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Average Price</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.averagePrice')}</label>
                             <input
                                 type="text"
                                 value={average_price}
                                 onChange={(e) => setAveragePrice(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
-                                placeholder="40000"
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                                placeholder={t('auth.barberOnboarding.avgPricePlaceholder')}
                                 disabled={loading}
                             />
                         </div>
@@ -352,9 +353,9 @@ function BarberOnboarding() {
                         <button
                             onClick={handleFinish}
                             disabled={loading}
-                            className="w-full h-14 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                            className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
                         >
-                            {loading ? 'Creating Account...' : 'Complete Registration'}
+                            {loading ? t('auth.barberOnboarding.creatingAccount') : t('auth.barberOnboarding.completeRegistration')}
                         </button>
 
                     </div>

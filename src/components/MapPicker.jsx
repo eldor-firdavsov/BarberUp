@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Search } from 'lucide-react';
+import { t } from '../utils/i18n.js';
 
 // Simple MapPicker component using OpenStreetMap (Leaflet alternative)
 // This is a lightweight implementation that doesn't require external map libraries
@@ -22,7 +23,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
     const getCurrentLocation = () => {
         setLoading(true);
         if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser');
+            alert(t('components.mapPicker.geoNotSupported'));
             setLoading(false);
             return;
         }
@@ -51,18 +52,17 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
             },
             (error) => {
                 console.error('Error getting location:', error);
-                let errorMessage = 'Unable to get your location. Please enter address manually.';
+                let errorMessage = t('components.mapPicker.geoUnable');
 
-                // Provide specific error messages based on error code
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMessage = 'Location permission denied. Please enable location access and try again.';
+                        errorMessage = t('components.mapPicker.geoDenied');
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        errorMessage = 'Location information unavailable. Please enter address manually.';
+                        errorMessage = t('components.mapPicker.geoUnavailable');
                         break;
                     case error.TIMEOUT:
-                        errorMessage = 'Location request timed out. Please check your connection and try again.';
+                        errorMessage = t('components.mapPicker.geoTimeout');
                         break;
                 }
 
@@ -141,13 +141,13 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                     className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
                 >
                     <Navigation size={16} />
-                    {loading ? 'Getting location...' : 'Use Current Location'}
+                    {loading ? t('components.mapPicker.gettingLocation') : t('components.mapPicker.useCurrentLocation')}
                 </button>
             </div>
 
             {/* Search */}
             <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Search Address</label>
+                <label className="block text-sm font-medium text-gray-700">{t('components.mapPicker.searchAddress')}</label>
                 <div className="flex gap-2">
                     <div className="flex-1 flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2">
                         <Search size={16} className="text-gray-400" />
@@ -156,7 +156,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
-                            placeholder="Search for address..."
+                            placeholder={t('components.mapPicker.searchPlaceholder')}
                             className="flex-1 outline-none"
                         />
                     </div>
@@ -165,7 +165,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                         disabled={isSearching || !searchQuery.trim()}
                         className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:bg-gray-400 transition-colors"
                     >
-                        {isSearching ? 'Searching...' : 'Search'}
+                        {isSearching ? t('common.searching') : t('common.search')}
                     </button>
                 </div>
 
@@ -188,21 +188,21 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
             {/* Manual Input */}
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('components.mapPicker.address')}</label>
                     <input
                         type="text"
                         value={location.coordinates?.[0] ?? ''}
                         onChange={(e) => handleAddressChange(e.target.value)}
-                        placeholder="Enter address manually"
+                        placeholder={t('components.mapPicker.addressPlaceholder')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Coordinates</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('components.mapPicker.coordinates')}</label>
                     <div className="flex gap-2">
                         <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Longitude</label>
+                            <label className="block text-xs text-gray-500 mb-1">{t('components.mapPicker.longitude')}</label>
                             <input
                                 type="number"
                                 step="0.000001"
@@ -212,7 +212,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                             />
                         </div>
                         <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">Latitude</label>
+                            <label className="block text-xs text-gray-500 mb-1">{t('components.mapPicker.latitude')}</label>
                             <input
                                 type="number"
                                 step="0.000001"
@@ -231,7 +231,7 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
                     <div className="flex items-start gap-2">
                         <MapPin size={16} className="text-gray-500 mt-1" />
                         <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-700">Selected Location</div>
+                            <div className="text-sm font-medium text-gray-700">{t('components.mapPicker.selectedLocation')}</div>
                             <div className="text-sm text-gray-600">{location.address}</div>
                             <div className="text-xs text-gray-500 mt-1">
                                 Coordinates: {location.coordinates?.[0]?.toFixed(6) || '0.000000'}, {location.coordinates?.[1]?.toFixed(6) || '0.000000'}

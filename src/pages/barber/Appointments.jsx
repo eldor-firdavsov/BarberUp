@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { t, getStatusLabel } from '../../utils/i18n.js';
 import ClientProfileModal from '../../components/ClientProfileModal.jsx';
 
 function toDateStr(d) {
@@ -18,7 +19,12 @@ function getBookingDateStr(booking) {
 
 const DAY_RANGE = [-2, -1, 0, 1];
 
-const DAY_LABELS = { '-1': 'Kecha', '0': 'Bugun', '1': 'Erta' };
+const getDayLabel = (offset) => {
+    if (offset === -1) return t('barber.appointments.yesterday');
+    if (offset === 0) return t('barber.appointments.today');
+    if (offset === 1) return t('barber.appointments.tomorrow');
+    return null;
+};
 
 function Appointments() {
     const { user } = useAuth();
@@ -91,14 +97,14 @@ function Appointments() {
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Jadval</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">{t('barber.appointments.title')}</h1>
                     <p className="text-gray-500 font-medium text-sm mt-0.5">
                         {selectedDate.toLocaleDateString('uz-UZ', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </p>
                 </div>
                 <div className="bg-primary/10 rounded-2xl px-4 py-2 text-center">
                     <span className="block text-[10px] font-bold text-primary uppercase tracking-widest leading-none mb-1">
-                        {DAY_LABELS[String(dayOffset)] ?? selectedDate.toLocaleDateString('uz-UZ', { weekday: 'short' })}
+                        {getDayLabel(dayOffset) ?? selectedDate.toLocaleDateString('uz-UZ', { weekday: 'short' })}
                     </span>
                     <span className="text-2xl font-bold text-primary leading-none">{selectedDate.getDate()}</span>
                 </div>
@@ -106,12 +112,12 @@ function Appointments() {
 
             {/* Day selector */}
             <div>
-                <p className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Kun tanlang</p>
+                <p className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">{t('barber.appointments.selectDay')}</p>
                 <div className="flex gap-2">
                     {DAY_RANGE.map((offset) => {
                         const d = new Date(todayBase);
                         d.setDate(d.getDate() + offset);
-                        const label = DAY_LABELS[String(offset)];
+                        const label = getDayLabel(offset);
                         const isSelected = dayOffset === offset;
 
                         return (
@@ -119,8 +125,8 @@ function Appointments() {
                                 key={offset}
                                 onClick={() => setDayOffset(offset)}
                                 className={`flex-1 flex flex-col items-center py-3 rounded-2xl transition-all font-bold border ${isSelected
-                                    ? 'bg-primary text-gray-500 border-primary shadow-lg shadow-primary/20'
-                                    : 'bg-white text-gray-500 border-gray-100 hover:border-primary/30'
+                                    ? 'bg-[#185FA5] text-white border-[#185FA5] shadow-lg shadow-[#185FA5]/20'
+                                    : 'bg-white text-gray-500 border-gray-100 hover:border-[#378ADD]/30'
                                     }`}
                             >
                                 <span className="text-[10px] uppercase tracking-wider leading-none mb-1 opacity-80">
@@ -142,7 +148,7 @@ function Appointments() {
 
             {/* Booking list */}
             <div>
-                <p className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">Navbatlar</p>
+                <p className="text-xs font-bold uppercase text-gray-400 tracking-widest mb-3">{t('barber.appointments.bookings')}</p>
 
                 {loading ? (
                     <div className="space-y-3">
@@ -166,7 +172,7 @@ function Appointments() {
                                         <span className="block text-sm font-bold text-gray-900">
                                             {formatTo24h(booking.booking_hours)}
                                         </span>
-                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">vaqt</span>
+                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{t('barber.appointments.timeLabel')}</span>
                                     </div>
 
                                     <div className="w-px h-10 bg-gray-100 rounded-full" />
@@ -181,10 +187,10 @@ function Appointments() {
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-gray-800 text-sm leading-tight">
-                                                {client?.name || 'Mijoz'}
+                                                {client?.name || t('common.client')}
                                             </h3>
                                             <p className="text-[11px] text-gray-400 font-medium">
-                                                {booking.service_name || 'Soch turmagi'} {booking.service_price ? `(${Number(booking.service_price).toLocaleString()} UZS)` : ''}
+                                                {booking.service_name || t('barber.dashboard.haircut')} {booking.service_price ? `(${Number(booking.service_price).toLocaleString()} ${t('common.uzs')})` : ''}
                                             </p>
                                         </div>
                                     </div>
@@ -209,16 +215,12 @@ function Appointments() {
                                                 </button>
                                             </>
                                         ) : (
-                                            <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider ${status === 'accepted' ? 'bg-blue-50 text-blue-600' :
+                                            <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider ${status === 'accepted' ? 'bg-[#E6F1FB] text-[#0C447C]' :
                                                 status === 'completed' ? 'bg-green-50 text-green-600' :
-                                                    status === 'in_progress' ? 'bg-primary/10 text-primary' :
+                                                    status === 'in_progress' ? 'bg-[#E6F1FB] text-[#0C447C]' :
                                                         'bg-gray-100 text-gray-400'
                                                 }`}>
-                                                {status === 'accepted' ? 'Tasdiqlandi' :
-                                                    status === 'completed' ? 'Tugadi' :
-                                                        status === 'in_progress' ? 'Jarayonda' :
-                                                            status === 'rejected' ? 'Rad etildi' :
-                                                                status}
+                                                {getStatusLabel(status)}
                                             </span>
                                         )}
                                     </div>
@@ -231,8 +233,8 @@ function Appointments() {
                         <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center mb-4 border border-gray-100">
                             <CalendarDays className="text-gray-300" size={28} />
                         </div>
-                        <p className="font-bold text-gray-700 text-sm">Navbat yo'q</p>
-                        <p className="text-gray-400 text-xs mt-1">Bu kun uchun birorta ham navbat topilmadi</p>
+                        <p className="font-bold text-gray-700 text-sm">{t('barber.appointments.emptyTitle')}</p>
+                        <p className="text-gray-400 text-xs mt-1">{t('barber.appointments.emptyDesc')}</p>
                     </div>
                 )}
             </div>

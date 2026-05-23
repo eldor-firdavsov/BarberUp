@@ -1,4 +1,5 @@
 import { X, Phone, MapPin, Heart } from 'lucide-react';
+import { t } from '../utils/i18n.js';
 
 function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavorite, isFavorite }) {
 
@@ -18,7 +19,7 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
                 <div className="relative h-56 rounded-t-[32px] overflow-hidden">
                     <img
                         src={shopImg}
-                        alt={barber.office_name || barber.shopName || 'Barbershop'}
+                        alt={barber.office_name || barber.shopName || t('common.barbershop')}
                         className="w-full h-full object-cover"
                         onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'; }}
                     />
@@ -41,7 +42,7 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
                                 onError={(e) => { e.target.style.display = 'none'; }}
                             />
                         ) : (
-                            <div className="w-14 h-14 rounded-full border-2 border-white bg-black flex items-center justify-center ring-4 ring-white/20">
+                            <div className="w-14 h-14 rounded-full border-2 border-white bg-[#378ADD] flex items-center justify-center ring-4 ring-white/20">
                                 <span className="text-white text-lg font-bold">
                                     {(barber.fullname || barber.name || 'B').charAt(0).toUpperCase()}
                                 </span>
@@ -49,10 +50,10 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
                         )}
                         <div>
                             <h2 className="text-xl font-bold text-white leading-tight tracking-[-0.02em]">
-                                {barber.office_name || barber.shopName || 'Barbershop'}
+                                {barber.office_name || barber.shopName || t('common.barbershop')}
                             </h2>
                             <p className="text-white/80 text-sm font-medium">
-                                {barber.fullname || barber.name || 'Barber'}
+                                {barber.fullname || barber.name || t('common.barber')}
                             </p>
                         </div>
                     </div>
@@ -65,14 +66,14 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
                     <div className="flex gap-3">
                         <button
                             onClick={onBookNow}
-                            className="flex-1 h-13 bg-black text-white px-4 py-3 rounded-2xl font-semibold text-sm hover:bg-[#111] transition-all duration-200 shadow-[0_8px_20px_rgba(0,0,0,0.15)]"
+                            className="flex-1 h-13 bg-[#378ADD] text-white px-4 py-3 rounded-2xl font-semibold text-sm hover:bg-[#185FA5] transition-all duration-200 shadow-[0_8px_20px_rgba(55,138,221,0.25)]"
                         >
-                            Book Session
+                            {t('components.barberProfileModal.bookSession')}
                         </button>
                         <button
                             onClick={() => onToggleFavorite(barber.id)}
                             className={`w-13 h-13 px-3 py-3 rounded-2xl font-bold transition-all duration-200 border ${isFavorite
-                                ? 'bg-black text-white border-black'
+                                ? 'bg-[#185FA5] text-white border-[#185FA5]'
                                 : 'bg-[#f8f8f8] text-[#888] border-black/5 hover:bg-[#f0f0f0]'
                                 }`}
                         >
@@ -83,15 +84,15 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
                     {/* Info Grid */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
-                            <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">Price</p>
+                            <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">{t('common.price')}</p>
                             <p className="font-bold text-[#111] text-[18px]">
-                                {(barber.average_price ?? barber.avgPrice ?? 0).toLocaleString()} UZS
+                                {(barber.average_price ?? barber.avgPrice ?? 0).toLocaleString()} {t('common.uzs')}
                             </p>
                         </div>
                         <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
-                            <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">Hours</p>
+                            <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">{t('common.hours')}</p>
                             <p className="font-bold text-[#111] text-sm leading-tight">
-                                {barber.working_hours || barber.workingHours || 'N/A'}
+                                {barber.working_hours || barber.workingHours || t('components.barberProfileModal.notAvailable')}
                             </p>
                         </div>
                     </div>

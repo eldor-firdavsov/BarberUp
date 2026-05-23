@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { formatTo24h } from '../../utils/time.js';
 import { Heart, MapPin } from 'lucide-react';
 import BarberProfileModal from '../../components/BarberProfileModal.jsx';
+import { t } from '../../utils/i18n.js';
 
 
 // NOTE FOR BACKEND:
@@ -48,7 +49,7 @@ function Client() {
             console.log('[ClientDashboard] result → data:', data, '| error:', apiError);
 
             if (apiError || !data) {
-                setError('Something went wrong');
+                setError(t('client.dashboard.somethingWrong'));
                 setBarbers([]);
             } else {
                 const filtered = (data ?? []).filter(
@@ -79,7 +80,7 @@ function Client() {
     // Get client's current location
     useEffect(() => {
         if (!navigator.geolocation) {
-            setLocationError('Geolocation is not supported by your browser');
+            setLocationError(t('client.dashboard.geoNotSupported'));
             return;
         }
 
@@ -100,7 +101,7 @@ function Client() {
             console.error('[GEOLOCATION] Error:', error);
             console.log('=== GEOLOCATION FAILED ===',
                 error.message);
-            setLocationError('Unable to get your location');
+            setLocationError(t('client.dashboard.geoFailed'));
             // Use default Tashkent coordinates
             setClientCoords({ lat: 41.2995, lng: 69.2401 });
         };
@@ -179,7 +180,7 @@ function Client() {
         setError('');
         const { data, error: apiError } = await getBarbers();
         if (apiError || !data) {
-            setError('Something went wrong');
+            setError(t('client.dashboard.somethingWrong'));
             setBarbers([]);
         } else {
             const filtered = (data ?? []).filter(
@@ -192,22 +193,22 @@ function Client() {
     };
 
     const getBarberStatus = (barber) => {
-        if (barber.status === 'inactive') return 'Currently Offline';
+        if (barber.status === 'inactive') return t('status.offline');
         const workingHours = barber.working_hours || barber.workingHours || '';
-        if (!workingHours) return 'Available';
+        if (!workingHours) return t('status.available');
         const parts = workingHours.split(' - ');
-        if (parts.length < 2) return 'Available';
+        if (parts.length < 2) return t('status.available');
         const start = formatTo24h(parts[0]);
         const end = formatTo24h(parts[1]);
-        if (!start || !end) return 'Available';
+        if (!start || !end) return t('status.available');
         const now = new Date();
         const nowMins = now.getHours() * 60 + now.getMinutes();
         const [sh, sm] = start.split(':').map(Number);
         const [eh, em] = end.split(':').map(Number);
         const startMins = sh * 60 + sm;
         const endMins = eh * 60 + em;
-        if (nowMins < startMins || nowMins >= endMins) return 'Currently Offline';
-        return 'Available';
+        if (nowMins < startMins || nowMins >= endMins) return t('status.offline');
+        return t('status.available');
     };
 
     // Memoized client location to avoid repeated localStorage parsing
@@ -308,26 +309,26 @@ function Client() {
     return (
         <section className="min-h-screen bg-[#f5f5f7] max-w-md mx-auto px-4 py-8 sm:px-6 sm:py-12 flex flex-col">
             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
-                Elevate your<br />Grooming.
+                {t('client.dashboard.titleLine1')}<br />{t('client.dashboard.titleLine2')}
             </h1>
             <p className="text-sm text-[#666] font-medium mb-8">
-                Discover the finest ateliers in the city. Hand-picked masters of the craft, ready for your next transformation.
+                {t('client.dashboard.subtitle')}
             </p>
 
             <div className="flex bg-[#f8f8f8] p-1.5 rounded-2xl mb-8 border border-black/5">
                 <button
                     onClick={() => setActiveTab('nearby')}
-                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'nearby' ? 'bg-white shadow-sm text-[#111]' : 'text-[#666]'
+                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'nearby' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666]'
                         }`}
                 >
-                    Nearby
+                    {t('client.dashboard.nearby')}
                 </button>
                 <button
                     onClick={() => setActiveTab('favorites')}
-                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'favorites' ? 'bg-white shadow-sm text-[#111]' : 'text-[#666]'
+                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'favorites' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666]'
                         }`}
                 >
-                    Favorites {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
+                    {t('client.dashboard.favorites')} {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
                 </button>
             </div>
 
@@ -347,7 +348,7 @@ function Client() {
                         <svg className="error-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="error-title">Failed to Load Barbers</span>
+                        <span className="error-title">{t('client.dashboard.failedLoadBarbers')}</span>
                     </div>
                     <p className="error-message">{error}</p>
                     <div className="error-actions">
@@ -359,10 +360,10 @@ function Client() {
                             {retrying ? (
                                 <>
                                     <div className="spinner"></div>
-                                    Retrying...
+                                    {t('common.retrying')}
                                 </>
                             ) : (
-                                'Retry'
+                                t('common.retry')
                             )}
                         </button>
                     </div>
@@ -378,15 +379,15 @@ function Client() {
                             <div className="empty-state-icon">
                                 <Heart size={40} className="text-gray-400" />
                             </div>
-                            <h3 className="empty-state-title">No favorite barbers yet</h3>
+                            <h3 className="empty-state-title">{t('client.dashboard.noFavoritesTitle')}</h3>
                             <p className="empty-state-description">
-                                Tap the heart icon on any barber to save them as favorites for faster booking
+                                {t('client.dashboard.noFavoritesDesc')}
                             </p>
                             <button
                                 onClick={() => setActiveTab('nearby')}
                                 className="btn-primary empty-state-action"
                             >
-                                Discover Barbers
+                                {t('client.dashboard.discoverBarbers')}
                             </button>
                         </div>
                     )}
@@ -406,7 +407,7 @@ function Client() {
                                                 ? barber.shopImage
                                                 : 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'
                                     }
-                                    alt="Shop"
+                                    alt={t('common.shop')}
                                     className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
                                     onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'; }}
                                 />
@@ -419,14 +420,14 @@ function Client() {
                                     </button>
                                 </div>
                                 <div className="absolute bottom-4 left-4">
-                                    <span className={getBarberStatus(barber) === 'Available' ? "bg-green-500 text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full" : "bg-[#111] text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full"}>
+                                    <span className={getBarberStatus(barber) === t('status.available') ? "bg-green-500 text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full" : "bg-[#185FA5] text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full"}>
                                         {getBarberStatus(barber)}
                                     </span>
                                 </div>
                             </div>
                             <div className="p-6">
                                 <div className="mb-4">
-                                    <h3 className="text-xl mb-1 font-bold text-[#111] truncate">{barber.office_name || barber.shopName || 'Barbershop'}</h3>
+                                    <h3 className="text-xl mb-1 font-bold text-[#111] truncate">{barber.office_name || barber.shopName || t('common.barbershop')}</h3>
                                     <div className="flex items-center gap-3 mt-2">
                                         <div className="flex items-center gap-2">
                                             {(barber.profile_img && barber.profile_img.trim() !== '') ? (
@@ -445,7 +446,7 @@ function Client() {
                                                     </span>
                                                 </div>
                                             )}
-                                            <span className="font-semibold text-sm text-[#666] truncate">{barber.fullname || barber.name || 'Barber'}</span>
+                                            <span className="font-semibold text-sm text-[#666] truncate">{barber.fullname || barber.name || t('common.barber')}</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 mt-3">
@@ -453,7 +454,7 @@ function Client() {
                                             {(barber.average_price ?? barber.avgPrice ?? 0).toLocaleString()} UZS
                                         </div>
                                         <div className="bg-[#f8f8f8] px-2.5 py-1 rounded-xl text-xs font-semibold text-[#666] border border-black/5">
-                                            {barber.working_hours || barber.workingHours || '09:00 - 21:00'}
+                                            {barber.working_hours || barber.workingHours || t('common.defaultWorkingHours')}
                                         </div>
                                     </div>
                                 </div>
@@ -461,11 +462,11 @@ function Client() {
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h2 className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-0.5">
-                                                {activeTab === 'nearby' ? 'Distance' : 'Status'}
+                                                {activeTab === 'nearby' ? t('client.dashboard.distance') : t('client.dashboard.statusLabel')}
                                             </h2>
                                             {activeTab === 'nearby' ? (
                                                 <span className="text-sm font-bold text-[#111] flex items-center gap-1">
-                                                    <MapPin size={16} className="text-[#111]" /> {barber._dist !== null && barber._dist !== undefined ? `${Number(barber._dist).toFixed(1)} km away` : 'Location not set'}
+                                                    <MapPin size={16} className="text-[#378ADD]" /> {barber._dist !== null && barber._dist !== undefined ? t('client.dashboard.kmAway', { distance: Number(barber._dist).toFixed(1) }) : t('client.dashboard.locationNotSet')}
                                                 </span>
                                             ) : (
                                                 <span className="text-sm font-bold text-[#111]">
@@ -480,18 +481,18 @@ function Client() {
                                                 e.stopPropagation();
                                                 openProfileModal(barber);
                                             }}
-                                            className="h-11 rounded-2xl bg-white border border-black/5 text-[#111] font-semibold text-xs transition-all duration-200 hover:bg-[#f8f8f8] hover:border-black/10 shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
+                                            className="h-11 rounded-2xl bg-[#E6F1FB] border border-[#185FA5]/15 text-[#185FA5] font-semibold text-xs transition-all duration-200 hover:bg-[#d9e9f8] hover:border-[#185FA5]/25 shadow-[0_4px_20px_rgba(55,138,221,0.08)]"
                                         >
-                                            View Profile
+                                            {t('client.dashboard.viewProfile')}
                                         </button>
                                         <button
-                                            className="h-11 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                                            className="h-11 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`);
                                             }}
                                         >
-                                            Book Session
+                                            {t('client.dashboard.bookSession')}
                                         </button>
                                     </div>
                                 </div>
@@ -506,7 +507,7 @@ function Client() {
             {/* Empty State */}
             {!loading && !error && barbers.length === 0 && (
                 <div className="py-10 text-center">
-                    <p className="text-base text-[#666] font-semibold">No barbers available</p>
+                    <p className="text-base text-[#666] font-semibold">{t('client.dashboard.noBarbers')}</p>
                 </div>
             )}
 

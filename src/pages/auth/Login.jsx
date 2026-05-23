@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { loginBarber } from '../../api/barberApi.js';
 import { loginClient } from '../../api/clientApi.js';
+import { t } from '../../utils/i18n.js';
 
 /* ─── Role selector styles (scoped, no global pollution) ─────────────────── */
 const roleSelectorStyles = `
@@ -29,9 +30,9 @@ const roleSelectorStyles = `
   }
 
   .role-toggle-btn.active {
-    background: #000000;
+    background: #185FA5;
     color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(24, 95, 165, 0.25);
   }
 
   .role-toggle-btn:disabled {
@@ -59,12 +60,12 @@ function Login() {
 
         // Basic field validation
         if (!email.trim() || !password.trim()) {
-            setError('Fields cannot be empty.');
+            setError(t('auth.errors.fieldsEmpty'));
             return;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email.trim())) {
-            setError('Invalid email format.');
+            setError(t('auth.errors.invalidEmail'));
             return;
         }
 
@@ -90,7 +91,7 @@ function Login() {
 
             if (apiError || !data) {
                 console.error('[LOGIN] api error ->', apiError);
-                setError(apiError || 'Login failed. Please try again.');
+                setError(apiError || t('auth.errors.loginFailed'));
                 return;
             }
 
@@ -116,7 +117,7 @@ function Login() {
         } catch (err) {
             // Should not normally reach here — loginBarber/loginClient catch internally
             console.error('[LOGIN] unexpected error ->', err);
-            setError('Something went wrong. Please try again.');
+            setError(t('auth.errors.somethingWrong'));
         } finally {
             setLoading(false);
             inFlight.current = false;
@@ -150,19 +151,19 @@ function Login() {
                         </button>
 
                         <div className="text-center">
-                            <img src="./Scissor.png" alt="scissor icon" className="mx-auto mb-6 h-10 w-10" />
+                            <img src="./Scissor.png" alt={t('common.scissorIcon')} className="mx-auto mb-6 h-10 w-10" />
                             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
-                                Login to your account
+                                {t('auth.login.title')}
                             </h1>
                             <p className="text-sm text-[#666] font-medium">
-                                Enter your email and password
+                                {t('auth.login.subtitle')}
                             </p>
                         </div>
 
                         <div className="space-y-6">
                             {/* ── Role Selector ── */}
                             <div>
-                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">I am a…</label>
+                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.login.roleLabel')}</label>
                                 <div className="role-toggle">
                                     <button
                                         type="button"
@@ -171,7 +172,7 @@ function Login() {
                                         onClick={() => { setRole('client'); setError(''); }}
                                         disabled={isBusy}
                                     >
-                                        Client
+                                        {t('auth.login.client')}
                                     </button>
                                     <button
                                         type="button"
@@ -180,22 +181,22 @@ function Login() {
                                         onClick={() => { setRole('barber'); setError(''); }}
                                         disabled={isBusy}
                                     >
-                                        Barber
+                                        {t('auth.login.barber')}
                                     </button>
                                 </div>
                             </div>
 
                             {/* ── Email ── */}
                             <div>
-                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Email</label>
+                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.email')}</label>
                                 <input
                                     id="login-email"
                                     type="email"
-                                    placeholder="Enter your email address"
+                                    placeholder={t('auth.login.emailPlaceholder')}
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
                                     disabled={isBusy}
                                     autoComplete="email"
                                 />
@@ -203,15 +204,15 @@ function Login() {
 
                             {/* ── Password ── */}
                             <div>
-                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Password</label>
+                                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.password')}</label>
                                 <input
                                     id="login-password"
                                     type="password"
-                                    placeholder="Enter your password"
+                                    placeholder={t('auth.login.passwordPlaceholder')}
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
+                                    className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
                                     disabled={isBusy}
                                     autoComplete="current-password"
                                 />
@@ -230,23 +231,23 @@ function Login() {
                                 type="button"
                                 onClick={handleSignIn}
                                 disabled={!isFormValid || isBusy}
-                                className="w-full h-14 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                                className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
                             >
                                 {isBusy ? (
                                     <>
                                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        Signing in…
+                                        {t('auth.login.signingIn')}
                                     </>
                                 ) : (
-                                    'Sign In'
+                                    t('auth.login.signIn')
                                 )}
                             </button>
 
                             <div className="text-center">
                                 <p className="text-sm text-[#666]">
-                                    Don&apos;t have an account?{' '}
-                                    <Link to="/register" className="font-bold text-[#111] hover:underline transition-all">
-                                        Sign Up
+                                    {t('auth.login.noAccount')}{' '}
+                                    <Link to="/register" className="font-bold text-[#378ADD] hover:text-[#185FA5] hover:underline transition-all">
+                                        {t('auth.login.signUp')}
                                     </Link>
                                 </p>
                             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Phone, Calendar, Clock, TrendingUp, User, AlertCircle } from 'lucide-react';
 import { getBookings } from '../api/bookingApi.js';
+import { t, getStatusLabel } from '../utils/i18n.js';
 
 function ClientProfileModal({ client, isOpen, onClose }) {
     const [stats, setStats] = useState({
@@ -57,17 +58,17 @@ function ClientProfileModal({ client, isOpen, onClose }) {
 
     const reliabilityLabel = stats.totalVisits > 0
         ? stats.completedBookings >= stats.totalVisits * 0.8
-            ? 'Excellent reliability'
+            ? t('components.clientProfileModal.reliabilityExcellent')
             : stats.completedBookings >= stats.totalVisits * 0.6
-                ? 'Good reliability'
-                : 'Needs improvement'
-        : 'No booking history yet';
+                ? t('components.clientProfileModal.reliabilityGood')
+                : t('components.clientProfileModal.reliabilityNeedsWork')
+        : t('components.clientProfileModal.noBookingHistory');
 
     const lastBookingStatusStyle = {
-        completed: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Completed' },
-        cancelled: { bg: 'bg-red-50', text: 'text-red-500', label: 'Cancelled' },
-        rejected: { bg: 'bg-[#f8f8f8]', text: 'text-[#888]', label: 'Rejected' },
-        pending: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]', label: 'Pending' },
+        completed: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]' },
+        cancelled: { bg: 'bg-red-50', text: 'text-red-500' },
+        rejected: { bg: 'bg-[#f8f8f8]', text: 'text-[#888]' },
+        pending: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]' },
     };
 
     return (
@@ -86,7 +87,7 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                     <div className="flex items-center gap-4 pr-12">
                         <div className="w-16 h-16 rounded-[20px] bg-[#f8f8f8] border border-black/5 flex items-center justify-center">
                             {client.avatar
-                                ? <img src={client.avatar} alt={client.name || client.fullname || 'Client'} className="w-16 h-16 rounded-[20px] object-cover" />
+                                ? <img src={client.avatar} alt={client.name || client.fullname || t('common.client')} className="w-16 h-16 rounded-[20px] object-cover" />
                                 : <span className="text-[#111] font-bold text-2xl">
                                     {(client.name || client.fullname || 'C').charAt(0).toUpperCase()}
                                 </span>
@@ -94,10 +95,10 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                         </div>
                         <div>
                             <h2 className="text-[20px] font-bold text-[#111] tracking-[-0.02em]">
-                                {client.name || client.fullname || 'Client'}
+                                {client.name || client.fullname || t('common.client')}
                             </h2>
                             <p className="text-sm text-[#666] font-medium mt-0.5">
-                                Client since {client.createdAt ? new Date(client.createdAt).getFullYear() : '—'}
+                                {t('components.clientProfileModal.clientSince', { date: client.createdAt ? new Date(client.createdAt).getFullYear() : t('common.dash') })}
                             </p>
                         </div>
                     </div>
@@ -110,23 +111,23 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                     <div className="space-y-3">
                         <div className="flex items-center gap-3 bg-[#f8f8f8] border border-black/5 rounded-2xl px-4 py-3">
                             <Phone size={15} className="text-[#888] shrink-0" />
-                            <span className="text-sm font-medium text-[#555]">{client.phone || '+998 XX XXX XX XX'}</span>
+                            <span className="text-sm font-medium text-[#555]">{client.phone || t('components.clientProfileModal.phonePlaceholder')}</span>
                         </div>
                         <div className="flex items-center gap-3 bg-[#f8f8f8] border border-black/5 rounded-2xl px-4 py-3">
                             <User size={15} className="text-[#888] shrink-0" />
-                            <span className="text-sm font-medium text-[#555]">{client.email || 'client@example.com'}</span>
+                            <span className="text-sm font-medium text-[#555]">{client.email || t('components.clientProfileModal.emailPlaceholder')}</span>
                         </div>
                     </div>
 
                     {/* Stats */}
                     <div>
-                        <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">Booking History</p>
+                        <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">{t('components.clientProfileModal.bookingHistory')}</p>
                         <div className="grid grid-cols-2 gap-3">
                             {[
-                                { icon: <Calendar size={14} />, label: 'Total Visits', value: stats.totalVisits },
-                                { icon: <TrendingUp size={14} />, label: 'Completed', value: stats.completedBookings },
-                                { icon: <X size={14} />, label: 'Cancellations', value: stats.cancellations },
-                                { icon: <AlertCircle size={14} />, label: 'No Shows', value: stats.noShows },
+                                { icon: <Calendar size={14} />, label: t('components.clientProfileModal.totalVisits'), value: stats.totalVisits },
+                                { icon: <TrendingUp size={14} />, label: t('components.clientProfileModal.completed'), value: stats.completedBookings },
+                                { icon: <X size={14} />, label: t('components.clientProfileModal.cancellations'), value: stats.cancellations },
+                                { icon: <AlertCircle size={14} />, label: t('components.clientProfileModal.noShows'), value: stats.noShows },
                             ].map(({ icon, label, value }) => (
                                 <div key={label} className="bg-[#f8f8f8] border border-black/5 rounded-2xl p-4">
                                     <div className="flex items-center gap-2 text-[#888] mb-2">
@@ -134,7 +135,7 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                                         <span className="text-xs font-semibold text-[#888]">{label}</span>
                                     </div>
                                     <p className="text-2xl font-bold text-[#111]">
-                                        {loading ? '—' : value}
+                                        {loading ? t('common.dash') : value}
                                     </p>
                                 </div>
                             ))}
@@ -144,17 +145,17 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                     {/* Last Booking */}
                     {stats.lastBooking && (
                         <div>
-                            <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">Last Booking</p>
+                            <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">{t('components.clientProfileModal.lastBooking')}</p>
                             <div className="bg-[#f8f8f8] border border-black/5 rounded-2xl p-4">
                                 <div className="flex justify-between items-center mb-3">
                                     <div>
-                                        <p className="text-[10px] text-[#888] font-semibold uppercase tracking-wider mb-1">Date</p>
+                                        <p className="text-[10px] text-[#888] font-semibold uppercase tracking-wider mb-1">{t('common.date')}</p>
                                         <p className="font-bold text-[#111] text-sm">
                                             {new Date(stats.lastBooking.createdAt).toLocaleDateString()}
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] text-[#888] font-semibold uppercase tracking-wider mb-1">Time</p>
+                                        <p className="text-[10px] text-[#888] font-semibold uppercase tracking-wider mb-1">{t('common.time')}</p>
                                         <p className="font-bold text-[#111] text-sm">
                                             {stats.lastBooking.booking_hours}
                                         </p>
@@ -165,7 +166,7 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                                     const cfg = lastBookingStatusStyle[s] ?? lastBookingStatusStyle.pending;
                                     return (
                                         <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider border border-black/5 ${cfg.bg} ${cfg.text}`}>
-                                            {cfg.label}
+                                            {getStatusLabel(s)}
                                         </span>
                                     );
                                 })()}
@@ -175,19 +176,19 @@ function ClientProfileModal({ client, isOpen, onClose }) {
 
                     {/* Reliability Score */}
                     <div>
-                        <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">Reliability Score</p>
+                        <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.12em] mb-3">{t('components.clientProfileModal.reliabilityScore')}</p>
                         <div className="bg-[#f8f8f8] border border-black/5 rounded-2xl p-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-sm font-medium text-[#666]">Show-up Rate</span>
-                                <span className="font-bold text-[#111]">{loading ? '—' : `${showupRate}%`}</span>
+                                <span className="text-sm font-medium text-[#666]">{t('components.clientProfileModal.showUpRate')}</span>
+                                <span className="font-bold text-[#111]">{loading ? t('common.dash') : `${showupRate}%`}</span>
                             </div>
-                            <div className="w-full bg-black/5 rounded-full h-2 mb-2">
+                            <div className="w-full bg-[#E6F1FB] rounded-full h-2 mb-2">
                                 <div
-                                    className="bg-black h-2 rounded-full transition-all duration-500"
+                                    className="bg-[#378ADD] h-2 rounded-full transition-all duration-500"
                                     style={{ width: `${loading ? 0 : showupRate}%` }}
                                 />
                             </div>
-                            <p className="text-xs text-[#888] font-medium">{loading ? '—' : reliabilityLabel}</p>
+                            <p className="text-xs text-[#888] font-medium">{loading ? t('common.dash') : reliabilityLabel}</p>
                         </div>
                     </div>
                 </div>

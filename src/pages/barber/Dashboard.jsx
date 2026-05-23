@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h, isWithinWorkingHours, getCurrentTime } from '../../utils/time.js';
+import { t } from '../../utils/i18n.js';
 
 const WORK_STATUS_KEY = 'navbatgo_work_status';
 
@@ -117,7 +118,7 @@ function Dashboard() {
         });
         if (!session) return null;
         const client = session.clientData || clientsById[session.client];
-        return { ...session, clientName: client?.name || client?.fullname || 'Mijoz' };
+        return { ...session, clientName: client?.name || client?.fullname || t('common.client') };
     }, [bookings, clientsById]);
 
     const upcomingBookings = useMemo(() => {
@@ -165,17 +166,35 @@ function Dashboard() {
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">Dashboard</h1>
-                    <p className="text-sm text-[#666] font-medium mt-1">Bugungi navbatlar nazorati</p>
+                    <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('barber.dashboard.title')}</h1>
+                    <p className="text-sm text-[#666] font-medium mt-1">{t('barber.dashboard.subtitle')}</p>
                 </div>
-                <div className="text-right">
-                    <p className="text-[10px] uppercase text-[#888] font-bold tracking-[0.12em]">Holat</p>
-                    <button
-                        onClick={handleToggleWork}
-                        className={`mt-2 px-4 py-2 border rounded-full text-xs font-bold transition-all duration-200 ${isWorking ? 'bg-[#f8f8f8] border-black/5 text-[#111] shadow-sm' : 'bg-red-50 border-red-100 text-red-500'}`}
-                    >
-                        {isWorking ? "● ISHLAYAPMAN" : "● TANAFFUS"}
-                    </button>
+                <div className="text-right shrink-0">
+                    <p className="text-[10px] uppercase text-[#888] font-bold tracking-[0.12em] mb-2">{t('barber.dashboard.status')}</p>
+                    <div className="flex items-center gap-2.5 justify-end">
+                        <span
+                            className={`text-[11px] font-bold uppercase tracking-wide transition-colors duration-200 ${!isWorking ? 'text-[#185FA5]' : 'text-[#bbb]'}`}
+                        >
+                            {t('barber.dashboard.break')}
+                        </span>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={isWorking}
+                            aria-label={isWorking ? t('barber.dashboard.working') : t('barber.dashboard.break')}
+                            onClick={handleToggleWork}
+                            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#85B7EB]/40 focus:ring-offset-1 ${isWorking ? 'bg-[#378ADD]' : 'bg-[#d1d5db]'}`}
+                        >
+                            <span
+                                className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${isWorking ? 'translate-x-6' : 'translate-x-1'}`}
+                            />
+                        </button>
+                        <span
+                            className={`text-[11px] font-bold uppercase tracking-wide transition-colors duration-200 ${isWorking ? 'text-[#185FA5]' : 'text-[#bbb]'}`}
+                        >
+                            {t('barber.dashboard.working')}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -187,15 +206,15 @@ function Dashboard() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#378ADD] opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#378ADD]"></span>
                         </span>
-                        Yangi So'rovlar
+                        {t('barber.dashboard.newRequests')}
                     </h2>
                     <div className="space-y-3">
                         {pendingRequests.map(request => (
                             <div key={request.id} className="bg-white border border-black/5 rounded-[28px] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] flex items-center gap-4 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)] transition-all duration-200">
                                 <SimpleAvatar name={request.clientData?.name || "Y"} />
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-[#111] truncate">{request.clientData?.name || 'Yangi Mijoz'}</h3>
-                                    <p className="text-xs text-[#666] font-semibold mt-0.5">{request.service_name || 'Soch turmagi'}</p>
+                                    <h3 className="font-bold text-[#111] truncate">{request.clientData?.name || t('barber.dashboard.newClient')}</h3>
+                                    <p className="text-xs text-[#666] font-semibold mt-0.5">{request.service_name || t('barber.dashboard.haircut')}</p>
                                     <p className="font-bold text-xs text-[#111] mt-1 flex flex-wrap gap-x-2 gap-y-0.5 items-center">
                                         <span>{formatTo24h(request.booking_hours)}</span>
                                         {(() => {
@@ -231,13 +250,13 @@ function Dashboard() {
 
             {/* CURRENT SESSION CARD */}
             <section>
-                <h2 className="text-[10px] font-bold uppercase text-[#888] mb-4 tracking-[0.12em]">Hozirgi Jarayon</h2>
+                <h2 className="text-[10px] font-bold uppercase text-[#888] mb-4 tracking-[0.12em]">{t('barber.dashboard.currentSession')}</h2>
                 {activeSession ? (
                     <div className="bg-white border border-black/5 rounded-[28px] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] flex items-center gap-4 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)] transition-all duration-200">
                         <SimpleAvatar name={activeSession.clientName} size="w-14 h-14" />
                         <div className="flex-1 min-w-0">
                             <h3 className="text-lg font-bold text-[#111] truncate">{activeSession.clientName}</h3>
-                            <p className="text-sm text-[#666] font-medium mt-0.5">{activeSession.service_name || 'Soch turmagi'}</p>
+                            <p className="text-sm text-[#666] font-medium mt-0.5">{activeSession.service_name || t('barber.dashboard.haircut')}</p>
                             <div className="flex items-center gap-1.5 mt-1.5 text-[#888] font-semibold">
                                 <Clock size={13} />
                                 <span className="text-xs">{formatTo24h(activeSession.booking_hours)} da boshlangan</span>
@@ -254,8 +273,8 @@ function Dashboard() {
                 ) : (
                     <div className="bg-[#f8f8f8] border border-dashed border-black/10 rounded-[28px] p-8 text-center">
                         <Coffee className="mx-auto text-[#aaa] mb-3" size={28} />
-                        <p className="text-[#666] font-medium text-sm">Hozircha hech kim yo'q.</p>
-                        <p className="text-xs text-[#888] font-medium mt-0.5">Navbatdagi mijozni boshlang.</p>
+                        <p className="text-[#666] font-medium text-sm">{t('barber.dashboard.noOneNow')}</p>
+                        <p className="text-xs text-[#888] font-medium mt-0.5">{t('barber.dashboard.startNextHint')}</p>
                     </div>
                 )}
             </section>
@@ -267,15 +286,15 @@ function Dashboard() {
                 const isOverdue = nextTime && nextTime < now;
                 return (
                     <section>
-                        <h2 className="text-[10px] font-bold uppercase text-[#888] mb-4 tracking-[0.12em]">Navbatdagi Mijoz</h2>
+                        <h2 className="text-[10px] font-bold uppercase text-[#888] mb-4 tracking-[0.12em]">{t('barber.dashboard.nextInQueue')}</h2>
                         <div className={`bg-white border rounded-[28px] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] flex items-center gap-4 ${isOverdue ? 'border-red-100 bg-red-50/20' : 'border-black/5'}`}>
                             <SimpleAvatar name={nextClient.clientData?.name || "C"} />
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-[#111] truncate">{nextClient.clientData?.name || 'Mijoz'}</h3>
-                                <p className="text-xs text-[#666] font-semibold mt-0.5">{nextClient.service_name || 'Soch turmagi'}</p>
+                                <h3 className="font-bold text-[#111] truncate">{nextClient.clientData?.name || t('common.client')}</h3>
+                                <p className="text-xs text-[#666] font-semibold mt-0.5">{nextClient.service_name || t('barber.dashboard.haircut')}</p>
                                 <p className={`font-bold text-xs mt-1.5 flex items-center gap-2 ${isOverdue ? 'text-red-500' : 'text-[#111]'}`}>
                                     <span>{formatTo24h(nextClient.booking_hours)}</span>
-                                    {isOverdue && <span className="text-[9px] bg-red-50 text-red-500 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-100">Kechikdi</span>}
+                                    {isOverdue && <span className="text-[9px] bg-red-50 text-red-500 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-100">{t('barber.dashboard.overdue')}</span>}
                                 </p>
                             </div>
                             {isOverdue ? (
@@ -300,8 +319,8 @@ function Dashboard() {
             {laterClients.length > 0 && (
                 <section>
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-[10px] font-bold uppercase text-[#888] tracking-[0.12em]">Keyingi Navbatlar</h2>
-                        <button onClick={() => navigate('/barber/appointments')} className="text-[#111] text-xs font-bold flex items-center gap-1">
+                        <h2 className="text-[10px] font-bold uppercase text-[#888] tracking-[0.12em]">{t('barber.dashboard.upcoming')}</h2>
+                        <button onClick={() => navigate('/barber/appointments')} className="text-[#378ADD] hover:text-[#185FA5] text-xs font-bold flex items-center gap-1 transition-colors">
                             Hammasi <ChevronRight size={14} />
                         </button>
                     </div>
@@ -329,7 +348,7 @@ function Dashboard() {
                                         </button>
                                     )}
                                     {!isOverdue && (
-                                        <div className="text-xs font-bold text-[#111] bg-[#f8f8f8] border border-black/5 px-2.5 py-1.5 rounded-xl">
+                                        <div className="text-xs font-bold text-[#0C447C] bg-[#E6F1FB] border border-[#185FA5]/10 px-2.5 py-1.5 rounded-xl">
                                             {bTime}
                                         </div>
                                     )}

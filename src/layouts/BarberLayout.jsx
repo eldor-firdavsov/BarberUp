@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getBookings, updateBookingStatus } from '../api/bookingApi.js';
 import { getClients } from '../api/clientApi.js';
+import { t } from '../utils/i18n.js';
 
 const tabs = [
-    { id: "home", label: "HOME", icon: Home, path: "/barber/dashboard" },
-    { id: "schedule", label: "SCHEDULE", icon: Calendar, path: "/barber/appointments" },
-    { id: "clients", label: "CLIENTS", icon: Users, path: "/barber/clients" },
-    { id: "settings", label: "SETTINGS", icon: Settings, path: "/barber/settings" },
+    { id: "home", labelKey: "layout.barber.home", icon: Home, path: "/barber/dashboard" },
+    { id: "schedule", labelKey: "layout.barber.schedule", icon: Calendar, path: "/barber/appointments" },
+    { id: "clients", labelKey: "layout.barber.clients", icon: Users, path: "/barber/clients" },
+    { id: "settings", labelKey: "layout.barber.settings", icon: Settings, path: "/barber/settings" },
 ];
 
 function BarberLayout() {
@@ -121,16 +122,16 @@ function BarberLayout() {
             {/* HEADER */}
             <header className="w-full fixed top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-black/5">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-2xl bg-black flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-2xl bg-[#378ADD] flex items-center justify-center">
                         <img
                             src="/Scissor.png"
-                            alt="logo"
+                            alt={t('common.logo')}
                             className="w-5 h-5 object-contain invert"
                             onError={e => e.target.style.display = 'none'}
                         />
                     </div>
                     <h1 className="text-lg font-bold text-[#111] tracking-[-0.03em]">
-                        NavbatGo
+                        {t('brand.name')}
                     </h1>
                 </div>
 
@@ -141,7 +142,7 @@ function BarberLayout() {
                     >
                         <Bell size={18} className="text-[#111]" />
                         {notificationCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-black text-white text-[10px] font-bold rounded-full w-4.5 h-4.5 min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                            <span className="absolute -top-1 -right-1 bg-[#378ADD] text-white text-[10px] font-bold rounded-full w-4.5 h-4.5 min-w-[18px] h-[18px] flex items-center justify-center px-1">
                                 {notificationCount}
                             </span>
                         )}
@@ -153,9 +154,9 @@ function BarberLayout() {
                             <div className="p-6 border-b border-black/5 sticky top-0 bg-white rounded-t-[28px]">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-[18px] font-bold text-[#111] tracking-[-0.02em]">New Bookings</h3>
+                                        <h3 className="text-[18px] font-bold text-[#111] tracking-[-0.02em]">{t('layout.barber.newBookings')}</h3>
                                         <p className="text-sm text-[#666] font-medium mt-0.5">
-                                            {notificationCount} pending booking{notificationCount !== 1 ? 's' : ''}
+                                            {t('layout.barber.pendingCount', { count: notificationCount })}
                                         </p>
                                     </div>
                                     <button
@@ -172,8 +173,8 @@ function BarberLayout() {
                                     <div className="w-14 h-14 bg-[#f8f8f8] rounded-3xl flex items-center justify-center mb-4 border border-black/5">
                                         <Bell size={24} className="text-[#999]" />
                                     </div>
-                                    <p className="font-bold text-[#111] text-sm">No pending bookings</p>
-                                    <p className="text-xs text-[#666] mt-1 font-medium">All caught up! No pending requests.</p>
+                                    <p className="font-bold text-[#111] text-sm">{t('layout.barber.noPending')}</p>
+                                    <p className="text-xs text-[#666] mt-1 font-medium">{t('layout.barber.allCaughtUp')}</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-black/5">
@@ -189,14 +190,14 @@ function BarberLayout() {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="font-bold text-[#111] text-sm truncate">
-                                                            {client?.name || client?.fullname || 'Client'}
+                                                            {client?.name || client?.fullname || t('common.client')}
                                                         </h4>
                                                         <div className="flex items-center gap-3 mt-1">
                                                             <div className="flex items-center gap-1 text-xs text-[#666] font-medium">
                                                                 <Clock size={12} />
                                                                 <span>{booking.booking_hours}</span>
                                                             </div>
-                                                            <span className="text-[10px] bg-[#f8f8f8] border border-black/5 text-[#666] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pending</span>
+                                                            <span className="text-[10px] bg-[#f8f8f8] border border-black/5 text-[#666] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{t('status.pending')}</span>
                                                         </div>
                                                         {client?.phone && (
                                                             <div className="flex items-center gap-1 text-xs text-[#666] font-medium mt-1">
@@ -208,13 +209,13 @@ function BarberLayout() {
                                                         <div className="flex gap-2 mt-3">
                                                             <button
                                                                 onClick={() => handleAcceptBooking(booking.id)}
-                                                                className="flex-1 h-9 bg-black text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#111] transition-all disabled:opacity-50"
+                                                                className="flex-1 h-9 bg-[#378ADD] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-[#185FA5] transition-all disabled:opacity-50"
                                                                 disabled={pendingUpdateId === booking.id}
                                                             >
                                                                 {pendingUpdateId === booking.id ? (
                                                                     <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                                                 ) : (
-                                                                    <><Check size={12} />Accept</>
+                                                                    <><Check size={12} />{t('common.accept')}</>
                                                                 )}
                                                             </button>
                                                             <button
@@ -225,7 +226,7 @@ function BarberLayout() {
                                                                 {pendingUpdateId === booking.id ? (
                                                                     <div className="w-3 h-3 border-2 border-black/10 border-t-[#111] rounded-full animate-spin" />
                                                                 ) : (
-                                                                    <><X size={12} />Reject</>
+                                                                    <><X size={12} />{t('common.reject')}</>
                                                                 )}
                                                             </button>
                                                         </div>
@@ -258,13 +259,13 @@ function BarberLayout() {
                             className={({ isActive }) =>
                                 `flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-200
                                 ${isActive
-                                    ? "bg-black text-white"
+                                    ? "bg-[#185FA5] text-white"
                                     : "text-[#888] hover:text-[#111]"}`
                             }
                         >
                             <Icon size={20} />
                             <span className="text-[9px] font-bold tracking-[0.08em]">
-                                {tab.label}
+                                {t(tab.labelKey)}
                             </span>
                         </NavLink>
                     );

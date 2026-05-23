@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { t } from "../../utils/i18n.js";
 
 function Register() {
     const [email, setEmail] = useState("");
@@ -17,22 +18,22 @@ function Register() {
 
     const handleContinue = async () => {
         if (!email || !password) {
-            setError("Fields cannot be empty.");
+            setError(t("auth.errors.fieldsEmpty"));
             return;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            setError("Invalid email format.");
+            setError(t("auth.errors.invalidEmail"));
             return;
         }
         if (password.length < 6) {
-            setError("Password must be at least 6 characters.");
+            setError(t("auth.errors.passwordMin"));
             return;
         }
 
         const data = JSON.parse(localStorage.getItem("onboarding_data") || 'null');
         if (!data?.role) {
-            setError('Please select a role first.');
+            setError(t('auth.errors.selectRoleFirst'));
             navigate('/');
             return;
         }
@@ -72,33 +73,33 @@ function Register() {
                     </button>
 
                     <div className="text-center">
-                        <img src="./Scissor.png" alt="icon" className="mx-auto mb-6 h-10 w-10" />
+                        <img src="./Scissor.png" alt={t('common.scissorIcon')} className="mx-auto mb-6 h-10 w-10" />
                         <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
-                            Welcome to NavbatGo
+                            {t('auth.register.title')}
                         </h1>
                         <p className="text-sm text-[#666] font-medium">
-                            Enter your details to get started
+                            {t('auth.register.subtitle')}
                         </p>
                     </div>
 
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Email</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.email')}</label>
                             <input
                                 type="email"
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
-                                placeholder="example@gmail.com"
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                                placeholder={t('auth.register.emailPlaceholder')}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">Password</label>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.password')}</label>
                             <input
                                 type="password"
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-black/20 focus:bg-white"
-                                placeholder="Create password"
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                                placeholder={t('auth.register.passwordPlaceholder')}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
@@ -113,16 +114,16 @@ function Register() {
                         <button
                             onClick={handleContinue}
                             disabled={!isFormValid || loading}
-                            className="w-full h-14 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                            className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
                         >
-                            {loading ? 'Checking…' : 'Sign Up'}
+                            {loading ? t('auth.register.checking') : t('auth.register.signUp')}
                         </button>
 
                         <div className="text-center">
                             <p className="text-sm text-[#666]">
-                                Already have an account?{" "}
-                                <Link to="/login" className="font-bold text-[#111] hover:underline transition-all">
-                                    Sign In
+                                {t('auth.register.hasAccount')}{" "}
+                                <Link to="/login" className="font-bold text-[#378ADD] hover:text-[#185FA5] hover:underline transition-all">
+                                    {t('auth.register.signIn')}
                                 </Link>
                             </p>
                         </div>

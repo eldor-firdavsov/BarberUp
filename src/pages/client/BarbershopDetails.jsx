@@ -14,6 +14,7 @@ import {
     isSlotTaken,
     getCurrentTime,
 } from "../../utils/time.js";
+import { t } from "../../utils/i18n.js";
 
 export default function BarbershopDetails() {
     const { id } = useParams();
@@ -142,11 +143,11 @@ export default function BarbershopDetails() {
 
     async function refreshBookingState(targetBarberId) {
         if (!targetBarberId || String(targetBarberId).trim() === "") {
-            setError("Invalid barber ID");
+            setError(t("client.barbershopDetails.invalidBarberId"));
 
             return {
                 latestBookings: [],
-                latestError: "Invalid barber ID",
+                latestError: t("client.barbershopDetails.invalidBarberId"),
             };
         }
 
@@ -156,7 +157,7 @@ export default function BarbershopDetails() {
         } = await getBookings();
 
         if (latestError) {
-            setError("Something went wrong");
+            setError(t("client.dashboard.somethingWrong"));
 
             return {
                 latestBookings: [],
@@ -258,7 +259,7 @@ export default function BarbershopDetails() {
                         : [
                             {
                                 id: "default",
-                                name: "Regular Haircut",
+                                name: t("common.defaultHaircut"),
                                 duration: "30",
                                 price:
                                     found.average_price ??
@@ -305,7 +306,7 @@ export default function BarbershopDetails() {
                 setBookedSlots(busySlots);
 
                 if (bookingError) {
-                    setError("Something went wrong");
+                    setError(t("client.dashboard.somethingWrong"));
                 }
             } else {
                 setBarber("not_found");
@@ -340,12 +341,12 @@ export default function BarbershopDetails() {
         const barberKey = barber?.id ?? barber?._id;
 
         if (!barberKey) {
-            setError("Invalid barber data");
+            setError(t("client.barbershopDetails.invalidBarberData"));
             return;
         }
 
         if (!selectedSlot) {
-            setError("Please select a time slot");
+            setError(t("client.barbershopDetails.selectTimeSlot"));
             return;
         }
 
@@ -353,7 +354,7 @@ export default function BarbershopDetails() {
             formatTo24h(selectedSlot);
 
         if (!safeSelectedSlot) {
-            setError("Something went wrong");
+            setError(t("client.dashboard.somethingWrong"));
             return;
         }
 
@@ -381,7 +382,7 @@ export default function BarbershopDetails() {
                 barberKey
             )
         ) {
-            setError("This time slot is already booked.");
+            setError(t("client.barbershopDetails.slotBooked"));
             setBookingLoading(false);
             return;
         }
@@ -395,7 +396,7 @@ export default function BarbershopDetails() {
             booking_hours: safeSelectedSlot,
             service_name:
                 selectedService?.name ||
-                "Regular Haircut",
+                t("common.defaultHaircut"),
             service_price: selectedService?.price
                 ? String(selectedService.price)
                 : String(
@@ -416,9 +417,7 @@ export default function BarbershopDetails() {
                 duplicateMessage.includes("taken") ||
                 duplicateMessage.includes("booked")
             ) {
-                setError(
-                    "This time slot is already booked."
-                );
+                setError(t("client.barbershopDetails.slotBooked"));
             } else {
                 setError(bookingError);
             }
@@ -438,7 +437,7 @@ export default function BarbershopDetails() {
                 );
             } else {
                 setSuccessMessage(
-                    "Booking requested. Waiting for barber approval..."
+                    t("client.barbershopDetails.bookingRequested")
                 );
             }
 
@@ -466,7 +465,7 @@ export default function BarbershopDetails() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7]">
                 <h2 className="text-xl font-bold text-[#111]">
-                    Barber not found
+                    {t("client.barbershopDetails.notFound")}
                 </h2>
             </div>
         );
@@ -476,7 +475,7 @@ export default function BarbershopDetails() {
         return (
             <div className="min-h-screen bg-[#f5f5f7] flex justify-center items-center">
                 <p className="text-[#777] font-medium">
-                    Loading barber details...
+                    {t("client.barbershopDetails.loading")}
                 </p>
             </div>
         );
@@ -492,7 +491,7 @@ export default function BarbershopDetails() {
                 ? [
                     {
                         id: "default",
-                        name: "Regular Haircut",
+                        name: t("common.defaultHaircut"),
                         duration: "30",
                         price:
                             barber.average_price ??
@@ -533,7 +532,7 @@ export default function BarbershopDetails() {
                                     ? barber.shopImage
                                     : "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop"
                         }
-                        alt="barber"
+                        alt={t("client.barbershopDetails.barberAlt")}
                         className="w-full h-full object-cover"
                     />
 
@@ -550,7 +549,7 @@ export default function BarbershopDetails() {
                                 className="w-16 h-16 rounded-full object-cover ring-4 ring-[#f5f5f7]"
                             />
                         ) : (
-                            <div className="w-16 h-16 rounded-full bg-black flex items-center justify-center ring-4 ring-[#f5f5f7]">
+                            <div className="w-16 h-16 rounded-full bg-[#378ADD] flex items-center justify-center ring-4 ring-[#f5f5f7]">
                                 <span className="text-white text-lg font-bold">
                                     {(
                                         barber.fullname ||
@@ -567,13 +566,13 @@ export default function BarbershopDetails() {
                             <h2 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">
                                 {barber.office_name ||
                                     barber.shopName ||
-                                    "Gentleman's Atelier"}
+                                    t("client.barbershopDetails.gentlemansAtelier")}
                             </h2>
 
                             <p className="text-sm text-[#666] mt-1 font-medium">
                                 {barber.fullname ||
                                     barber.name ||
-                                    "Barber"}
+                                    t("common.barber")}
                             </p>
                         </div>
                     </div>
@@ -582,7 +581,7 @@ export default function BarbershopDetails() {
 
                         <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
                             <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">
-                                Average Price
+                                {t("client.barbershopDetails.averagePrice")}
                             </p>
 
                             <p className="font-bold text-[#111] text-[20px]">
@@ -591,26 +590,26 @@ export default function BarbershopDetails() {
                                     barber.avgPrice ??
                                     0
                                 ).toLocaleString()}{" "}
-                                UZS
+                                {t("common.uzs")}
                             </p>
                         </div>
 
                         <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
                             <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">
-                                Working Hours
+                                {t("client.barbershopDetails.workingHours")}
                             </p>
 
                             <p className="font-bold text-[#111] text-[18px]">
                                 {barber.working_hours ||
                                     barber.workingHours ||
-                                    "09:00 - 21:00"}
+                                    t("common.defaultWorkingHours")}
                             </p>
                         </div>
                     </div>
 
                     <div>
                         <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
-                            Services
+                            {t("client.barbershopDetails.services")}
                         </h3>
 
                         <div className="space-y-3">
@@ -629,7 +628,7 @@ export default function BarbershopDetails() {
                                         }
                                         className={`p-5 rounded-3xl border cursor-pointer transition-all duration-200 flex justify-between items-center
                                         ${isSelected
-                                                ? "bg-black text-white border-black shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
+                                                ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_10px_30px_rgba(24,95,165,0.2)]"
                                                 : "bg-[#fafafa] border-black/5 hover:border-black/20"
                                             }`}
                                     >
@@ -639,7 +638,7 @@ export default function BarbershopDetails() {
                                             </p>
 
                                             <p className="text-xs opacity-70 mt-1">
-                                                {service.duration} mins
+                                                {service.duration} {t("common.minutes")}
                                             </p>
                                         </div>
 
@@ -647,7 +646,7 @@ export default function BarbershopDetails() {
                                             {Number(
                                                 service.price
                                             ).toLocaleString()}{" "}
-                                            UZS
+                                            {t("common.uzs")}
                                         </p>
                                     </div>
                                 );
@@ -658,12 +657,12 @@ export default function BarbershopDetails() {
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-[20px] font-bold text-[#111] tracking-[-0.02em]">
-                                Available Slots
+                                {t("client.barbershopDetails.availableSlots")}
                             </h3>
 
                             {isTomorrow && (
-                                <span className="text-xs bg-black text-white px-3 py-1 rounded-full font-medium">
-                                    Tomorrow
+                                <span className="text-xs bg-[#E6F1FB] text-[#0C447C] px-3 py-1 rounded-full font-medium">
+                                    {t("common.tomorrow")}
                                 </span>
                             )}
                         </div>
@@ -680,12 +679,12 @@ export default function BarbershopDetails() {
                                                 ? "bg-[#f3f3f3] text-[#bbb] border-transparent cursor-not-allowed"
                                                 : selectedSlot ===
                                                     time
-                                                    ? "bg-black text-white border-black scale-[1.03] shadow-[0_10px_25px_rgba(0,0,0,0.18)]"
+                                                    ? "bg-[#185FA5] text-white border-[#185FA5] scale-[1.03] shadow-[0_10px_25px_rgba(24,95,165,0.2)]"
                                                     : "bg-white border-black/5 hover:border-black/15 hover:bg-[#fafafa]"
                                             }`}
                                     >
                                         <span className="text-[11px] uppercase tracking-wide opacity-70">
-                                            Time
+                                            {t("common.time")}
                                         </span>
 
                                         <span className="text-lg font-bold">
@@ -716,11 +715,11 @@ export default function BarbershopDetails() {
                                     />
 
                                     <h3 className="font-bold text-[#111]">
-                                        No available slots
+                                        {t("client.barbershopDetails.noSlots")}
                                     </h3>
 
                                     <p className="text-sm text-[#777] mt-2">
-                                        This barber is fully booked today.
+                                        {t("client.barbershopDetails.fullyBooked")}
                                     </p>
                                 </div>
                             )}
@@ -729,7 +728,7 @@ export default function BarbershopDetails() {
 
                     <div>
                         <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
-                            Location
+                            {t("client.barbershopDetails.location")}
                         </h3>
 
                         <div className="mt-3 p-4 bg-[#f8f8f8] rounded-3xl border border-black/5">
@@ -742,7 +741,7 @@ export default function BarbershopDetails() {
                                 {barber.address ||
                                     barber.location
                                         ?.address ||
-                                    "Address not provided"}
+                                    t("client.barbershopDetails.addressNotProvided")}
                             </p>
                         </div>
                     </div>
@@ -768,9 +767,9 @@ export default function BarbershopDetails() {
                             onClick={() =>
                                 navigate("/client/dashboard")
                             }
-                            className="w-full h-14 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-[15px] transition-all duration-200 flex items-center justify-center gap-2"
+                            className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                            Home
+                            {t("common.home")}
                         </button>
                     ) : (
                         <button
@@ -780,16 +779,16 @@ export default function BarbershopDetails() {
                                 bookingLoading ||
                                 isBookingInProgress
                             }
-                            className="w-full h-14 rounded-2xl bg-black hover:bg-[#111] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(0,0,0,0.12)]"
+                            className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
                         >
                             {bookingLoading ||
                                 isBookingInProgress ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    Booking...
+                                    {t("client.barbershopDetails.booking")}
                                 </>
                             ) : (
-                                "Book Now"
+                                t("client.barbershopDetails.bookNow")
                             )}
                         </button>
                     )}

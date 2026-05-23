@@ -4,14 +4,15 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes } from '../../utils/time.js';
+import { t, getStatusLabel } from '../../utils/i18n.js';
 
 const STATUS_CONFIG = {
-    completed: { label: 'Tugadi', bg: 'bg-[#f8f8f8]', text: 'text-[#666]' },
-    rejected: { label: 'Rad etildi', bg: 'bg-red-50', text: 'text-red-400' },
-    cancelled: { label: 'Bekor', bg: 'bg-red-50', text: 'text-red-400' },
-    pending: { label: 'Kutilmoqda', bg: 'bg-[#f8f8f8]', text: 'text-[#666]' },
-    accepted: { label: 'Tasdiqlandi', bg: 'bg-black', text: 'text-white' },
-    in_progress: { label: 'Jarayonda', bg: 'bg-black', text: 'text-white' },
+    completed: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]' },
+    rejected: { bg: 'bg-red-50', text: 'text-red-400' },
+    cancelled: { bg: 'bg-red-50', text: 'text-red-400' },
+    pending: { bg: 'bg-[#f8f8f8]', text: 'text-[#666]' },
+    accepted: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]' },
+    in_progress: { bg: 'bg-[#E6F1FB]', text: 'text-[#0C447C]' },
 };
 
 function Clients() {
@@ -64,12 +65,12 @@ function Clients() {
             {/* Header */}
             <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">Mijozlar</h1>
-                    <p className="text-sm text-[#666] font-medium mt-1">Baza va tashriflar tarixi</p>
+                    <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('barber.clients.title')}</h1>
+                    <p className="text-sm text-[#666] font-medium mt-1">{t('barber.clients.subtitle')}</p>
                 </div>
                 {upcomingCount > 0 && (
                     <div className="bg-white border border-black/5 rounded-2xl px-4 py-2 text-center shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-                        <span className="block text-[10px] font-bold text-[#666] uppercase tracking-[0.12em] leading-none mb-1">Navbat</span>
+                        <span className="block text-[10px] font-bold text-[#666] uppercase tracking-[0.12em] leading-none mb-1">{t('barber.clients.queue')}</span>
                         <span className="text-2xl font-bold text-[#111] leading-none">{upcomingCount}</span>
                     </div>
                 )}
@@ -77,17 +78,17 @@ function Clients() {
 
             {/* Tabs */}
             <div>
-                <p className="text-[10px] font-bold uppercase text-[#888] tracking-[0.12em] mb-3">Ko'rinish</p>
+                <p className="text-[10px] font-bold uppercase text-[#888] tracking-[0.12em] mb-3">{t('barber.clients.view')}</p>
                 <div className="flex p-1.5 bg-[#f8f8f8] border border-black/5 rounded-2xl gap-1">
                     {[
-                        { key: 'upcoming', label: 'Navbatdagilar' },
-                        { key: 'history', label: 'Tarix' },
+                        { key: 'upcoming', label: t('barber.clients.upcomingTab') },
+                        { key: 'history', label: t('barber.clients.historyTab') },
                     ].map(({ key, label }) => (
                         <button
                             key={key}
                             onClick={() => setActiveTab(key)}
                             className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${activeTab === key
-                                    ? 'bg-white shadow-sm text-[#111] border border-black/5'
+                                    ? 'bg-[#185FA5] shadow-sm text-white border border-[#185FA5]'
                                     : 'text-[#888] hover:text-[#666]'
                                 }`}
                         >
@@ -102,17 +103,17 @@ function Clients() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#bbb]" size={16} />
                 <input
                     type="text"
-                    placeholder="Mijoz ismini qidiring..."
+                    placeholder={t('barber.clients.searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white border border-black/5 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-[#111] placeholder:text-[#bbb] focus:outline-none focus:border-black/20 shadow-[0_4px_20px_rgba(0,0,0,0.04)] transition-all font-medium"
+                    className="w-full bg-white border border-black/5 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-[#111] placeholder:text-[#bbb] focus:outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 shadow-[0_4px_20px_rgba(0,0,0,0.04)] transition-all font-medium"
                 />
             </div>
 
             {/* List */}
             <div>
                 <p className="text-[10px] font-bold uppercase text-[#888] tracking-[0.12em] mb-3">
-                    {activeTab === 'upcoming' ? 'Navbatdagilar' : 'Tarix'}
+                    {activeTab === 'upcoming' ? t('barber.clients.upcomingTab') : t('barber.clients.historyTab')}
                     {filteredList.length > 0 && (
                         <span className="ml-2 font-bold text-[#111]">{filteredList.length}</span>
                     )}
@@ -147,7 +148,7 @@ function Clients() {
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
                                         <h3 className="font-bold text-[#111] text-sm leading-tight truncate">
-                                            {client?.name || 'Nomaʼlum'}
+                                            {client?.name || t('common.unknown')}
                                         </h3>
                                         <p className="text-[11px] text-[#666] font-medium mt-0.5">
                                             {b.booking_hours || '—'}
@@ -156,7 +157,7 @@ function Clients() {
 
                                     {/* Status badge */}
                                     <span className={`text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider shrink-0 border border-black/5 ${cfg.bg} ${cfg.text}`}>
-                                        {cfg.label}
+                                        {getStatusLabel(status)}
                                     </span>
                                 </div>
                             );
@@ -167,9 +168,9 @@ function Clients() {
                         <div className="w-16 h-16 bg-white border border-black/5 rounded-3xl flex items-center justify-center mb-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
                             <Users className="text-[#ccc]" size={28} />
                         </div>
-                        <p className="font-bold text-[#111] text-sm">Mijoz topilmadi</p>
+                        <p className="font-bold text-[#111] text-sm">{t('barber.clients.notFound')}</p>
                         <p className="text-[#666] text-xs mt-1 font-medium">
-                            {searchQuery ? 'Boshqa nom bilan qidiring' : 'Bu bo\'limda hozircha hech narsa yo\'q'}
+                            {searchQuery ? t('barber.clients.tryOtherName') : t('barber.clients.sectionEmpty')}
                         </p>
                     </div>
                 )}

@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { t } from '../utils/i18n.js';
 
 function PublicRoute({ children }) {
     const { user, loading } = useAuth();
@@ -8,8 +9,8 @@ function PublicRoute({ children }) {
         return (
             <div className="min-h-screen bg-[#f5f5f7] flex justify-center items-center p-6">
                 <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 border-2 border-black/10 border-t-black rounded-full animate-spin mb-4"></div>
-                    <p className="text-sm font-semibold text-[#666] tracking-[-0.01em]">Please wait...</p>
+                    <div className="w-12 h-12 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mb-4"></div>
+                    <p className="text-sm font-semibold text-[#666] tracking-[-0.01em]">{t('common.pleaseWait')}</p>
                 </div>
             </div>
         );
