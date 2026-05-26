@@ -3,7 +3,8 @@ import { Search, User, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
-import { compareTimes } from '../../utils/time.js';
+import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { getBookingDateStr, compareDateStr, formatBookingDate } from '../../utils/dates.js';
 import { t, getStatusLabel } from '../../utils/i18n.js';
 
 const STATUS_CONFIG = {
@@ -51,7 +52,11 @@ function Clients() {
             } else {
                 return nameMatch && ['completed', 'rejected', 'cancelled'].includes(status);
             }
-        }).sort((a, b) => compareTimes(a.booking_hours, b.booking_hours));
+        }).sort((a, b) => {
+            const dateCmp = compareDateStr(getBookingDateStr(a), getBookingDateStr(b));
+            if (dateCmp !== 0) return dateCmp;
+            return compareTimes(a.booking_hours, b.booking_hours);
+        });
     }, [bookings, activeTab, searchQuery, clientsById]);
 
     const upcomingCount = useMemo(() =>
@@ -151,7 +156,10 @@ function Clients() {
                                             {client?.name || t('common.unknown')}
                                         </h3>
                                         <p className="text-[11px] text-[#666] font-medium mt-0.5">
-                                            {b.booking_hours || '—'}
+                                            {formatTo24h(b.booking_hours) || '—'}
+                                            {getBookingDateStr(b) && (
+                                                <span className="text-[#378ADD] font-semibold"> · {formatBookingDate(getBookingDateStr(b), { style: 'short' })}</span>
+                                            )}
                                         </p>
                                     </div>
 

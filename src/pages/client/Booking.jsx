@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesClient, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getBarbers } from '../../api/barberApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { getBookingDateStr, compareDateStr, formatBookingDate } from '../../utils/dates.js';
 import { t, getStatusLabel } from '../../utils/i18n.js';
 
 function Booking() {
@@ -50,7 +51,11 @@ function Booking() {
     }, [user?.id]);
 
     const sortedBookings = useMemo(
-        () => [...bookings].sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
+        () => [...bookings].sort((a, b) => {
+            const dateCmp = compareDateStr(getBookingDateStr(b), getBookingDateStr(a));
+            if (dateCmp !== 0) return dateCmp;
+            return compareTimes(a.booking_hours, b.booking_hours);
+        }),
         [bookings]
     );
 
@@ -94,6 +99,7 @@ function Booking() {
         navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`, {
             state: {
                 rebookFrom: booking.booking_hours,
+                rebookDate: getBookingDateStr(booking) ?? undefined,
                 previousBooking: booking
             }
         });
@@ -194,7 +200,10 @@ function Booking() {
                                 </div>
 
                                 <div className="flex items-center gap-4 text-sm text-[#888] font-medium mb-4">
-                                    <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('common.today')}</span>
+                                    <span className="flex items-center gap-1.5">
+                                        <Calendar size={13} />
+                                        {formatBookingDate(getBookingDateStr(booking) ?? new Date().toISOString().slice(0, 10))}
+                                    </span>
                                     <span className="flex items-center gap-1.5"><Clock size={13} /> {formatTo24h(booking.booking_hours) || '--:--'}</span>
                                 </div>
 

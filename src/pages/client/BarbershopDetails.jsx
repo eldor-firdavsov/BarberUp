@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Clock, MapPin } from "lucide-react";
 import { getBarbers } from "../../api/barberApi.js";
 import {
@@ -15,10 +15,19 @@ import {
     getCurrentTime,
 } from "../../utils/time.js";
 import { t } from "../../utils/i18n.js";
+import {
+    toDateStr,
+    getBookingDayOptions,
+    bookingMatchesDate,
+    formatBookingDate,
+} from "../../utils/dates.js";
+
+const BOOKING_DAY_COUNT = 7;
 
 export default function BarbershopDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuth();
 
     const [barber, setBarber] = useState(null);
@@ -31,10 +40,12 @@ export default function BarbershopDetails() {
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [retrying, setRetrying] = useState(false);
-    const [isTomorrow, setIsTomorrow] = useState(false);
     const [selectedService, setSelectedService] = useState(null);
+    const [selectedDate, setSelectedDate] = useState(() => toDateStr(new Date()));
 
-    function generateSlots(barberData, durationMins = 30) {
+    const dayOptions = useMemo(() => getBookingDayOptions(BOOKING_DAY_COUNT), []);
+
+    function generateSlots(barberData, durationMins = 30, dateStr = toDateStr(new Date())) {
         if (barberData.isWorkingNow === false) {
             setSlots([]);
             return;
@@ -74,7 +85,9 @@ export default function BarbershopDetails() {
         }
 
         const allSlots = [];
-        const todaySlots = [];
+        const availableSlots = [];
+        const todayStr = toDateStr(new Date());
+        const isToday = dateStr === todayStr;
 
         let count = 0;
         const now = getCurrentTime();
@@ -102,9 +115,8 @@ export default function BarbershopDetails() {
 
                 if (normalized) {
                     allSlots.push(normalized);
-
-                    if (normalized >= now) {
-                        todaySlots.push(normalized);
+                    if (!isToday || normalized >= now) {
+                        availableSlots.push(normalized);
                     }
                 }
             }
@@ -119,13 +131,7 @@ export default function BarbershopDetails() {
             count++;
         }
 
-        if (todaySlots.length === 0 && allSlots.length > 0) {
-            setSlots(allSlots);
-            setIsTomorrow(true);
-        } else {
-            setSlots(todaySlots);
-            setIsTomorrow(false);
-        }
+        setSlots(availableSlots);
     }
 
     const handleSelectService = (service) => {
@@ -137,11 +143,23 @@ export default function BarbershopDetails() {
                 ? parseInt(service.duration, 10)
                 : 30;
 
-            generateSlots(barber, duration);
+            generateSlots(barber, duration, selectedDate);
         }
     };
 
-    async function refreshBookingState(targetBarberId) {
+    const handleSelectDate = (dateStr) => {
+        setSelectedDate(dateStr);
+        setSelectedSlot(null);
+        setSuccessMessage("");
+        if (barber && barber !== "not_found") {
+            const duration = selectedService
+                ? parseInt(selectedService.duration, 10)
+                : 30;
+            generateSlots(barber, duration, dateStr);
+        }
+    };
+
+    async function refreshBookingState(targetBarberId, dateStr = selectedDate) {
         if (!targetBarberId || String(targetBarberId).trim() === "") {
             setError(t("client.barbershopDetails.invalidBarberId"));
 
@@ -172,6 +190,7 @@ export default function BarbershopDetails() {
                     targetBarberId
                 )
             )
+            .filter((booking) => bookingMatchesDate(booking, dateStr))
             .filter(
                 (booking) =>
                     !["rejected", "cancelled"].includes(
@@ -276,7 +295,13 @@ export default function BarbershopDetails() {
                     ? parseInt(firstService.duration, 10)
                     : 30;
 
-                generateSlots(found, duration);
+                const initialDate =
+                    location.state?.rebookDate &&
+                    dayOptions.some((d) => d.dateStr === location.state.rebookDate)
+                        ? location.state.rebookDate
+                        : toDateStr(new Date());
+                setSelectedDate(initialDate);
+                generateSlots(found, duration, initialDate);
 
                 const busySlots = (bookings ?? [])
                     .filter((booking) =>
@@ -285,6 +310,7 @@ export default function BarbershopDetails() {
                             barberKey
                         )
                     )
+                    .filter((booking) => bookingMatchesDate(booking, initialDate))
                     .filter(
                         (booking) =>
                             ![
@@ -320,7 +346,20 @@ export default function BarbershopDetails() {
         return () => {
             isMounted = false;
         };
-    }, [id, navigate]);
+    }, [id, navigate, location.state?.rebookDate]);
+
+    useEffect(() => {
+        const barberKey = barber?.id ?? barber?._id;
+        if (!barberKey || barber === "not_found") return;
+
+        let cancelled = false;
+        (async () => {
+            const { latestBookings } = await refreshBookingState(barberKey, selectedDate);
+            if (cancelled || !latestBookings) return;
+        })();
+
+        return () => { cancelled = true; };
+    }, [selectedDate, barber?.id, barber?._id]);
 
     const toggleSlot = (time) => {
         if (bookedSlots.includes(time)) return;
@@ -342,6 +381,11 @@ export default function BarbershopDetails() {
 
         if (!barberKey) {
             setError(t("client.barbershopDetails.invalidBarberData"));
+            return;
+        }
+
+        if (!selectedDate) {
+            setError(t("client.barbershopDetails.selectDateRequired"));
             return;
         }
 
@@ -368,7 +412,7 @@ export default function BarbershopDetails() {
         const {
             latestBookings,
             latestError,
-        } = await refreshBookingState(barberKey);
+        } = await refreshBookingState(barberKey, selectedDate);
 
         if (latestError) {
             setBookingLoading(false);
@@ -379,7 +423,8 @@ export default function BarbershopDetails() {
             isSlotTaken(
                 latestBookings,
                 safeSelectedSlot,
-                barberKey
+                barberKey,
+                selectedDate
             )
         ) {
             setError(t("client.barbershopDetails.slotBooked"));
@@ -393,6 +438,7 @@ export default function BarbershopDetails() {
         } = await createBooking({
             barber: barberKey,
             client: user.id,
+            booking_date: selectedDate,
             booking_hours: safeSelectedSlot,
             service_name:
                 selectedService?.name ||
@@ -655,16 +701,41 @@ export default function BarbershopDetails() {
                     </div>
 
                     <div>
+                        <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
+                            {t("client.barbershopDetails.selectDate")}
+                        </h3>
+                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide mb-6">
+                            {dayOptions.map((day) => {
+                                const isSelected = selectedDate === day.dateStr;
+                                return (
+                                    <button
+                                        key={day.dateStr}
+                                        type="button"
+                                        onClick={() => handleSelectDate(day.dateStr)}
+                                        className={`shrink-0 flex flex-col items-center min-w-[72px] py-3 px-3 rounded-2xl border transition-all font-bold
+                                        ${isSelected
+                                                ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_8px_20px_rgba(24,95,165,0.25)]"
+                                                : "bg-white text-[#666] border-black/5 hover:border-[#378ADD]/30"
+                                            }`}
+                                    >
+                                        <span className="text-[10px] uppercase tracking-wider leading-none mb-1 opacity-80">
+                                            {day.label}
+                                        </span>
+                                        <span className="text-base leading-none">
+                                            {day.dateStr.slice(-2)}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-[20px] font-bold text-[#111] tracking-[-0.02em]">
                                 {t("client.barbershopDetails.availableSlots")}
                             </h3>
-
-                            {isTomorrow && (
-                                <span className="text-xs bg-[#E6F1FB] text-[#0C447C] px-3 py-1 rounded-full font-medium">
-                                    {t("common.tomorrow")}
-                                </span>
-                            )}
+                            <span className="text-xs bg-[#E6F1FB] text-[#0C447C] px-3 py-1 rounded-full font-medium">
+                                {formatBookingDate(selectedDate, { style: "short" })}
+                            </span>
                         </div>
 
                         <div className="grid grid-cols-3 gap-3 max-h-72 overflow-y-auto pb-2">
@@ -719,7 +790,7 @@ export default function BarbershopDetails() {
                                     </h3>
 
                                     <p className="text-sm text-[#777] mt-2">
-                                        {t("client.barbershopDetails.fullyBooked")}
+                                        {t("client.barbershopDetails.fullyBookedDay")}
                                     </p>
                                 </div>
                             )}

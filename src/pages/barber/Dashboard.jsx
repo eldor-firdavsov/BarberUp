@@ -5,19 +5,10 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h, isWithinWorkingHours, getCurrentTime } from '../../utils/time.js';
+import { toDateStr, getBookingDateStr, bookingMatchesDate, formatBookingDate, compareDateStr } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
 
 const WORK_STATUS_KEY = 'navbatgo_work_status';
-
-function toDateStr(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function getBookingDateStr(booking) {
-    const raw = booking.booking_date ?? booking.date ?? booking.createdAt ?? booking.created_at ?? null;
-    if (!raw) return null;
-    try { return toDateStr(new Date(raw)); } catch { return null; }
-}
 
 const SimpleAvatar = ({ name, size = "w-12 h-12" }) => (
     <div className={`${size} rounded-2xl bg-[#f8f8f8] flex items-center justify-center border border-black/5 shrink-0`}>
@@ -91,9 +82,8 @@ function Dashboard() {
             const status = b.status?.toLowerCase();
             const isActive = ['accepted'].includes(status);
 
-            const bDate = getBookingDateStr(b);
             const todayStr = toDateStr(new Date());
-            const isToday = bDate === todayStr || !bDate;
+            const isToday = bookingMatchesDate(b, todayStr);
 
             const bookingTime = formatTo24h(b.booking_hours);
             return isActive && isToday && bookingTime && bookingTime < now;
@@ -113,8 +103,7 @@ function Dashboard() {
         const todayStr = toDateStr(new Date());
         const session = bookings.find(b => {
             if (b.status !== 'in_progress') return false;
-            const bDate = getBookingDateStr(b);
-            return bDate === todayStr || !bDate;
+            return bookingMatchesDate(b, todayStr);
         });
         if (!session) return null;
         const client = session.clientData || clientsById[session.client];
@@ -124,18 +113,18 @@ function Dashboard() {
     const upcomingBookings = useMemo(() => {
         const todayStr = toDateStr(new Date());
         return bookings
-            .filter(b => {
-                const bDate = getBookingDateStr(b);
-                const isToday = bDate === todayStr || !bDate;
-                return isToday && ['accepted'].includes(b.status?.toLowerCase());
-            })
+            .filter(b => bookingMatchesDate(b, todayStr) && ['accepted'].includes(b.status?.toLowerCase()))
             .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours));
     }, [bookings]);
 
     const pendingRequests = useMemo(() =>
         bookings
             .filter(b => b.status?.toLowerCase() === 'pending')
-            .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
+            .sort((a, b) => {
+                const dateCmp = compareDateStr(getBookingDateStr(a), getBookingDateStr(b));
+                if (dateCmp !== 0) return dateCmp;
+                return compareTimes(a.booking_hours, b.booking_hours);
+            }),
         [bookings]
     );
 
@@ -172,11 +161,7 @@ function Dashboard() {
                 <div className="text-right shrink-0">
                     <p className="text-[10px] uppercase text-[#888] font-bold tracking-[0.12em] mb-2">{t('barber.dashboard.status')}</p>
                     <div className="flex items-center gap-2.5 justify-end">
-                        <span
-                            className={`text-[11px] font-bold uppercase tracking-wide transition-colors duration-200 ${!isWorking ? 'text-[#185FA5]' : 'text-[#bbb]'}`}
-                        >
-                            {t('barber.dashboard.break')}
-                        </span>
+                        
                         <button
                             type="button"
                             role="switch"
@@ -189,11 +174,7 @@ function Dashboard() {
                                 className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${isWorking ? 'translate-x-6' : 'translate-x-1'}`}
                             />
                         </button>
-                        <span
-                            className={`text-[11px] font-bold uppercase tracking-wide transition-colors duration-200 ${isWorking ? 'text-[#185FA5]' : 'text-[#bbb]'}`}
-                        >
-                            {t('barber.dashboard.working')}
-                        </span>
+                        
                     </div>
                 </div>
             </div>
@@ -217,15 +198,9 @@ function Dashboard() {
                                     <p className="text-xs text-[#666] font-semibold mt-0.5">{request.service_name || t('barber.dashboard.haircut')}</p>
                                     <p className="font-bold text-xs text-[#111] mt-1 flex flex-wrap gap-x-2 gap-y-0.5 items-center">
                                         <span>{formatTo24h(request.booking_hours)}</span>
-                                        {(() => {
-                                            const bDate = getBookingDateStr(request);
-                                            const todayStr = toDateStr(new Date());
-                                            if (bDate && bDate !== todayStr) {
-                                                const d = new Date(bDate);
-                                                return <span className="text-[9px] text-[#888] font-bold uppercase tracking-wider">{d.toLocaleDateString('uz-UZ', { weekday: 'short', month: 'short', day: 'numeric' })}</span>;
-                                            }
-                                            return <span className="text-[9px] text-[#888] font-bold uppercase tracking-wider">Bugun</span>;
-                                        })()}
+                                        <span className="text-[9px] text-[#378ADD] font-bold uppercase tracking-wider">
+                                            {formatBookingDate(getBookingDateStr(request) ?? toDateStr(new Date()), { style: 'short' })}
+                                        </span>
                                     </p>
                                 </div>
                                 <div className="flex gap-2 shrink-0">
@@ -292,8 +267,11 @@ function Dashboard() {
                             <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-[#111] truncate">{nextClient.clientData?.name || t('common.client')}</h3>
                                 <p className="text-xs text-[#666] font-semibold mt-0.5">{nextClient.service_name || t('barber.dashboard.haircut')}</p>
-                                <p className={`font-bold text-xs mt-1.5 flex items-center gap-2 ${isOverdue ? 'text-red-500' : 'text-[#111]'}`}>
+                                <p className={`font-bold text-xs mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 ${isOverdue ? 'text-red-500' : 'text-[#111]'}`}>
                                     <span>{formatTo24h(nextClient.booking_hours)}</span>
+                                    <span className="text-[9px] text-[#378ADD] font-bold uppercase tracking-wider">
+                                        {formatBookingDate(getBookingDateStr(nextClient) ?? toDateStr(new Date()), { style: 'short' })}
+                                    </span>
                                     {isOverdue && <span className="text-[9px] bg-red-50 text-red-500 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-100">{t('barber.dashboard.overdue')}</span>}
                                 </p>
                             </div>

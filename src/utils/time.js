@@ -46,12 +46,17 @@ export function compareTimes(a, b) {
 }
 
 /**
- * True if slot is already held by an active booking for this barber.
+ * True if slot is already held by an active booking for this barber on the given day.
+ * @param {string} bookingDate - YYYY-MM-DD
  */
-export function isSlotTaken(bookings, slot, barberId) {
+export function isSlotTaken(bookings, slot, barberId, bookingDate) {
     const normalizedSlot = formatTo24h(slot);
-    if (!normalizedSlot) return false;
+    if (!normalizedSlot || !bookingDate) return false;
     const barberKey = barberId != null && barberId !== '' ? String(barberId).trim() : '';
+    const todayStr = (() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    })();
 
     return (bookings ?? []).some((booking) => {
         const bookingSlot = formatTo24h(booking?.booking_hours);
@@ -61,7 +66,19 @@ export function isSlotTaken(bookings, slot, barberId) {
             (bookingBarber != null && String(bookingBarber).trim() === barberKey);
         const status = String(booking?.status || 'pending').toLowerCase();
         const activeStatus = !['rejected', 'cancelled'].includes(status);
-        return sameBarber && activeStatus && bookingSlot === normalizedSlot;
+        if (!sameBarber || !activeStatus || bookingSlot !== normalizedSlot) return false;
+
+        let rawDate = booking?.booking_date ?? booking?.date ?? null;
+        if (rawDate && typeof rawDate === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
+            try {
+                const d = new Date(rawDate);
+                rawDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            } catch {
+                rawDate = null;
+            }
+        }
+        const bookingDay = rawDate ? String(rawDate).trim().slice(0, 10) : todayStr;
+        return bookingDay === bookingDate;
     });
 }
 

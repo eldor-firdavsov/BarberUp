@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, Clock, ChevronLeft } from 'lucide-react';
 import { getBookings } from '../../api/bookingApi.js';
 import { getBarbers } from '../../api/barberApi.js';
 import { formatTo24h } from '../../utils/time.js';
+import { getBookingDateStr, formatBookingDate } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
 
 function BookingStatus() {
@@ -192,7 +193,9 @@ function BookingStatus() {
                         </div>
                         <div className="text-right">
                             <p className="text-[10px] text-[#888] font-semibold uppercase tracking-[0.1em] mb-1">{t('common.date')}</p>
-                            <p className="font-bold text-[#111] text-lg">{t('common.today')}</p>
+                            <p className="font-bold text-[#111] text-lg">
+                                {formatBookingDate(getBookingDateStr(booking) ?? new Date().toISOString().slice(0, 10))}
+                            </p>
                         </div>
                     </div>
                 </div>

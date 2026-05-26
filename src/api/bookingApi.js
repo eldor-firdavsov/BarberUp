@@ -50,6 +50,17 @@ export function normalizeBooking(raw) {
 
     let normalizedStatus = raw.status ?? 'pending';
     if (normalizedStatus === 'active') normalizedStatus = 'accepted';
+    if (normalizedStatus === 'bajarildi') normalizedStatus = 'completed';
+
+    let bookingDate = raw.booking_date ?? null;
+    if (bookingDate && typeof bookingDate === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(bookingDate.trim())) {
+        try {
+            const d = new Date(bookingDate);
+            bookingDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        } catch {
+            bookingDate = null;
+        }
+    }
 
     return {
         ...raw,
@@ -57,6 +68,7 @@ export function normalizeBooking(raw) {
         barber: raw.barber_id ?? raw.barber ?? null,
         client: raw.client_id ?? raw.client ?? null,
         booking_hours: normalizedHours ?? '',
+        booking_date: bookingDate,
         status: normalizedStatus,
         service_name: raw.service_name ?? '',
         service_price: raw.service_price ?? '',
@@ -66,10 +78,16 @@ export function normalizeBooking(raw) {
 }
 
 export async function createBooking(payload) {
+    const bookingDate = payload.booking_date ?? payload.bookingDate ?? null;
+    if (!bookingDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(bookingDate).trim())) {
+        return { data: null, error: 'Booking date is required (YYYY-MM-DD).' };
+    }
+
     const safePayload = {
         barber_id: normalizeBookingRefId(payload.barber),
         client_id: normalizeBookingRefId(payload.client),
         booking_hours: formatTo24h(payload.booking_hours),
+        booking_date: String(bookingDate).trim(),
         status: 'pending',
         service_name: payload.service_name ?? null,
         service_price: payload.service_price ?? null
@@ -114,7 +132,7 @@ const STATUS_MAP = {
     accepted:    'active',
     in_progress: 'active',
     cancelled:   'rejected',
-    completed:   'completed',
+    completed:   'bajarildi',
     pending:     'pending',
     rejected:    'rejected',
 };

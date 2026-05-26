@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getBookings, updateBookingStatus } from '../api/bookingApi.js';
 import { getClients } from '../api/clientApi.js';
 import { t } from '../utils/i18n.js';
+import { formatTo24h } from '../utils/time.js';
+import { getBookingDateStr, formatBookingDate } from '../utils/dates.js';
 
 const tabs = [
     { id: "home", labelKey: "layout.barber.home", icon: Home, path: "/barber/dashboard" },
@@ -193,9 +195,16 @@ function BarberLayout() {
                                                             {client?.name || client?.fullname || t('common.client')}
                                                         </h4>
                                                         <div className="flex items-center gap-3 mt-1">
-                                                            <div className="flex items-center gap-1 text-xs text-[#666] font-medium">
-                                                                <Clock size={12} />
-                                                                <span>{booking.booking_hours}</span>
+                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#666] font-medium">
+                                                                <div className="flex items-center gap-1">
+                                                                    <Clock size={12} />
+                                                                    <span>{formatTo24h(booking.booking_hours)}</span>
+                                                                </div>
+                                                                {getBookingDateStr(booking) && (
+                                                                    <span className="text-[#378ADD] font-bold">
+                                                                        {formatBookingDate(getBookingDateStr(booking), { style: 'short' })}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <span className="text-[10px] bg-[#f8f8f8] border border-black/5 text-[#666] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{t('status.pending')}</span>
                                                         </div>

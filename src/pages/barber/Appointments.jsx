@@ -4,20 +4,11 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
+import { toDateStr, getBookingDateStr, bookingMatchesDate, formatBookingDate } from '../../utils/dates.js';
 import { t, getStatusLabel } from '../../utils/i18n.js';
 import ClientProfileModal from '../../components/ClientProfileModal.jsx';
 
-function toDateStr(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function getBookingDateStr(booking) {
-    const raw = booking.booking_date ?? booking.date ?? booking.createdAt ?? booking.created_at ?? null;
-    if (!raw) return null;
-    try { return toDateStr(new Date(raw)); } catch { return null; }
-}
-
-const DAY_RANGE = [-2, -1, 0, 1];
+const DAY_RANGE = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7];
 
 const getDayLabel = (offset) => {
     if (offset === -1) return t('barber.appointments.yesterday');
@@ -83,12 +74,9 @@ function Appointments() {
 
     const sortedBookings = useMemo(() =>
         [...bookings]
-            .filter((b) => {
-                const day = getBookingDateStr(b);
-                return day ? day === selectedDateStr : dayOffset === 0;
-            })
+            .filter((b) => bookingMatchesDate(b, selectedDateStr))
             .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
-        [bookings, selectedDateStr, dayOffset]
+        [bookings, selectedDateStr]
     );
 
     return (
@@ -167,10 +155,13 @@ function Appointments() {
                                     key={booking.id}
                                     className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm flex items-center gap-4 hover:shadow-md transition-all"
                                 >
-                                    {/* Time */}
-                                    <div className="text-center min-w-[48px]">
+                                    {/* Time & date */}
+                                    <div className="text-center min-w-[52px]">
                                         <span className="block text-sm font-bold text-gray-900">
                                             {formatTo24h(booking.booking_hours)}
+                                        </span>
+                                        <span className="text-[9px] text-[#378ADD] font-bold uppercase tracking-wider block mt-0.5">
+                                            {formatBookingDate(getBookingDateStr(booking) ?? selectedDateStr, { style: 'short' })}
                                         </span>
                                         <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{t('barber.appointments.timeLabel')}</span>
                                     </div>
