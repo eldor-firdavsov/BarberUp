@@ -77,7 +77,7 @@ function Settings() {
     };
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 max-w-md mx-auto flex flex-col">
+        <section className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 max-w-md md:max-w-2xl mx-auto flex flex-col">
             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-8">{t('client.settings.title')}</h1>
 
             <div className="space-y-6 flex-grow">

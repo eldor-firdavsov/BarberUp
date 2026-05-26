@@ -134,7 +134,7 @@ function BarberOnboarding() {
 
     return (
         <section className="min-h-screen bg-[#f5f5f7] flex justify-center items-start px-4 py-8 sm:px-6 sm:py-12">
-            <div className="w-full max-w-md bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+            <div className="w-full max-w-md md:max-w-2xl bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
                 <div className="px-6 py-8 sm:px-8 sm:py-10 space-y-8">
                     <button
                         onClick={() => navigate(-1)}
@@ -154,7 +154,7 @@ function BarberOnboarding() {
                         </p>
                     </header>
 
-                    <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         <div>
                             <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('common.fullName')}</label>
@@ -194,6 +194,40 @@ function BarberOnboarding() {
                                 type="text"
                                 value={office_name}
                                 onChange={(e) => setOfficeName(e.target.value)}
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.averagePrice')}</label>
+                            <input
+                                type="text"
+                                value={average_price}
+                                onChange={(e) => setAveragePrice(e.target.value)}
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                                placeholder={t('auth.barberOnboarding.avgPricePlaceholder')}
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3" htmlFor="start">{t('auth.barberOnboarding.startTime')}</label>
+                            <input
+                                type="time"
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                                disabled={loading}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3" htmlFor="end">{t('auth.barberOnboarding.endTime')}</label>
+                            <input
+                                type="time"
+                                value={endTime}
+                                onChange={(e) => setEndTime(e.target.value)}
                                 className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
                                 disabled={loading}
                             />
@@ -243,12 +277,10 @@ function BarberOnboarding() {
                             </div>
                         </div>
 
-
-
-                        <div className="w-full flex flex-col gap-1">
+                        <div className="md:col-span-2">
                             <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.services')}</label>
-                            <div className="space-y-4">
-                                {services.map((service, index) => (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {services.map((service) => (
                                     <div key={service.id} className="p-4 bg-[#f8f8f8] rounded-2xl border border-black/5 relative">
                                         {services.length > 1 && (
                                             <button
@@ -302,63 +334,33 @@ function BarberOnboarding() {
                                         </div>
                                     </div>
                                 ))}
-                                <button
-                                    type="button"
-                                    onClick={handleAddService}
-                                    className="w-full py-2 bg-[#f8f8f8] text-[#111] font-bold rounded-xl border border-black/5 hover:bg-[#f0f0f0] transition-colors"
-                                    disabled={loading}
-                                >
-                                    {t('auth.barberOnboarding.addService')}
-                                </button>
                             </div>
-                        </div>
-
-                        <div className="w-full flex flex-col gap-1">
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3" htmlFor="start">{t('auth.barberOnboarding.startTime')}</label>
-                            <input
-                                type="time"
-                                value={startTime}
-                                onChange={(e) => setStartTime(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
+                            <button
+                                type="button"
+                                onClick={handleAddService}
+                                className="mt-4 w-full py-2 bg-[#f8f8f8] text-[#111] font-bold rounded-xl border border-black/5 hover:bg-[#f0f0f0] transition-colors"
                                 disabled={loading}
-                            />
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3 mt-4" htmlFor="end">{t('auth.barberOnboarding.endTime')}</label>
-                            <input
-                                type="time"
-                                value={endTime}
-                                onChange={(e) => setEndTime(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
-                                disabled={loading}
-                            />
+                            >
+                                {t('auth.barberOnboarding.addService')}
+                            </button>
                         </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-3">{t('auth.barberOnboarding.averagePrice')}</label>
-                            <input
-                                type="text"
-                                value={average_price}
-                                onChange={(e) => setAveragePrice(e.target.value)}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white"
-                                placeholder={t('auth.barberOnboarding.avgPricePlaceholder')}
-                                disabled={loading}
-                            />
-                        </div>
-
-                        {error && (
-                            <div className="rounded-3xl border border-red-100 bg-red-50 p-5">
-                                <p className="font-semibold text-red-700 text-sm text-center">{error}</p>
-                            </div>
-                        )}
-
-                        <button
-                            onClick={handleFinish}
-                            disabled={loading}
-                            className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
-                        >
-                            {loading ? t('auth.barberOnboarding.creatingAccount') : t('auth.barberOnboarding.completeRegistration')}
-                        </button>
 
                     </div>
+
+                    {error && (
+                        <div className="rounded-3xl border border-red-100 bg-red-50 p-5">
+                            <p className="font-semibold text-red-700 text-sm text-center">{error}</p>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleFinish}
+                        disabled={loading}
+                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
+                    >
+                        {loading ? t('auth.barberOnboarding.creatingAccount') : t('auth.barberOnboarding.completeRegistration')}
+                    </button>
+
                 </div>
             </div>
         </section>

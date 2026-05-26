@@ -307,7 +307,7 @@ function Client() {
 
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] max-w-md mx-auto px-4 py-8 sm:px-6 sm:py-12 flex flex-col">
+        <section className="min-h-screen bg-[#f5f5f7] max-w-md md:max-w-6xl mx-auto px-4 py-8 sm:px-6 sm:py-12 flex flex-col">
             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
                 {t('client.dashboard.titleLine1')}<br />{t('client.dashboard.titleLine2')}
             </h1>
@@ -334,7 +334,7 @@ function Client() {
 
             {/* Loading State */}
             {loading && (
-                <div className="space-y-4">
+                <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="skeleton-card"></div>
                     ))}
@@ -372,7 +372,7 @@ function Client() {
 
             {/* Barber List */}
             {!loading && !error && barbers.length > 0 && (
-                <div className="space-y-8 pb-10">
+                <div className={activeTab === 'favorites' && favoriteBarbers.length === 0 ? "pb-10" : "space-y-8 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 pb-10"}>
                     {/* Show empty state for favorites */}
                     {activeTab === 'favorites' && favoriteBarbers.length === 0 && (
                         <div className="empty-state">

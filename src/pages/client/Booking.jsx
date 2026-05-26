@@ -115,7 +115,7 @@ function Booking() {
     };
 
     return (
-        <div className="px-4 py-8 sm:px-6 space-y-6 page-animate max-w-md mx-auto pb-24">
+        <div className="px-4 py-8 sm:px-6 space-y-6 page-animate max-w-md md:max-w-6xl mx-auto pb-24">
             <div>
                 <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('client.bookings.title')}</h1>
                 <p className="text-sm text-[#666] font-medium mt-1">{t('client.bookings.subtitle')}</p>
@@ -123,7 +123,7 @@ function Booking() {
 
             {/* Loading */}
             {loading && (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="h-28 skeleton rounded-3xl" />
                     ))}
@@ -157,7 +157,7 @@ function Booking() {
 
             {/* Booking List */}
             {!loading && !error && sortedBookings.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                     {sortedBookings.map((booking) => {
                         const barber = barbersById[booking.barber];
                         const isCancellable = canCancelBooking(booking);

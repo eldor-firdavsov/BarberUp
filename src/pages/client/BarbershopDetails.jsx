@@ -549,7 +549,7 @@ export default function BarbershopDetails() {
 
     return (
         <div className="min-h-screen bg-[#f5f5f7] flex justify-center px-3 py-5 sm:px-6 sm:py-8">
-            <div className="w-full max-w-md bg-white rounded-[32px] overflow-hidden relative border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+            <div className="w-full max-w-md md:max-w-5xl bg-white rounded-[32px] overflow-hidden relative border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
 
                 <button
                     onClick={() => navigate(-1)}
@@ -585,284 +585,292 @@ export default function BarbershopDetails() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
                 </div>
 
-                <div className="relative z-10 -mt-8 bg-white rounded-t-[32px] px-6 py-7 space-y-8">
-
-                    <div className="flex items-center gap-4">
-                        {barber.profile_img ? (
-                            <img
-                                src={barber.profile_img}
-                                alt={barber.fullname}
-                                className="w-16 h-16 rounded-full object-cover ring-4 ring-[#f5f5f7]"
-                            />
-                        ) : (
-                            <div className="w-16 h-16 rounded-full bg-[#378ADD] flex items-center justify-center ring-4 ring-[#f5f5f7]">
-                                <span className="text-white text-lg font-bold">
-                                    {(
-                                        barber.fullname ||
-                                        barber.name ||
-                                        "B"
-                                    )
-                                        .charAt(0)
-                                        .toUpperCase()}
-                                </span>
-                            </div>
-                        )}
-
-                        <div>
-                            <h2 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">
-                                {barber.office_name ||
-                                    barber.shopName ||
-                                    t("client.barbershopDetails.gentlemansAtelier")}
-                            </h2>
-
-                            <p className="text-sm text-[#666] mt-1 font-medium">
-                                {barber.fullname ||
-                                    barber.name ||
-                                    t("common.barber")}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-
-                        <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
-                            <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">
-                                {t("client.barbershopDetails.averagePrice")}
-                            </p>
-
-                            <p className="font-bold text-[#111] text-[20px]">
-                                {(
-                                    barber.average_price ??
-                                    barber.avgPrice ??
-                                    0
-                                ).toLocaleString()}{" "}
-                                {t("common.uzs")}
-                            </p>
-                        </div>
-
-                        <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
-                            <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">
-                                {t("client.barbershopDetails.workingHours")}
-                            </p>
-
-                            <p className="font-bold text-[#111] text-[18px]">
-                                {barber.working_hours ||
-                                    barber.workingHours ||
-                                    t("common.defaultWorkingHours")}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
-                            {t("client.barbershopDetails.services")}
-                        </h3>
-
-                        <div className="space-y-3">
-                            {barberServices.map((service) => {
-                                const isSelected =
-                                    selectedService?.id ===
-                                    service.id;
-
-                                return (
-                                    <div
-                                        key={service.id}
-                                        onClick={() =>
-                                            handleSelectService(
-                                                service
-                                            )
-                                        }
-                                        className={`p-5 rounded-3xl border cursor-pointer transition-all duration-200 flex justify-between items-center
-                                        ${isSelected
-                                                ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_10px_30px_rgba(24,95,165,0.2)]"
-                                                : "bg-[#fafafa] border-black/5 hover:border-black/20"
-                                            }`}
-                                    >
-                                        <div>
-                                            <p className="font-bold">
-                                                {service.name}
-                                            </p>
-
-                                            <p className="text-xs opacity-70 mt-1">
-                                                {service.duration} {t("common.minutes")}
-                                            </p>
-                                        </div>
-
-                                        <p className="font-bold text-lg">
-                                            {Number(
-                                                service.price
-                                            ).toLocaleString()}{" "}
-                                            {t("common.uzs")}
-                                        </p>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
-                            {t("client.barbershopDetails.selectDate")}
-                        </h3>
-                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide mb-6">
-                            {dayOptions.map((day) => {
-                                const isSelected = selectedDate === day.dateStr;
-                                return (
-                                    <button
-                                        key={day.dateStr}
-                                        type="button"
-                                        onClick={() => handleSelectDate(day.dateStr)}
-                                        className={`shrink-0 flex flex-col items-center min-w-[72px] py-3 px-3 rounded-2xl border transition-all font-bold
-                                        ${isSelected
-                                                ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_8px_20px_rgba(24,95,165,0.25)]"
-                                                : "bg-white text-[#666] border-black/5 hover:border-[#378ADD]/30"
-                                            }`}
-                                    >
-                                        <span className="text-[10px] uppercase tracking-wider leading-none mb-1 opacity-80">
-                                            {day.label}
-                                        </span>
-                                        <span className="text-base leading-none">
-                                            {day.dateStr.slice(-2)}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-[20px] font-bold text-[#111] tracking-[-0.02em]">
-                                {t("client.barbershopDetails.availableSlots")}
-                            </h3>
-                            <span className="text-xs bg-[#E6F1FB] text-[#0C447C] px-3 py-1 rounded-full font-medium">
-                                {formatBookingDate(selectedDate, { style: "short" })}
-                            </span>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3 max-h-72 overflow-y-auto pb-2">
-                            {slots.length > 0 ? (
-                                slots.map((time) => (
-                                    <label
-                                        key={time}
-                                        className={`flex flex-col items-center justify-center h-[88px] rounded-3xl border transition-all duration-200
-                                        ${bookedSlots.includes(
-                                            time
-                                        )
-                                                ? "bg-[#f3f3f3] text-[#bbb] border-transparent cursor-not-allowed"
-                                                : selectedSlot ===
-                                                    time
-                                                    ? "bg-[#185FA5] text-white border-[#185FA5] scale-[1.03] shadow-[0_10px_25px_rgba(24,95,165,0.2)]"
-                                                    : "bg-white border-black/5 hover:border-black/15 hover:bg-[#fafafa]"
-                                            }`}
-                                    >
-                                        <span className="text-[11px] uppercase tracking-wide opacity-70">
-                                            {t("common.time")}
-                                        </span>
-
-                                        <span className="text-lg font-bold">
-                                            {time}
-                                        </span>
-
-                                        <input
-                                            type="checkbox"
-                                            className="hidden"
-                                            checked={
-                                                selectedSlot ===
-                                                time
-                                            }
-                                            disabled={bookedSlots.includes(
-                                                time
-                                            )}
-                                            onChange={() =>
-                                                toggleSlot(time)
-                                            }
-                                        />
-                                    </label>
-                                ))
-                            ) : (
-                                <div className="col-span-3 flex flex-col items-center justify-center py-10 text-center">
-                                    <Clock
-                                        size={34}
-                                        className="text-gray-400 mb-3"
+                <div className="relative z-10 -mt-8 bg-white rounded-t-[32px] px-6 py-7">
+                    <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 md:items-start space-y-8 md:space-y-0">
+                        {/* Left Column: Profile, Info, Services, Location */}
+                        <div className="space-y-8">
+                            <div className="flex items-center gap-4">
+                                {barber.profile_img ? (
+                                    <img
+                                        src={barber.profile_img}
+                                        alt={barber.fullname}
+                                        className="w-16 h-16 rounded-full object-cover ring-4 ring-[#f5f5f7]"
                                     />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-full bg-[#378ADD] flex items-center justify-center ring-4 ring-[#f5f5f7]">
+                                        <span className="text-white text-lg font-bold">
+                                            {(
+                                                barber.fullname ||
+                                                barber.name ||
+                                                "B"
+                                            )
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                        </span>
+                                    </div>
+                                )}
 
-                                    <h3 className="font-bold text-[#111]">
-                                        {t("client.barbershopDetails.noSlots")}
-                                    </h3>
+                                <div>
+                                    <h2 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">
+                                        {barber.office_name ||
+                                            barber.shopName ||
+                                            t("client.barbershopDetails.gentlemansAtelier")}
+                                    </h2>
 
-                                    <p className="text-sm text-[#777] mt-2">
-                                        {t("client.barbershopDetails.fullyBookedDay")}
+                                    <p className="text-sm text-[#666] mt-1 font-medium">
+                                        {barber.fullname ||
+                                            barber.name ||
+                                            t("common.barber")}
                                     </p>
                                 </div>
-                            )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
+                                    <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">
+                                        {t("client.barbershopDetails.averagePrice")}
+                                    </p>
+
+                                    <p className="font-bold text-[#111] text-[20px]">
+                                        {(
+                                            barber.average_price ??
+                                            barber.avgPrice ??
+                                            0
+                                        ).toLocaleString()}{" "}
+                                        {t("common.uzs")}
+                                    </p>
+                                </div>
+
+                                <div className="bg-[#f8f8f8] rounded-3xl p-5 border border-black/5">
+                                    <p className="text-[11px] font-semibold text-[#888] uppercase tracking-[0.12em] mb-2">
+                                        {t("client.barbershopDetails.workingHours")}
+                                    </p>
+
+                                    <p className="font-bold text-[#111] text-[18px]">
+                                        {barber.working_hours ||
+                                            barber.workingHours ||
+                                            t("common.defaultWorkingHours")}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
+                                    {t("client.barbershopDetails.services")}
+                                </h3>
+
+                                <div className="space-y-3">
+                                    {barberServices.map((service) => {
+                                        const isSelected =
+                                            selectedService?.id ===
+                                            service.id;
+
+                                        return (
+                                            <div
+                                                key={service.id}
+                                                onClick={() =>
+                                                    handleSelectService(
+                                                        service
+                                                    )
+                                                }
+                                                className={`p-5 rounded-3xl border cursor-pointer transition-all duration-200 flex justify-between items-center
+                                                ${isSelected
+                                                        ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_10px_30px_rgba(24,95,165,0.2)]"
+                                                        : "bg-[#fafafa] border-black/5 hover:border-black/20"
+                                                    }`}
+                                            >
+                                                <div>
+                                                    <p className="font-bold">
+                                                        {service.name}
+                                                    </p>
+
+                                                    <p className="text-xs opacity-70 mt-1">
+                                                        {service.duration} {t("common.minutes")}
+                                                    </p>
+                                                </div>
+
+                                                <p className="font-bold text-lg">
+                                                    {Number(
+                                                        service.price
+                                                    ).toLocaleString()}{" "}
+                                                    {t("common.uzs")}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
+                                    {t("client.barbershopDetails.location")}
+                                </h3>
+
+                                <div className="mt-3 p-4 bg-[#f8f8f8] rounded-3xl border border-black/5">
+                                    <p className="text-sm text-[#555] font-medium flex items-center gap-2">
+                                        <MapPin
+                                            size={16}
+                                            className="text-gray-400"
+                                        />
+
+                                        {barber.address ||
+                                            barber.location
+                                                ?.address ||
+                                            t("client.barbershopDetails.addressNotProvided")}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Column: Date Selection, Available Slots, Alerts & Booking Button */}
+                        <div className="space-y-8">
+                            <div>
+                                <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
+                                    {t("client.barbershopDetails.selectDate")}
+                                </h3>
+                                <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide mb-6">
+                                    {dayOptions.map((day) => {
+                                        const isSelected = selectedDate === day.dateStr;
+                                        return (
+                                            <button
+                                                key={day.dateStr}
+                                                type="button"
+                                                onClick={() => handleSelectDate(day.dateStr)}
+                                                className={`shrink-0 flex flex-col items-center min-w-[72px] py-3 px-3 rounded-2xl border transition-all font-bold
+                                                ${isSelected
+                                                        ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_8px_20px_rgba(24,95,165,0.25)]"
+                                                        : "bg-white text-[#666] border-black/5 hover:border-[#378ADD]/30"
+                                                    }`}
+                                            >
+                                                <span className="text-[10px] uppercase tracking-wider leading-none mb-1 opacity-80">
+                                                    {day.label}
+                                                </span>
+                                                <span className="text-base leading-none">
+                                                    {day.dateStr.slice(-2)}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-[20px] font-bold text-[#111] tracking-[-0.02em]">
+                                        {t("client.barbershopDetails.availableSlots")}
+                                    </h3>
+                                    <span className="text-xs bg-[#E6F1FB] text-[#0C447C] px-3 py-1 rounded-full font-medium">
+                                        {formatBookingDate(selectedDate, { style: "short" })}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3 max-h-[360px] overflow-y-auto pb-2">
+                                    {slots.length > 0 ? (
+                                        slots.map((time) => (
+                                            <label
+                                                key={time}
+                                                className={`flex flex-col items-center justify-center h-[88px] rounded-3xl border transition-all duration-200 cursor-pointer
+                                                ${bookedSlots.includes(
+                                                    time
+                                                )
+                                                        ? "bg-[#f3f3f3] text-[#bbb] border-transparent cursor-not-allowed"
+                                                        : selectedSlot ===
+                                                            time
+                                                            ? "bg-[#185FA5] text-white border-[#185FA5] scale-[1.03] shadow-[0_10px_25px_rgba(24,95,165,0.2)]"
+                                                            : "bg-white border-black/5 hover:border-black/15 hover:bg-[#fafafa]"
+                                                    }`}
+                                            >
+                                                <span className="text-[11px] uppercase tracking-wide opacity-70">
+                                                    {t("common.time")}
+                                                </span>
+
+                                                <span className="text-lg font-bold">
+                                                    {time}
+                                                </span>
+
+                                                <input
+                                                    type="checkbox"
+                                                    className="hidden"
+                                                    checked={
+                                                        selectedSlot ===
+                                                        time
+                                                    }
+                                                    disabled={bookedSlots.includes(
+                                                        time
+                                                    )}
+                                                    onChange={() =>
+                                                        toggleSlot(time)
+                                                    }
+                                                />
+                                            </label>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-3 flex flex-col items-center justify-center py-10 text-center">
+                                            <Clock
+                                                size={34}
+                                                className="text-gray-400 mb-3"
+                                            />
+
+                                            <h3 className="font-bold text-[#111]">
+                                                {t("client.barbershopDetails.noSlots")}
+                                            </h3>
+
+                                            <p className="text-sm text-[#777] mt-2">
+                                                {t("client.barbershopDetails.fullyBookedDay")}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-black/5">
+                                {error && (
+                                    <div className="rounded-3xl border border-red-100 bg-red-50 p-5 animate-fade-in">
+                                        <p className="font-semibold text-red-700">
+                                            {error}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {successMessage && (
+                                    <div className="rounded-3xl border border-green-100 bg-green-50 p-5 animate-fade-in">
+                                        <p className="font-semibold text-green-700">
+                                            {successMessage}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {successMessage ? (
+                                    <button
+                                        onClick={() =>
+                                            navigate("/client/dashboard")
+                                        }
+                                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 flex items-center justify-center gap-2"
+                                    >
+                                        {t("common.home")}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={handleBookSession}
+                                        disabled={
+                                            !selectedSlot ||
+                                            bookingLoading ||
+                                            isBookingInProgress
+                                        }
+                                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
+                                    >
+                                        {bookingLoading ||
+                                            isBookingInProgress ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                {t("client.barbershopDetails.booking")}
+                                            </>
+                                        ) : (
+                                            t("client.barbershopDetails.bookNow")
+                                        )}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
-
-                    <div>
-                        <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
-                            {t("client.barbershopDetails.location")}
-                        </h3>
-
-                        <div className="mt-3 p-4 bg-[#f8f8f8] rounded-3xl border border-black/5">
-                            <p className="text-sm text-[#555] font-medium flex items-center gap-2">
-                                <MapPin
-                                    size={16}
-                                    className="text-gray-400"
-                                />
-
-                                {barber.address ||
-                                    barber.location
-                                        ?.address ||
-                                    t("client.barbershopDetails.addressNotProvided")}
-                            </p>
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="rounded-3xl border border-red-100 bg-red-50 p-5">
-                            <p className="font-semibold text-red-700">
-                                {error}
-                            </p>
-                        </div>
-                    )}
-
-                    {successMessage && (
-                        <div className="rounded-3xl border border-green-100 bg-green-50 p-5">
-                            <p className="font-semibold text-green-700">
-                                {successMessage}
-                            </p>
-                        </div>
-                    )}
-
-                    {successMessage ? (
-                        <button
-                            onClick={() =>
-                                navigate("/client/dashboard")
-                            }
-                            className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 flex items-center justify-center gap-2"
-                        >
-                            {t("common.home")}
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleBookSession}
-                            disabled={
-                                !selectedSlot ||
-                                bookingLoading ||
-                                isBookingInProgress
-                            }
-                            className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
-                        >
-                            {bookingLoading ||
-                                isBookingInProgress ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    {t("client.barbershopDetails.booking")}
-                                </>
-                            ) : (
-                                t("client.barbershopDetails.bookNow")
-                            )}
-                        </button>
-                    )}
                 </div>
             </div>
         </div>

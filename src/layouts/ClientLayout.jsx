@@ -11,53 +11,109 @@ const tabs = [
 function ClientLayout() {
 
     return (
-        <div className="w-full min-h-screen flex flex-col justify-between bg-[#f5f5f7]">
-
-            <header className="w-full fixed top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-black/5">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-2xl bg-[#378ADD] flex items-center justify-center">
-                        <img
-                            src="/Scissor.png"
-                            alt={t('common.logo')}
-                            className="w-5 h-5 object-contain invert"
-                            onError={e => e.target.style.display = 'none'}
-                        />
+        <div className="w-full min-h-screen flex bg-[#f5f5f7]">
+            {/* Desktop Sidebar Navigation */}
+            <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-black/5 bg-white py-8 px-4 z-20 justify-between">
+                <div>
+                    <div className="flex items-center gap-3 mb-10 px-2">
+                        <div className="w-10 h-10 rounded-2xl bg-[#378ADD] flex items-center justify-center shadow-lg shadow-[#378ADD]/20">
+                            <img
+                                src="/Scissor.png"
+                                alt={t('common.logo')}
+                                className="w-5 h-5 object-contain invert"
+                                onError={e => e.target.style.display = 'none'}
+                            />
+                        </div>
+                        <h1 className="text-xl font-bold text-[#111] tracking-[-0.03em]">
+                            {t('brand.name')}
+                        </h1>
                     </div>
-                    <h1 className="text-lg font-bold text-[#111] tracking-[-0.03em]">
-                        {t('brand.name')}
-                    </h1>
+
+                    <nav className="flex flex-col gap-2">
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+
+                            return (
+                                <NavLink
+                                    key={tab.id}
+                                    to={tab.path}
+                                    className={({ isActive }) =>
+                                        `flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all duration-200
+                                        ${isActive
+                                            ? "bg-[#185FA5] text-white shadow-md shadow-[#185FA5]/15"
+                                            : "text-[#666] hover:bg-[#f8f8f8] hover:text-[#111]"}`
+                                    }
+                                >
+                                    <Icon size={18} />
+                                    <span>{t(tab.labelKey)}</span>
+                                </NavLink>
+                            );
+                        })}
+                    </nav>
                 </div>
-            </header>
 
-            <main className="flex-1 pt-[72px] pb-[80px]">
-                <Outlet />
-            </main>
+                <div className="px-4 py-3 border-t border-black/5">
+                    <p className="text-[10px] font-bold text-[#888] uppercase tracking-[0.15em] leading-none mb-1">
+                        {t('brand.name')}
+                    </p>
+                    <p className="text-[9px] text-[#bbb] font-medium">
+                        © {new Date().getFullYear()} All rights reserved
+                    </p>
+                </div>
+            </aside>
 
-            <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-4 py-3 flex justify-around items-center">
-                {tabs.map((tab) => {
-                    const Icon = tab.icon;
+            {/* Main Area */}
+            <div className="flex-1 flex flex-col min-w-0 pl-0 md:pl-64">
+                {/* Mobile Header */}
+                <header className="w-full fixed top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-black/5 md:hidden">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-2xl bg-[#378ADD] flex items-center justify-center">
+                            <img
+                                src="/Scissor.png"
+                                alt={t('common.logo')}
+                                className="w-5 h-5 object-contain invert"
+                                onError={e => e.target.style.display = 'none'}
+                            />
+                        </div>
+                        <h1 className="text-lg font-bold text-[#111] tracking-[-0.03em]">
+                            {t('brand.name')}
+                        </h1>
+                    </div>
+                </header>
 
-                    return (
-                        <NavLink
-                            key={tab.id}
-                            to={tab.path}
-                            className={({ isActive }) =>
-                                `flex flex-col items-center gap-1 px-6 py-2 rounded-2xl transition-all duration-200
-                                ${isActive
-                                    ? "bg-[#185FA5] text-white"
-                                    : "text-[#888] hover:text-[#111]"}`
-                            }
-                        >
-                            <Icon size={20} />
-                            <span className="text-[9px] font-bold tracking-[0.08em]">
-                                {t(tab.labelKey)}
-                            </span>
-                        </NavLink>
-                    );
-                })}
-            </footer>
+                {/* Main Content Area */}
+                <main className="flex-grow pt-[72px] md:pt-0 pb-[80px] md:pb-0 min-h-screen">
+                    <Outlet />
+                </main>
+
+                {/* Mobile Footer Tab Bar */}
+                <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-4 py-3 flex justify-around items-center md:hidden z-10">
+                    {tabs.map((tab) => {
+                        const Icon = tab.icon;
+
+                        return (
+                            <NavLink
+                                key={tab.id}
+                                to={tab.path}
+                                className={({ isActive }) =>
+                                    `flex flex-col items-center gap-1 px-6 py-2 rounded-2xl transition-all duration-200
+                                    ${isActive
+                                        ? "bg-[#185FA5] text-white"
+                                        : "text-[#888] hover:text-[#111]"}`
+                                }
+                            >
+                                <Icon size={20} />
+                                <span className="text-[9px] font-bold tracking-[0.08em]">
+                                    {t(tab.labelKey)}
+                                </span>
+                            </NavLink>
+                        );
+                    })}
+                </footer>
+            </div>
         </div>
     );
 }
 
 export default ClientLayout;
+

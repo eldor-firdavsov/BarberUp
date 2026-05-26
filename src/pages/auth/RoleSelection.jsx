@@ -10,7 +10,7 @@ function RoleSelection() {
     };
 
     return (
-        <section className="page-animate min-h-screen bg-[#f5f5f7] flex flex-col justify-center px-6 py-12 max-w-md mx-auto">
+        <section className="page-animate min-h-screen bg-[#f5f5f7] flex flex-col justify-center px-6 py-12 max-w-md md:max-w-xl mx-auto">
 
             <div className="text-center mb-14">
                 <div className="w-16 h-16 bg-[#378ADD] rounded-[20px] flex items-center justify-center mx-auto mb-6 shadow-[0_10px_30px_rgba(55,138,221,0.25)]">
@@ -20,13 +20,13 @@ function RoleSelection() {
                 <p className="text-sm text-[#666] font-medium">{t('auth.roleSelection.subtitle')}</p>
             </div>
 
-            <div className="space-y-4 flex-grow">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
                 <button
                     onClick={() => handleSelectRole('barber')}
-                    className="w-full flex items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] hover:border-black/10 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
+                    className="w-full flex md:flex-col md:items-start md:justify-between md:p-7 items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] hover:border-[#378ADD]/20 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)] text-left"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center">
+                    <div className="flex items-center gap-4 md:gap-3 md:flex-col md:items-start">
+                        <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center shrink-0">
                             <img src="./Scissor.png" alt="" className="w-6 h-6 object-contain" onError={e => e.target.style.display = 'none'} />
                         </div>
                         <div className="text-left">
@@ -34,17 +34,17 @@ function RoleSelection() {
                             <p className="text-sm text-[#666] font-medium mt-0.5">{t('auth.roleSelection.barberDesc')}</p>
                         </div>
                     </div>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="shrink-0 md:self-end" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 18l6-6-6-6" />
                     </svg>
                 </button>
 
                 <button
                     onClick={() => handleSelectRole('client')}
-                    className="w-full flex items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] hover:border-black/10 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
+                    className="w-full flex md:flex-col md:items-start md:justify-between md:p-7 items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] hover:border-[#378ADD]/20 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)] text-left"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center">
+                    <div className="flex items-center gap-4 md:gap-3 md:flex-col md:items-start">
+                        <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center shrink-0">
                             <img src="./Icon.png" alt="" className="w-6 h-6 object-contain" onError={e => e.target.style.display = 'none'} />
                         </div>
                         <div className="text-left">
@@ -52,7 +52,7 @@ function RoleSelection() {
                             <p className="text-sm text-[#666] font-medium mt-0.5">{t('auth.roleSelection.clientDesc')}</p>
                         </div>
                     </div>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="shrink-0 md:self-end" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 18l6-6-6-6" />
                     </svg>
                 </button>

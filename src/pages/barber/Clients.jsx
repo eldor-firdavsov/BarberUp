@@ -65,7 +65,7 @@ function Clients() {
     );
 
     return (
-        <div className="px-4 py-8 sm:px-6 space-y-6 page-animate max-w-2xl mx-auto pb-24">
+        <div className="px-4 py-8 sm:px-6 space-y-6 page-animate max-w-2xl md:max-w-6xl mx-auto pb-24">
 
             {/* Header */}
             <div className="flex justify-between items-start">
@@ -125,11 +125,11 @@ function Clients() {
                 </p>
 
                 {loading ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                         {[1, 2, 3].map(i => <div key={i} className="skeleton rounded-3xl" style={{ height: '72px' }} />)}
                     </div>
                 ) : filteredList.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                         {filteredList.map((b) => {
                             const client = b.clientData || clientsById[b.client];
                             const status = b.status?.toLowerCase();

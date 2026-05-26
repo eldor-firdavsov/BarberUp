@@ -132,7 +132,7 @@ function BookingStatus() {
     const meta = statusMeta[status] ?? statusMeta.pending;
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] flex flex-col px-4 py-8 sm:px-6 page-animate max-w-md mx-auto">
+        <div className="min-h-screen bg-[#f5f5f7] flex flex-col px-4 py-8 sm:px-6 page-animate max-w-md md:max-w-2xl mx-auto">
             <button
                 onClick={() => navigate('/client/dashboard')}
                 className="self-start mb-8 flex items-center gap-2 text-[#666] font-semibold text-sm hover:text-[#111] transition-colors"
