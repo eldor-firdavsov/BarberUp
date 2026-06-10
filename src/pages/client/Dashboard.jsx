@@ -5,6 +5,7 @@ import { useClient } from '../../context/ClientContext.jsx';
 import { formatTo24h } from '../../utils/time.js';
 import { Heart, MapPin } from 'lucide-react';
 import BarberProfileModal from '../../components/BarberProfileModal.jsx';
+import AllBarbersMap from '../../components/AllBarbersMap.jsx';
 import { t } from '../../utils/i18n.js';
 import { supabase } from '../../api/supabase.js';
 
@@ -327,6 +328,14 @@ function Client() {
                     >
                         {t('client.dashboard.favorites')} {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
                     </button>
+                    <button
+                        onClick={() => setActiveTab('map')}
+                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
+                            activeTab === 'map' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666] active:bg-black/5'
+                        }`}
+                    >
+                        Xarita
+                    </button>
                 </div>
             </div>
 
@@ -370,7 +379,15 @@ function Client() {
 
             {/* Barber List */}
             {!loading && !error && barbers.length > 0 && (
-                <div className={activeTab === 'favorites' && favoriteBarbers.length === 0 ? "pb-10" : "space-y-8 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 pb-10"}>
+                activeTab === 'map' ? (
+                    <div className="mt-4 pb-10 fade-in">
+                        <AllBarbersMap 
+                            barbers={filteredAndSortedBarbers} 
+                            clientCoords={clientCoords || { lat: 41.2995, lng: 69.2401 }} 
+                        />
+                    </div>
+                ) : (
+                <div className={activeTab === 'favorites' && favoriteBarbers.length === 0 ? "pb-10 fade-in" : "space-y-8 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 pb-10 fade-in"}>
                     {/* Show empty state for favorites */}
                     {activeTab === 'favorites' && favoriteBarbers.length === 0 && (
                         <div className="empty-state min-h-[300px] sm:min-h-0">
@@ -526,6 +543,7 @@ function Client() {
                         </div>
                     ))}
                 </div>
+                )
             )}
 
 

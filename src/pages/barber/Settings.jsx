@@ -5,14 +5,15 @@ import { supabase } from '../../api/supabase.js';
 import { normalizeBarber } from '../../api/barberApi.js';
 import { uploadImage } from '../../api/uploadApi.js';
 import { t } from '../../utils/i18n.js';
-import { User, Phone, Clock, Coffee, ChevronRight, LogOut, X, Check, Send, ExternalLink } from 'lucide-react';
+import { User, Phone, Clock, Coffee, ChevronRight, LogOut, X, Check, Send, ExternalLink, MapPin } from 'lucide-react';
 import LanguageSelector from '../../components/LanguageSelector.jsx';
+import MapPicker from '../../components/MapPicker.jsx';
 
 function Settings() {
     const { logout, user, updateSessionUser } = useAuth();
     const navigate = useNavigate();
 
-    // Modal state: null | 'profile' | 'hours' | 'lunch'
+    // Modal state: null | 'profile' | 'hours' | 'lunch' | 'location'
     const [modal, setModal] = useState(null);
 
     // Profile edit fields
@@ -40,6 +41,10 @@ function Settings() {
     const [lunchStart, setLunchStart] = useState(initialLunch[0] || '13:00');
     const [lunchEnd, setLunchEnd] = useState(initialLunch[1] || '14:00');
 
+    // Address & Location
+    const [address, setAddress] = useState(user?.address || '');
+    const [coordinates, setCoordinates] = useState(user?.location?.coordinates || null);
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -51,6 +56,10 @@ function Settings() {
         setError('');
         setSuccess('');
         setModal(type);
+        if (type === 'location') {
+            setAddress(user?.address || '');
+            setCoordinates(user?.location?.coordinates || null);
+        }
     };
 
     const closeModal = () => {
@@ -153,6 +162,29 @@ function Settings() {
         }
     };
 
+    const handleSaveLocation = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const payload = {
+                address: address.trim(),
+                location: coordinates ? { address: address.trim(), type: 'Point', coordinates } : null
+            };
+            const { data, error: dbError } = await supabase
+                .from('barbers')
+                .update(payload)
+                .eq('id', user?.id).select().single();
+            if (dbError) throw dbError;
+            updateSessionUser({ ...user, ...normalizeBarber(data), role: 'barber' });
+            setSuccess('Salon manzili saqlandi!');
+            setTimeout(() => { setSuccess(''); closeModal(); }, 1500);
+        } catch (err) {
+            setError(err.message || 'Xato yuz berdi');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const avatarLetter = (user?.fullname || 'B')[0].toUpperCase();
     const displayPhone = user?.phone ? user.phone.replace(/^\+998/, '+998 ') : '—';
 
@@ -234,6 +266,20 @@ function Settings() {
                         <p className="font-semibold text-[#111] text-sm">Tushlik vaqtini tahrirlash</p>
                         <p className="text-xs text-[#999] font-medium mt-0.5">{user?.lunch_break || user?.lunchBreak || 'Belgilanmagan'}</p>
                     </div>
+                </button>
+
+                {/* Edit Location */}
+                <button
+                    onClick={() => openModal('location')}
+                    className="w-full flex items-center gap-4 px-5 sm:px-6 py-4 sm:py-5 active:bg-[#f8f8f8] transition-colors text-left min-h-[60px]"
+                >
+                    <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
+                        <MapPin size={18} className="text-[#378ADD]" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-semibold text-[#111] text-sm">Salon joylashuvi (manzili)</p>
+                        <p className="text-xs text-[#999] font-medium mt-0.5">{user?.address || 'Kiritilmagan'}</p>
+                    </div>
                     <ChevronRight size={16} className="text-[#bbb]" />
                 </button>
 
@@ -293,7 +339,7 @@ function Settings() {
                         {/* Modal Header */}
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-lg font-bold text-[#111]">
-                                {modal === 'profile' ? 'Profilni tahrirlash' : modal === 'hours' ? 'Ish vaqti' : 'Tushlik vaqti'}
+                                {modal === 'profile' ? 'Profilni tahrirlash' : modal === 'hours' ? 'Ish vaqti' : modal === 'lunch' ? 'Tushlik vaqti' : 'Salon joylashuvi'}
                             </h2>
                             <button onClick={closeModal} className="w-9 h-9 rounded-full bg-[#f5f5f7] flex items-center justify-center active:bg-[#eee] transition-colors">
                                 <X size={18} className="text-[#666]" />
@@ -425,6 +471,20 @@ function Settings() {
                             </div>
                         )}
 
+                        {/* Location Modal */}
+                        {modal === 'location' && (
+                            <div className="space-y-4">
+                                <p className="text-sm text-[#666] font-medium mb-1">Salon joylashuvini belgilang</p>
+                                <MapPicker
+                                    initialLocation={address ? { address, coordinates } : null}
+                                    onLocationChange={(loc) => {
+                                        setAddress(loc.address);
+                                        setCoordinates(loc.coordinates);
+                                    }}
+                                />
+                            </div>
+                        )}
+
                         {/* Feedback */}
                         {error && <p className="text-red-500 text-sm font-semibold mt-3">{error}</p>}
                         {success && (
@@ -435,7 +495,7 @@ function Settings() {
 
                         {/* Save Button */}
                         <button
-                            onClick={modal === 'profile' ? handleSaveProfile : modal === 'hours' ? handleSaveHours : handleSaveLunch}
+                            onClick={modal === 'profile' ? handleSaveProfile : modal === 'hours' ? handleSaveHours : modal === 'lunch' ? handleSaveLunch : handleSaveLocation}
                             disabled={loading}
                             className="w-full h-12 sm:h-11 mt-5 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] active:scale-[0.98] text-white font-bold text-sm transition-all disabled:opacity-50 shadow-[0_10px_25px_rgba(55,138,221,0.25)] cursor-pointer min-h-[48px]"
                         >

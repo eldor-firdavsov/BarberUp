@@ -96,6 +96,8 @@ export async function createBarber(data) {
         photo_2:       data.photo_2 ?? '',
         photo_3:       data.photo_3 ?? '',
         services,
+        address:       data.address ?? '',
+        location:      data.location ?? null,
     };
 
     try {

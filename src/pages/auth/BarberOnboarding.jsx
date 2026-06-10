@@ -6,6 +6,7 @@ import { createBarber } from '../../api/barberApi.js';
 import { uploadImage } from '../../api/uploadApi.js';
 import { t } from '../../utils/i18n.js';
 import { User, Store, Scissors, Check, ChevronRight, ChevronLeft, Plus, X, Image } from 'lucide-react';
+import MapPicker from '../../components/MapPicker.jsx';
 
 const STEPS = [
     { key: 'personal', icon: User, label: 'Shaxsiy' },
@@ -13,7 +14,6 @@ const STEPS = [
     { key: 'services', icon: Scissors, label: 'Xizmatlar' },
     { key: 'review', icon: Check, label: 'Tasdiqlash' },
 ];
-
 const serviceDurationOptions = [
     { value: '15', label: '15 min' },
     { value: '30', label: '30 min' },
@@ -40,6 +40,8 @@ function BarberOnboarding() {
     const [officePreviews, setOfficePreviews] = useState([null, null, null]);
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
+    const [address, setAddress] = useState('');
+    const [coordinates, setCoordinates] = useState(null);
     const [services, setServices] = useState([{ id: 1, name: '', duration: '30', price: '' }]);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -138,6 +140,8 @@ function BarberOnboarding() {
                 workingHours: `${startTime} - ${endTime}`,
                 avgPrice: String(avgPrice),
                 services: validServices,
+                address: address.trim(),
+                location: coordinates ? { address: address.trim(), type: 'Point', coordinates } : null,
             };
 
             const { data: barberUser, error: createError } = await createBarber(payload);
@@ -312,6 +316,18 @@ function BarberOnboarding() {
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Location Picker */}
+                                <div className="pt-5 border-t border-black/5 space-y-3">
+                                    <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.12em] mb-1">Salon manzili (xaritadan tanlang)</label>
+                                    <MapPicker
+                                        initialLocation={address ? { address, coordinates } : null}
+                                        onLocationChange={(loc) => {
+                                            setAddress(loc.address);
+                                            setCoordinates(loc.coordinates);
+                                        }}
+                                    />
                                 </div>
                             </div>
                         )}

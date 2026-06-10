@@ -132,110 +132,108 @@ function MapPicker({ onLocationChange, initialLocation = null }) {
     };
 
     return (
-        <div className="space-y-4">
-            {/* Current Location Button */}
-            <div className="flex gap-2">
+        <div className="space-y-5">
+            {/* Current Geolocation Finder Button */}
+            <div className="flex">
                 <button
                     onClick={getCurrentLocation}
                     disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
+                    className="w-full flex items-center justify-center gap-2.5 h-12 bg-[#378ADD] hover:bg-[#185FA5] text-white font-bold rounded-2xl transition-all shadow-[0_10px_25px_rgba(55,138,221,0.2)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-sm cursor-pointer"
                 >
-                    <Navigation size={16} />
+                    <Navigation size={16} className={loading ? 'animate-pulse' : ''} />
                     {loading ? t('components.mapPicker.gettingLocation') : t('components.mapPicker.useCurrentLocation')}
                 </button>
             </div>
 
-            {/* Search */}
+            {/* Address Search Bar */}
             <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">{t('components.mapPicker.searchAddress')}</label>
+                <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.08em]">{t('components.mapPicker.searchAddress')}</label>
                 <div className="flex gap-2">
-                    <div className="flex-1 flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2">
-                        <Search size={16} className="text-gray-400" />
+                    <div className="flex-1 flex items-center gap-2 bg-[#f8f8f8] border border-black/5 rounded-2xl px-4 h-12 focus-within:border-[#185FA5]/30 focus-within:bg-white transition-all">
+                        <Search size={16} className="text-[#888]" />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
                             placeholder={t('components.mapPicker.searchPlaceholder')}
-                            className="flex-1 outline-none"
+                            className="flex-1 outline-none text-sm font-medium text-[#111] bg-transparent"
                         />
                     </div>
                     <button
                         onClick={searchLocation}
                         disabled={isSearching || !searchQuery.trim()}
-                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:bg-gray-400 transition-colors"
+                        className="px-5 h-12 bg-[#f8f8f8] border border-black/5 hover:bg-[#f0f0f0] text-[#666] font-bold rounded-2xl transition-all active:scale-[0.97] disabled:opacity-40 text-xs cursor-pointer"
                     >
                         {isSearching ? t('common.searching') : t('common.search')}
                     </button>
                 </div>
 
-                {/* Search Results */}
+                {/* Dropdown Search Results */}
                 {searchResults.length > 0 && (
-                    <div className="border border-gray-200 rounded-lg max-h-40 overflow-y-auto">
+                    <div className="border border-black/5 bg-white rounded-2xl max-h-48 overflow-y-auto shadow-[0_10px_30px_rgba(0,0,0,0.08)] divide-y divide-black/5 animate-slideDown">
                         {searchResults.map((result, index) => (
                             <button
                                 key={index}
                                 onClick={() => selectLocation(result)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                                className="w-full text-left px-4 py-3 hover:bg-[#f8f8f8] transition-colors text-xs font-semibold text-[#333] leading-snug"
                             >
-                                <div className="text-sm font-medium">{result.display_name}</div>
+                                {result.display_name}
                             </button>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Manual Input */}
-            <div className="space-y-4">
+            {/* Manual Edit Section */}
+            <div className="space-y-4 pt-2 border-t border-black/5">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('components.mapPicker.address')}</label>
+                    <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.08em] mb-2">{t('components.mapPicker.address')}</label>
                     <input
                         type="text"
-                        value={location.coordinates?.[0] ?? ''}
+                        value={location.address ?? ''}
                         onChange={(e) => handleAddressChange(e.target.value)}
                         placeholder={t('components.mapPicker.addressPlaceholder')}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-sm"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('components.mapPicker.coordinates')}</label>
-                    <div className="flex gap-2">
+                    <label className="block text-xs font-semibold text-[#666] uppercase tracking-[0.08em] mb-2">{t('components.mapPicker.coordinates')}</label>
+                    <div className="flex gap-3">
                         <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">{t('components.mapPicker.longitude')}</label>
+                            <label className="block text-[10px] text-[#888] font-bold uppercase tracking-wider mb-1">{t('components.mapPicker.longitude')}</label>
                             <input
                                 type="number"
                                 step="0.000001"
                                 value={location.coordinates?.[0] ?? ''}
                                 onChange={(e) => handleCoordinateChange(0, e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                className="w-full h-11 px-3 bg-[#f8f8f8] border border-black/5 rounded-xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:bg-white transition-all text-xs text-center"
                             />
                         </div>
                         <div className="flex-1">
-                            <label className="block text-xs text-gray-500 mb-1">{t('components.mapPicker.latitude')}</label>
+                            <label className="block text-[10px] text-[#888] font-bold uppercase tracking-wider mb-1">{t('components.mapPicker.latitude')}</label>
                             <input
                                 type="number"
                                 step="0.000001"
                                 value={location.coordinates?.[1] ?? ''}
                                 onChange={(e) => handleCoordinateChange(1, e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                className="w-full h-11 px-3 bg-[#f8f8f8] border border-black/5 rounded-xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:bg-white transition-all text-xs text-center"
                             />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Current Location Display */}
+            {/* Display Selected Location Details */}
             {location.address && (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-start gap-2">
-                        <MapPin size={16} className="text-gray-500 mt-1" />
-                        <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-700">{t('components.mapPicker.selectedLocation')}</div>
-                            <div className="text-sm text-gray-600">{location.address}</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                                Coordinates: {location.coordinates?.[0]?.toFixed(6) || '0.000000'}, {location.coordinates?.[1]?.toFixed(6) || '0.000000'}
-                            </div>
+                <div className="p-4 bg-[#E6F1FB] border border-[#378ADD]/10 rounded-2xl flex items-start gap-3">
+                    <MapPin size={16} className="text-[#378ADD] shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-1">
+                        <div className="text-[10px] font-black text-[#185FA5] uppercase tracking-wider">{t('components.mapPicker.selectedLocation')}</div>
+                        <div className="text-xs text-[#111] font-semibold leading-relaxed">{location.address}</div>
+                        <div className="text-[10px] text-[#666] font-medium">
+                            {location.coordinates?.[0]?.toFixed(6) || '0.000000'}, {location.coordinates?.[1]?.toFixed(6) || '0.000000'}
                         </div>
                     </div>
                 </div>

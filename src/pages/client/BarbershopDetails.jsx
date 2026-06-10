@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Clock, MapPin } from "lucide-react";
+import InteractiveMap from "../../components/InteractiveMap.jsx";
 import { getBarbers } from "../../api/barberApi.js";
 import {
     bookingMatchesBarber,
@@ -715,19 +716,11 @@ export default function BarbershopDetails() {
                                     {t("client.barbershopDetails.location")}
                                 </h3>
 
-                                <div className="mt-3 p-4 bg-[#f8f8f8] rounded-3xl border border-black/5">
-                                    <p className="text-sm text-[#555] font-medium flex items-center gap-2">
-                                        <MapPin
-                                            size={16}
-                                            className="text-gray-400"
-                                        />
-
-                                        {barber.address ||
-                                            barber.location
-                                                ?.address ||
-                                            t("client.barbershopDetails.addressNotProvided")}
-                                    </p>
-                                </div>
+                                <InteractiveMap
+                                    coordinates={barber.location}
+                                    address={barber.address || barber.location?.address || t("client.barbershopDetails.addressNotProvided")}
+                                    shopName={barber.office_name || barber.shopName}
+                                />
                             </div>
                         </div>
 
