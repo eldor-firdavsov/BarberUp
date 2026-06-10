@@ -1,192 +1,324 @@
 -- ==============================================================================
--- NAVBATGO SUPABASE SQL SCHEMA (SAFE IDEMPOTENT RUN)
+-- NAVBATGO — PRODUCTION DATABASE SCHEMA (IDEMPOTENT)
 -- ==============================================================================
--- Instructions:
--- Run this entire script in the Supabase SQL Editor.
--- This script is fully idempotent and safe to run multiple times.
--- It preserves existing data while safely updating schemas and policies.
+-- Safe to run multiple times in the Supabase SQL Editor.
+-- Preserves existing data. Always run the full file top-to-bottom.
+-- Last updated: 2026-06-04
 -- ==============================================================================
 
--- ------------------------------------------------------------------------------
--- 1. Barbers Table (References Supabase Auth Users)
--- ------------------------------------------------------------------------------
+-- ==============================================================================
+-- 1. BARBERS TABLE (phone-based identity, no Supabase Auth required)
+-- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.barbers (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    fullname TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone TEXT,
-    office_name TEXT,
-    working_hours TEXT,
-    average_price NUMERIC,
-    profile_img TEXT,
-    office_img TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fullname        TEXT NOT NULL,
+    email           TEXT,
+    phone           TEXT,
+    office_name     TEXT,
+    working_hours   TEXT,
+    average_price   NUMERIC,
+    profile_img     TEXT,
+    office_img      TEXT,
+    services        JSONB        NOT NULL DEFAULT '[]'::jsonb,
+    address         TEXT,
+    location        JSONB,
+    status          TEXT         NOT NULL DEFAULT 'available',
+    lunch_break     TEXT,
+    telegram_chat_id TEXT,
+    telegram_notifications BOOLEAN NOT NULL DEFAULT false,
+    photo_1         TEXT,
+    photo_2         TEXT,
+    photo_3         TEXT,
+    rating          NUMERIC(3,2) NOT NULL DEFAULT 0,
+    review_count    INT          NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
 
--- Ensure all required columns exist on the barbers table
-ALTER TABLE public.barbers 
-ADD COLUMN IF NOT EXISTS services jsonb DEFAULT '[]'::jsonb,
-ADD COLUMN IF NOT EXISTS address TEXT,
-ADD COLUMN IF NOT EXISTS location jsonb;
+-- Check constraints (safe to re-run)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'barbers_status_check') THEN
+        ALTER TABLE public.barbers ADD CONSTRAINT barbers_status_check
+            CHECK (status IN ('available', 'working-busy', 'lunch', 'closed'));
+    END IF;
+END $$;
 
-COMMENT ON COLUMN public.barbers.services IS 'Array of services provided by the barber, e.g., [{id, name, duration, price}].';
-COMMENT ON COLUMN public.barbers.address IS 'Physical address or street name of the barbershop.';
-COMMENT ON COLUMN public.barbers.location IS 'JSON geography block containing address details and coordinate pair: [longitude, latitude].';
+-- Remove old subscription/tier columns if they exist (safe migration)
+ALTER TABLE public.barbers
+    DROP COLUMN IF EXISTS tier,
+    DROP COLUMN IF EXISTS tier_expires_at,
+    DROP COLUMN IF EXISTS booking_count_this_month,
+    DROP COLUMN IF EXISTS boost_until,
+    DROP COLUMN IF EXISTS is_subscribed,
+    DROP COLUMN IF EXISTS sub_expires_at,
+    DROP COLUMN IF EXISTS trial_expires_at,
+    DROP COLUMN IF EXISTS telegram_notify;
 
--- ------------------------------------------------------------------------------
--- 2. Clients Table (References Supabase Auth Users)
--- ------------------------------------------------------------------------------
+-- ==============================================================================
+-- 2. CLIENTS TABLE (phone-based identity or legacy registered clients)
+-- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.clients (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    fullname TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    phone TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fullname   TEXT NOT NULL,
+    email      TEXT UNIQUE NOT NULL,
+    phone      TEXT UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
 
--- Ensure the profile image column exists (required for ClientOnboarding & Settings)
 ALTER TABLE public.clients
-ADD COLUMN IF NOT EXISTS profile_img TEXT;
+    ADD COLUMN IF NOT EXISTS profile_img TEXT;
 
-COMMENT ON COLUMN public.clients.profile_img IS 'Direct HTTPS URL to client profile picture stored in the Images bucket.';
+-- Safely drop fkey constraint if migrating from old schema
+ALTER TABLE public.clients DROP CONSTRAINT IF EXISTS clients_id_fkey;
+ALTER TABLE public.clients ALTER COLUMN id SET DEFAULT gen_random_uuid();
 
--- ------------------------------------------------------------------------------
--- 3. Bookings Table (Manages Client-to-Barber Appointments)
--- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.bookings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    barber_id UUID REFERENCES public.barbers(id) ON DELETE CASCADE NOT NULL,
-    client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE NOT NULL,
-    booking_hours TEXT NOT NULL, -- Format: 'HH:MM'
-    booking_date DATE DEFAULT CURRENT_DATE NOT NULL,
-    status TEXT DEFAULT 'pending',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- ==============================================================================
+-- 3. GUESTS TABLE (phone-based identity — no Supabase Auth required)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.guests (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone      TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Ensure service and date columns exist on older booking databases
-ALTER TABLE public.bookings 
-ADD COLUMN IF NOT EXISTS booking_date DATE DEFAULT CURRENT_DATE,
-ADD COLUMN IF NOT EXISTS service_name TEXT,
-ADD COLUMN IF NOT EXISTS service_price TEXT;
+-- Unique index: one guest record per phone number
+CREATE UNIQUE INDEX IF NOT EXISTS guests_phone_unique ON public.guests(phone);
 
--- Safely migrate any NULL values of booking_date
-UPDATE public.bookings
-SET booking_date = COALESCE(booking_date, (created_at AT TIME ZONE 'UTC')::date, CURRENT_DATE)
-WHERE booking_date IS NULL;
+-- ==============================================================================
+-- 4. BOOKINGS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.bookings (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    barber_id     UUID NOT NULL REFERENCES public.barbers(id) ON DELETE CASCADE,
+    client_id     UUID REFERENCES public.clients(id) ON DELETE CASCADE,
+    booking_hours TEXT NOT NULL,
+    booking_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+    status        TEXT NOT NULL DEFAULT 'pending',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
 
--- Enforce NOT NULL and default values
-ALTER TABLE public.bookings ALTER COLUMN booking_date SET NOT NULL;
-ALTER TABLE public.bookings ALTER COLUMN booking_date SET DEFAULT CURRENT_DATE;
+-- Ensure all V2 columns exist
+ALTER TABLE public.bookings
+    ADD COLUMN IF NOT EXISTS service_name      TEXT,
+    ADD COLUMN IF NOT EXISTS service_price     TEXT,
+    ADD COLUMN IF NOT EXISTS service_duration  TEXT,
+    ADD COLUMN IF NOT EXISTS guest_name        TEXT,
+    ADD COLUMN IF NOT EXISTS guest_phone       TEXT,
+    ADD COLUMN IF NOT EXISTS deposit_amount    NUMERIC   DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS deposit_status    TEXT      DEFAULT 'none',
+    ADD COLUMN IF NOT EXISTS payment_provider  TEXT,
+    ADD COLUMN IF NOT EXISTS payment_ref       TEXT,
+    ADD COLUMN IF NOT EXISTS cancelled_by      TEXT;
 
-COMMENT ON COLUMN public.bookings.booking_date IS 'Calendar day chosen by the client for the appointment (YYYY-MM-DD).';
-COMMENT ON COLUMN public.bookings.booking_hours IS 'Time slot on booking_date in 24h format (HH:MM).';
-COMMENT ON COLUMN public.bookings.status IS 'Status of the appointment (pending, active/accepted, rejected, completed/bajarildi, cancelled).';
-COMMENT ON COLUMN public.bookings.service_name IS 'Name of the specific service selected for this booking.';
-COMMENT ON COLUMN public.bookings.service_price IS 'Cost of the specific service at the time of booking.';
+-- Check constraints
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bookings_status_check') THEN
+        ALTER TABLE public.bookings ADD CONSTRAINT bookings_status_check
+            CHECK (status IN ('pending', 'accepted', 'rejected', 'cancelled', 'completed'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bookings_deposit_status_check') THEN
+        ALTER TABLE public.bookings ADD CONSTRAINT bookings_deposit_status_check
+            CHECK (deposit_status IN ('none', 'paid', 'refunded', 'forfeited'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bookings_cancelled_by_check') THEN
+        ALTER TABLE public.bookings ADD CONSTRAINT bookings_cancelled_by_check
+            CHECK (cancelled_by IN ('client', 'barber', 'system') OR cancelled_by IS NULL);
+    END IF;
+END $$;
 
--- ------------------------------------------------------------------------------
--- 4. Constraints and Indexes
--- ------------------------------------------------------------------------------
-
--- Unique Index: Prevent double-booking active/accepted time slots for a specific barber
+-- Unique index: prevent double-booking an active/accepted slot for the same barber
 DROP INDEX IF EXISTS public.bookings_barber_date_time_active_uidx;
 CREATE UNIQUE INDEX bookings_barber_date_time_active_uidx
-ON public.bookings (barber_id, booking_date, booking_hours)
-WHERE status NOT IN ('rejected', 'cancelled');
+    ON public.bookings (barber_id, booking_date, booking_hours)
+    WHERE status NOT IN ('rejected', 'cancelled');
 
--- Check Constraint: Prevent booking slots in past calendar days (NOT VALID prevents historical validation failures)
+-- Prevent bookings in past calendar days
 ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_date_not_past;
 ALTER TABLE public.bookings
-ADD CONSTRAINT bookings_date_not_past CHECK (booking_date >= CURRENT_DATE) NOT VALID;
+    ADD CONSTRAINT bookings_date_not_past CHECK (booking_date >= CURRENT_DATE) NOT VALID;
 
 -- ==============================================================================
--- ROW LEVEL SECURITY (RLS) - TABLES
+-- 5. VERIFICATION CODES (phone OTP via Telegram bot)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.verification_codes (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone      TEXT NOT NULL,
+    code       TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    verified   BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS verification_codes_phone_idx ON public.verification_codes(phone);
+CREATE INDEX IF NOT EXISTS idx_verification_codes_phone_code ON public.verification_codes (phone, code);
+CREATE INDEX IF NOT EXISTS idx_verification_codes_phone_expires ON public.verification_codes (phone, expires_at DESC);
+
+-- ==============================================================================
+-- 6. TELEGRAM LINKS (phone ↔ chat_id mapping for verification codes)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.telegram_links (
+    phone TEXT PRIMARY KEY,
+    chat_id TEXT NOT NULL,
+    linked_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.telegram_links ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "telegram_links_select_policy" ON public.telegram_links;
+DROP POLICY IF EXISTS "telegram_links_insert_policy" ON public.telegram_links;
+DROP POLICY IF EXISTS "telegram_links_update_policy" ON public.telegram_links;
+
+CREATE POLICY "telegram_links_select_policy"
+    ON public.telegram_links FOR SELECT USING (true);
+
+CREATE POLICY "telegram_links_insert_policy"
+    ON public.telegram_links FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "telegram_links_update_policy"
+    ON public.telegram_links FOR UPDATE USING (true) WITH CHECK (true);
+
+-- ==============================================================================
+-- 7. REVIEWS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.reviews (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    barber_id  UUID NOT NULL REFERENCES public.barbers(id) ON DELETE CASCADE,
+    client_id  UUID REFERENCES public.clients(id) ON DELETE SET NULL,
+    guest_phone TEXT,
+    booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
+    rating     INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment    TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS reviews_barber_idx ON public.reviews(barber_id);
+CREATE UNIQUE INDEX IF NOT EXISTS reviews_booking_unique ON public.reviews(booking_id)
+    WHERE booking_id IS NOT NULL;
+
+-- ==============================================================================
+-- ROW LEVEL SECURITY
 -- ==============================================================================
 
--- Enable RLS safely on all active tables
-ALTER TABLE public.barbers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.barbers       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clients       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.guests        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bookings      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.verification_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reviews       ENABLE ROW LEVEL SECURITY;
 
--- ------------------------------------------------------------------------------
--- Barber Table Policies
--- ------------------------------------------------------------------------------
-DROP POLICY IF EXISTS "Barbers are viewable by everyone" ON public.barbers;
-CREATE POLICY "Barbers are viewable by everyone" ON public.barbers 
-FOR SELECT USING (true);
-
+-- ── Barbers (anyone can select, insert, update — no Supabase Auth) ─────────
+DROP POLICY IF EXISTS "Barbers are viewable by everyone"    ON public.barbers;
 DROP POLICY IF EXISTS "Barbers can insert their own profile" ON public.barbers;
-CREATE POLICY "Barbers can insert their own profile" ON public.barbers 
-FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Barbers can update own profile"       ON public.barbers;
 
-DROP POLICY IF EXISTS "Barbers can update own profile" ON public.barbers;
-CREATE POLICY "Barbers can update own profile" ON public.barbers 
-FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Barbers are viewable by everyone"
+    ON public.barbers FOR SELECT USING (true);
 
--- ------------------------------------------------------------------------------
--- Client Table Policies
--- ------------------------------------------------------------------------------
-DROP POLICY IF EXISTS "Clients are viewable by everyone" ON public.clients;
-CREATE POLICY "Clients are viewable by everyone" ON public.clients 
-FOR SELECT USING (true);
+CREATE POLICY "Barbers can insert their own profile"
+    ON public.barbers FOR INSERT WITH CHECK (true);
 
+CREATE POLICY "Barbers can update own profile"
+    ON public.barbers FOR UPDATE USING (true);
+
+-- ── Clients ───────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Clients are viewable by everyone"     ON public.clients;
 DROP POLICY IF EXISTS "Clients can insert their own profile" ON public.clients;
-CREATE POLICY "Clients can insert their own profile" ON public.clients 
-FOR INSERT WITH CHECK (auth.uid() = id);
+DROP POLICY IF EXISTS "Clients can update own profile"       ON public.clients;
 
-DROP POLICY IF EXISTS "Clients can update own profile" ON public.clients;
-CREATE POLICY "Clients can update own profile" ON public.clients 
-FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Clients are viewable by everyone"
+    ON public.clients FOR SELECT USING (true);
 
--- ------------------------------------------------------------------------------
--- Booking Table Policies
--- ------------------------------------------------------------------------------
-DROP POLICY IF EXISTS "Users can view their own bookings" ON public.bookings;
-CREATE POLICY "Users can view their own bookings" ON public.bookings 
-FOR SELECT USING (auth.uid() = client_id OR auth.uid() = barber_id);
+CREATE POLICY "Clients can insert their own profile"
+    ON public.clients FOR INSERT WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Clients can create bookings" ON public.bookings;
-CREATE POLICY "Clients can create bookings" ON public.bookings 
-FOR INSERT WITH CHECK (auth.uid() = client_id);
+CREATE POLICY "Clients can update own profile"
+    ON public.clients FOR UPDATE USING (true);
 
-DROP POLICY IF EXISTS "Participants can update bookings" ON public.bookings;
-CREATE POLICY "Participants can update bookings" ON public.bookings 
-FOR UPDATE USING (auth.uid() = client_id OR auth.uid() = barber_id);
+-- ── Guests ────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Anyone can select guests" ON public.guests;
+DROP POLICY IF EXISTS "Anyone can insert guests" ON public.guests;
 
+CREATE POLICY "Anyone can select guests"
+    ON public.guests FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can insert guests"
+    ON public.guests FOR INSERT WITH CHECK (true);
+
+-- ── Bookings (anyone can read, insert, update — no Supabase Auth) ──────────
+DROP POLICY IF EXISTS "Parties can read own bookings"       ON public.bookings;
+DROP POLICY IF EXISTS "Users can view their own bookings"   ON public.bookings;
+DROP POLICY IF EXISTS "Clients or guests can insert bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Clients can create bookings"         ON public.bookings;
+DROP POLICY IF EXISTS "Participants can update bookings"    ON public.bookings;
+DROP POLICY IF EXISTS "Barbers can update own bookings"     ON public.bookings;
+DROP POLICY IF EXISTS "Clients can update own bookings"     ON public.bookings;
+DROP POLICY IF EXISTS "Guests can update own bookings"      ON public.bookings;
+DROP POLICY IF EXISTS "Anyone can read bookings"            ON public.bookings;
+DROP POLICY IF EXISTS "Anyone can insert bookings"          ON public.bookings;
+DROP POLICY IF EXISTS "Anyone can update bookings"          ON public.bookings;
+
+CREATE POLICY "Anyone can read bookings"
+    ON public.bookings FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can insert bookings"
+    ON public.bookings FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can update bookings"
+    ON public.bookings FOR UPDATE USING (true);
+
+-- ── Verification Codes (anyone can insert/select/update — no Supabase Auth) ────────
+DROP POLICY IF EXISTS "Anyone can insert verification codes" ON public.verification_codes;
+DROP POLICY IF EXISTS "Anyone can select verification codes" ON public.verification_codes;
+DROP POLICY IF EXISTS "Anyone can update verification codes" ON public.verification_codes;
+
+CREATE POLICY "Anyone can insert verification codes"
+    ON public.verification_codes FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can select verification codes"
+    ON public.verification_codes FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can update verification codes"
+    ON public.verification_codes FOR UPDATE USING (true) WITH CHECK (true);
+
+-- ── Reviews ───────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Anyone can read reviews"   ON public.reviews;
+DROP POLICY IF EXISTS "Clients can insert review" ON public.reviews;
+DROP POLICY IF EXISTS "Anyone can insert review"  ON public.reviews;
+
+CREATE POLICY "Anyone can read reviews"
+    ON public.reviews FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can insert review"
+    ON public.reviews FOR INSERT
+    WITH CHECK (true);
 
 -- ==============================================================================
--- STORAGE BUCKETS & SECURITY POLICIES
+-- STORAGE BUCKETS
 -- ==============================================================================
 
--- ------------------------------------------------------------------------------
--- Initialize images storage bucket if it does not exist
--- ------------------------------------------------------------------------------
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('Images', 'Images', true)
 ON CONFLICT (id) DO NOTHING;
 
--- ------------------------------------------------------------------------------
--- Storage Object Policies (Fully Idempotent)
--- ------------------------------------------------------------------------------
-DROP POLICY IF EXISTS "Public Read Access" ON storage.objects;
-CREATE POLICY "Public Read Access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'Images');
-
+DROP POLICY IF EXISTS "Public Read Access"        ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated Upload Access" ON storage.objects;
-CREATE POLICY "Authenticated Upload Access"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'Images');
-
 DROP POLICY IF EXISTS "Authenticated Update Access" ON storage.objects;
-CREATE POLICY "Authenticated Update Access"
-ON storage.objects FOR UPDATE
-TO authenticated
-USING (bucket_id = 'Images');
-
 DROP POLICY IF EXISTS "Authenticated Delete Access" ON storage.objects;
+
+CREATE POLICY "Public Read Access"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'Images');
+
+CREATE POLICY "Authenticated Upload Access"
+    ON storage.objects FOR INSERT
+    WITH CHECK (bucket_id = 'Images');
+
+CREATE POLICY "Authenticated Update Access"
+    ON storage.objects FOR UPDATE
+    USING (bucket_id = 'Images');
+
 CREATE POLICY "Authenticated Delete Access"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (bucket_id = 'Images');
+    ON storage.objects FOR DELETE
+    USING (bucket_id = 'Images');

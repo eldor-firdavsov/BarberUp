@@ -1,19 +1,14 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Calendar, Users, Settings, Bell, Check, X, Phone, Clock } from "lucide-react";
-import { useState, useEffect, useRef } from 'react';
+import { Home, Settings, Bell, Check, X, Phone, Clock, Calendar, Users } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getBookings, updateBookingStatus } from '../api/bookingApi.js';
 import { getClients } from '../api/clientApi.js';
+import { supabase } from '../api/supabase.js';
 import { t } from '../utils/i18n.js';
 import { formatTo24h } from '../utils/time.js';
 import { getBookingDateStr, formatBookingDate } from '../utils/dates.js';
-
-const tabs = [
-    { id: "home", labelKey: "layout.barber.home", icon: Home, path: "/barber/dashboard" },
-    { id: "schedule", labelKey: "layout.barber.schedule", icon: Calendar, path: "/barber/appointments" },
-    { id: "clients", labelKey: "layout.barber.clients", icon: Users, path: "/barber/clients" },
-    { id: "settings", labelKey: "layout.barber.settings", icon: Settings, path: "/barber/settings" },
-];
+import ClientProfileModal from '../components/ClientProfileModal.jsx';
 
 function BarberLayout() {
     const { user } = useAuth();
@@ -21,42 +16,60 @@ function BarberLayout() {
     const [pendingBookings, setPendingBookings] = useState([]);
     const [clientsById, setClientsById] = useState({});
     const [pendingUpdateId, setPendingUpdateId] = useState(null);
+    const [profileClient, setProfileClient] = useState(null);
+
+    const tabs = [
+        { id: "home", labelKey: "layout.barber.home", icon: Home, path: "/barber/dashboard" },
+        { id: "appointments", labelKey: "layout.barber.appointments", icon: Calendar, path: "/barber/appointments" },
+        { id: "clients", labelKey: "layout.barber.clients", icon: Users, path: "/barber/clients" },
+        { id: "settings", labelKey: "layout.barber.settings", icon: Settings, path: "/barber/settings" },
+    ];
+
+    const fetchNotifications = useCallback(async () => {
+        try {
+            const [{ data: bookingList }, { data: clients }] = await Promise.all([
+                getBookings(),
+                getClients(),
+            ]);
+
+            // Filter pending bookings for current barber
+            const pending = (bookingList ?? []).filter(booking =>
+                (booking.barber === user?.id || booking.barber_id === user?.id) && booking.status === 'pending'
+            );
+
+            setPendingBookings(pending);
+            setClientsById(Object.fromEntries((clients ?? []).map(client => [client.id, client])));
+        } catch (error) {
+            console.error('[NOTIFICATIONS] Error fetching:', error);
+        }
+    }, [user?.id]);
 
     useEffect(() => {
-        let mounted = true;
-        async function fetchNotifications() {
-            try {
-                const [{ data: bookingList }, { data: clients }] = await Promise.all([
-                    getBookings(),
-                    getClients(),
-                ]);
-
-                if (!mounted) return;
-
-                // Filter pending bookings for current barber
-                const pending = (bookingList ?? []).filter(booking =>
-                    booking.barber === user?.id && booking.status === 'pending'
-                );
-
-                setPendingBookings(pending);
-                setClientsById(Object.fromEntries((clients ?? []).map(client => [client.id, client])));
-
-                console.log('[NOTIFICATIONS] Pending bookings:', pending.length);
-            } catch (error) {
-                console.error('[NOTIFICATIONS] Error fetching:', error);
-            }
-        }
+        if (!user?.id) return;
 
         fetchNotifications();
 
-        // Refresh notifications every 10 seconds
-        const interval = setInterval(fetchNotifications, 10000);
+        // Realtime notifications via Supabase channel subscription
+        const channel = supabase
+            .channel(`barber-layout-notifications-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'bookings',
+                    filter: `barber_id=eq.${user.id}`
+                },
+                () => {
+                    fetchNotifications();
+                }
+            )
+            .subscribe();
 
         return () => {
-            mounted = false;
-            clearInterval(interval);
+            supabase.removeChannel(channel);
         };
-    }, [user?.id]);
+    }, [fetchNotifications, user?.id]);
 
     const handleAcceptBooking = async (bookingId) => {
         console.log('[NOTIFICATIONS] Accepting booking:', bookingId);
@@ -148,18 +161,31 @@ function BarberLayout() {
                 <div className="divide-y divide-black/5">
                     {pendingBookings.map((booking) => {
                         const client = clientsById[booking.client] || booking.clientData;
+                        const clientName = booking.guest_name || client?.name || client?.fullname || t('common.client');
+                        const phone = booking.guest_phone || client?.phone;
                         return (
                             <div key={booking.id} className="p-5 hover:bg-[#fafafa] transition-colors">
                                 <div className="flex items-start gap-4">
                                     <div className="w-10 h-10 rounded-2xl bg-[#f8f8f8] border border-black/5 flex items-center justify-center shrink-0">
                                         <span className="text-[#111] font-bold text-sm">
-                                            {(client?.name || client?.fullname || 'C').charAt(0).toUpperCase()}
+                                            {clientName.charAt(0).toUpperCase()}
                                         </span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-[#111] text-sm truncate">
-                                            {client?.name || client?.fullname || t('common.client')}
-                                        </h4>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const c = clientsById[booking.client] || booking.clientData;
+                                                if (c) {
+                                                    setProfileClient({ id: c.id, name: c.name || c.fullname, phone: c.phone, email: c.email, createdAt: c.createdAt });
+                                                } else if (booking.guest_name) {
+                                                    setProfileClient({ id: `guest_${booking.id}`, name: booking.guest_name, phone: booking.guest_phone || '' });
+                                                }
+                                            }}
+                                            className="font-bold text-[#111] text-sm truncate hover:text-[#378ADD] transition-colors text-left"
+                                        >
+                                            {clientName}
+                                        </button>
                                         <div className="flex items-center gap-3 mt-1">
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#666] font-medium">
                                                 <div className="flex items-center gap-1">
@@ -174,10 +200,10 @@ function BarberLayout() {
                                             </div>
                                             <span className="text-[10px] bg-[#f8f8f8] border border-black/5 text-[#666] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">{t('status.pending')}</span>
                                         </div>
-                                        {client?.phone && (
+                                        {phone && (
                                             <div className="flex items-center gap-1 text-xs text-[#666] font-medium mt-1">
                                                 <Phone size={12} />
-                                                <span>{client.phone}</span>
+                                                <span>{phone}</span>
                                             </div>
                                         )}
 
@@ -216,7 +242,7 @@ function BarberLayout() {
     );
 
     return (
-        <div className="w-full min-h-screen flex bg-[#f5f5f7]">
+        <><div className="w-full min-h-screen flex bg-[#f5f5f7]">
             {/* Desktop Sidebar Navigation */}
             <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-black/5 bg-white py-8 px-4 z-20 justify-between">
                 <div>
@@ -237,20 +263,21 @@ function BarberLayout() {
                     <nav className="flex flex-col gap-2">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
-
                             return (
                                 <NavLink
                                     key={tab.id}
                                     to={tab.path}
                                     className={({ isActive }) =>
-                                        `flex items-center gap-3.5 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all duration-200
+                                        `flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold text-sm transition-all duration-200
                                         ${isActive
                                             ? "bg-[#185FA5] text-white shadow-md shadow-[#185FA5]/15"
                                             : "text-[#666] hover:bg-[#f8f8f8] hover:text-[#111]"}`
                                     }
                                 >
-                                    <Icon size={18} />
-                                    <span>{t(tab.labelKey)}</span>
+                                    <div className="flex items-center gap-3.5">
+                                        <Icon size={18} />
+                                        <span>{t(tab.labelKey)}</span>
+                                    </div>
                                 </NavLink>
                             );
                         })}
@@ -296,7 +323,7 @@ function BarberLayout() {
                 </header>
 
                 {/* Mobile Header */}
-                <header className="w-full fixed top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-black/5 md:hidden">
+                <header className="w-full fixed top-0 z-10 flex items-center justify-between px-5 py-3 bg-white/80 backdrop-blur-md border-b border-black/5 md:hidden safe-top">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-2xl bg-[#378ADD] flex items-center justify-center">
                             <img
@@ -314,7 +341,7 @@ function BarberLayout() {
                     <div className="relative notification-container">
                         <button
                             onClick={() => setNotificationsOpen(!notificationsOpen)}
-                            className="relative w-10 h-10 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center hover:bg-[#f0f0f0] transition-all duration-200"
+                            className="relative w-10 h-10 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center active:bg-[#f0f0f0] transition-all duration-200"
                         >
                             <Bell size={18} className="text-[#111]" />
                             {notificationCount > 0 && (
@@ -328,12 +355,12 @@ function BarberLayout() {
                 </header>
 
                 {/* Main content */}
-                <main className="flex-grow pt-[72px] md:pt-0 pb-[80px] md:pb-0 min-h-screen">
+                <main className="flex-grow pt-[64px] md:pt-0 pb-[80px] md:pb-0 min-h-screen">
                     <Outlet />
                 </main>
 
                 {/* Mobile bottom tabs navigation */}
-                <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-4 py-3 flex justify-around items-center md:hidden z-10">
+                <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-2 py-2 flex justify-around items-center md:hidden z-10 safe-bottom">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
 
@@ -342,13 +369,13 @@ function BarberLayout() {
                                 key={tab.id}
                                 to={tab.path}
                                 className={({ isActive }) =>
-                                    `flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-200
+                                    `flex flex-col items-center gap-1.5 px-3 py-2 min-w-[64px] rounded-2xl transition-all duration-200
                                     ${isActive
-                                        ? "bg-[#185FA5] text-white"
-                                        : "text-[#888] hover:text-[#111]"}`
+                                        ? "bg-[#185FA5] text-white shadow-sm"
+                                        : "text-[#888] active:text-[#111] active:bg-black/5"}`
                                 }
                             >
-                                <Icon size={20} />
+                                <Icon size={22} />
                                 <span className="text-[9px] font-bold tracking-[0.08em]">
                                     {t(tab.labelKey)}
                                 </span>
@@ -358,6 +385,9 @@ function BarberLayout() {
                 </footer>
             </div>
         </div>
+
+        <ClientProfileModal client={profileClient} isOpen={!!profileClient} onClose={() => setProfileClient(null)} />
+        </>
     );
 }
 

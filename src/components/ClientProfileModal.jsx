@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Phone, Calendar, Clock, TrendingUp, User, AlertCircle } from 'lucide-react';
 import { getBookings } from '../api/bookingApi.js';
 import { t, getStatusLabel } from '../utils/i18n.js';
+import { isTerminalStatus } from '../utils/bookingStatus.js';
 
 function ClientProfileModal({ client, isOpen, onClose }) {
     const [stats, setStats] = useState({
@@ -28,7 +29,7 @@ function ClientProfileModal({ client, isOpen, onClose }) {
                 const clientBookings = bookings.filter(b => b.client === client.id);
                 const completedBookings = clientBookings.filter(b => b.status === 'completed');
                 const cancelledBookings = clientBookings.filter(b => b.status === 'cancelled');
-                const noShows = clientBookings.filter(b => b.status === 'rejected' || b.status === 'no-show');
+                const noShows = clientBookings.filter(b => b.status === 'rejected');
 
                 // Sort by date to get last booking
                 const sortedBookings = clientBookings.sort((a, b) =>
@@ -72,16 +73,16 @@ function ClientProfileModal({ client, isOpen, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
-            <div className="bg-white rounded-[32px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-0 sm:px-4 pb-0 sm:pb-4" onClick={onClose}>
+            <div className="bg-white rounded-t-[32px] sm:rounded-[32px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-md w-full max-h-[90vh] overflow-y-auto animate-slideUp" onClick={e => e.stopPropagation()}>
 
                 {/* Header */}
                 <div className="relative p-6 border-b border-black/5">
                     <button
                         onClick={onClose}
-                        className="absolute top-5 right-5 w-9 h-9 bg-[#f8f8f8] border border-black/5 rounded-full flex items-center justify-center hover:bg-[#f0f0f0] transition-all"
+                        className="absolute top-5 right-5 w-10 sm:w-9 h-10 sm:h-9 bg-[#f8f8f8] border border-black/5 rounded-full flex items-center justify-center active:bg-[#f0f0f0] transition-all"
                     >
-                        <X size={16} className="text-[#111]" />
+                        <X size={18} className="text-[#111]" />
                     </button>
 
                     <div className="flex items-center gap-4 pr-12">

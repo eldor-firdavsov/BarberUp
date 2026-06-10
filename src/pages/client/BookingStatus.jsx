@@ -1,76 +1,92 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, ChevronLeft } from 'lucide-react';
-import { getBookings } from '../../api/bookingApi.js';
-import { getBarbers } from '../../api/barberApi.js';
+import { CheckCircle, XCircle, Clock, ChevronLeft, Bell, ExternalLink } from 'lucide-react';
+import { supabase } from '../../api/supabase.js';
+import { normalizeBooking } from '../../api/bookingApi.js';
 import { formatTo24h } from '../../utils/time.js';
 import { getBookingDateStr, formatBookingDate } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
 
+/**
+ * Live booking-status page for logged-in clients.
+ *
+ * Uses a targeted single-row Supabase query (not a full table scan).
+ * Subscribes to Supabase Realtime for instant status updates.
+ * Polls every 5 s as a safety net while status is still pending.
+ */
 function BookingStatus() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [booking, setBooking] = useState(null);
-    const [barber, setBarber] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    // ── Fetch a single booking by ID (with joined barber) ──────────────────
+    const fetchStatus = useCallback(async () => {
+        try {
+            const { data, error: fetchErr } = await supabase
+                .from('bookings')
+                .select('*, barbers(id, fullname, office_name, profile_img, address, phone)')
+                .eq('id', id)
+                .maybeSingle();
+
+            if (fetchErr) {
+                console.error('[BOOKING STATUS] fetch error:', fetchErr);
+                setError(t('client.bookingStatus.notFoundError'));
+                return;
+            }
+            if (!data) {
+                setError(t('client.bookingStatus.notFoundError'));
+                return;
+            }
+            setBooking(normalizeBooking(data));
+        } catch (err) {
+            console.error('[BOOKING STATUS] exception:', err);
+            setError(t('client.bookingStatus.notFoundError'));
+        } finally {
+            setLoading(false);
+        }
+    }, [id]);
+
+    // Initial fetch
     useEffect(() => {
-        let mounted = true;
+        fetchStatus();
+    }, [fetchStatus]);
 
-        const fetchStatus = async () => {
-            try {
-                const [{ data: bookings }, { data: barbers }] = await Promise.all([
-                    getBookings(),
-                    getBarbers()
-                ]);
-
-                if (!mounted) return;
-
-                if (bookings) {
-                    const currentBooking = bookings.find(b => b.id === id || b._id === id);
-                    if (currentBooking) {
-                        setBooking(currentBooking);
-
-                        if (barbers) {
-                            const currentBarber = barbers.find(b =>
-                                b.id === currentBooking.barber ||
-                                b._id === currentBooking.barber
-                            );
-                            if (currentBarber) {
-                                setBarber(currentBarber);
-                            }
-                        }
-                    } else {
-                        setError(t('client.bookingStatus.notFoundError'));
+    // ── Supabase Realtime — instant push when this booking changes ──────────
+    useEffect(() => {
+        if (!id) return;
+        const channel = supabase
+            .channel(`booking-status-${id}`)
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${id}` },
+                (payload) => {
+                    // Merge DB row into existing booking (keeps joined barber data)
+                    if (payload.new) {
+                        setBooking(prev =>
+                            prev ? normalizeBooking({ ...prev, ...payload.new, barbers: prev.barbers }) : null
+                        );
                     }
                 }
-            } catch (err) {
-                console.error("Failed to fetch booking status", err);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
+            )
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [id]);
 
-        fetchStatus();
-
-        // Poll every 5 seconds if still pending
-        const interval = setInterval(() => {
-            if (mounted && booking?.status === 'pending') {
-                fetchStatus();
-            }
+    // ── Polling safety net (5 s) while still pending ─────────────────────
+    const intervalRef = useRef(null);
+    useEffect(() => {
+        intervalRef.current = setInterval(() => {
+            if (booking?.status === 'pending') fetchStatus();
         }, 5000);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-        };
-    }, [id, booking?.status]);
+        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    }, [booking?.status, fetchStatus]);
 
     if (loading && !booking) {
         return (
             <div className="min-h-screen bg-[#f5f5f7] flex flex-col items-center justify-center p-6">
-                <div className="w-12 h-12 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mb-4"></div>
+                <div className="w-12 h-12 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mb-4" />
                 <p className="text-[#666] font-medium text-sm">{t('client.bookingStatus.loading')}</p>
             </div>
         );
@@ -97,7 +113,10 @@ function BookingStatus() {
     const status = booking.status?.toLowerCase();
     const time = formatTo24h(booking.booking_hours);
 
-    const barberName = barber?.office_name || barber?.shopName || t('common.theBarber');
+    // Barber info comes from the joined `barbers` key (normalizeBooking preserves it)
+    const barber = booking.barbers ?? booking.barberData ?? null;
+    const barberName = barber?.office_name || barber?.fullname || t('common.theBarber');
+
     const statusMeta = {
         pending: {
             icon: <Clock className="text-[#888]" size={40} />,
@@ -127,6 +146,13 @@ function BookingStatus() {
             iconBg: 'bg-[#f8f8f8]',
             pulse: false,
         },
+        completed: {
+            icon: <CheckCircle className="text-[#111]" size={40} />,
+            title: t('client.bookingStatus.completedTitle'),
+            subtitle: t('client.bookingStatus.completedSubtitle', { barber: barberName }),
+            iconBg: 'bg-white',
+            pulse: false,
+        },
     };
 
     const meta = statusMeta[status] ?? statusMeta.pending;
@@ -146,7 +172,7 @@ function BookingStatus() {
                 {/* Status Icon */}
                 <div className="relative">
                     {meta.pulse && (
-                        <div className="absolute inset-0 bg-[#f0f0f0] rounded-[28px] animate-ping opacity-50"></div>
+                        <div className="absolute inset-0 bg-[#f0f0f0] rounded-[28px] animate-ping opacity-50" />
                     )}
                     <div className={`relative w-24 h-24 ${meta.iconBg} border border-black/5 rounded-[28px] flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.06)]`}>
                         {meta.icon}
@@ -158,6 +184,27 @@ function BookingStatus() {
                     <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">{meta.title}</h1>
                     <p className="text-sm text-[#666] font-medium px-4 leading-relaxed">{meta.subtitle}</p>
                 </div>
+
+                {/* Telegram hint — shown while pending so client links their account */}
+                {status === 'pending' && (
+                    <div className="w-full max-w-md rounded-3xl border border-[#378ADD]/15 bg-[#EBF4FF] p-5 flex flex-col gap-3 text-left">
+                        <div className="flex items-start gap-3">
+                            <Bell size={18} className="text-[#378ADD] shrink-0 mt-0.5" />
+                            <p className="text-xs text-[#185FA5] font-medium leading-relaxed">
+                                {t('client.bookingStatus.telegramHint')}
+                            </p>
+                        </div>
+                        <a
+                            href="https://t.me/BarberUp_bot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 text-xs font-bold text-[#378ADD] bg-white border border-[#378ADD]/20 rounded-xl py-2.5 px-4 hover:bg-[#EBF4FF] transition-colors"
+                        >
+                            <ExternalLink size={14} />
+                            {t('client.bookingStatus.connectBot')}
+                        </a>
+                    </div>
+                )}
 
                 {/* Booking Details Card */}
                 <div className="w-full bg-white rounded-[28px] p-6 border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] text-left">

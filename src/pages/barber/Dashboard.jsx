@@ -1,14 +1,53 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+// Telegram notifications are now handled exclusively by the DB trigger
+// (handle_booking_status_change) — no client-side calls needed.
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ChevronRight, Check, X, Coffee, Trash2 } from 'lucide-react';
+import { Clock, Check, X, Coffee, AlertCircle, Calendar, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { bookingMatchesBarber, getBookings, updateBookingStatus } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
-import { compareTimes, formatTo24h, isWithinWorkingHours, getCurrentTime } from '../../utils/time.js';
+import { updateBarberStatus } from '../../api/barberApi.js';
+import { supabase } from '../../api/supabase.js';
+import { compareTimes, formatTo24h } from '../../utils/time.js';
 import { toDateStr, getBookingDateStr, bookingMatchesDate, formatBookingDate, compareDateStr } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
+import ClientProfileModal from '../../components/ClientProfileModal.jsx';
 
-const WORK_STATUS_KEY = 'navbatgo_work_status';
+/* ── Barber availability statuses ─────────────────────────────────────────── */
+const BARBER_STATUSES = [
+    {
+        key: 'available',
+        labelKey: 'barber.dashboard.statusAvailable',
+        dot: 'bg-green-500',
+        ring: 'ring-green-200',
+        active: 'bg-green-50 border-green-200 text-green-700',
+        inactive: 'bg-white border-black/5 text-[#666]',
+    },
+    {
+        key: 'working-busy',
+        labelKey: 'barber.dashboard.statusBusy',
+        dot: 'bg-orange-500',
+        ring: 'ring-orange-200',
+        active: 'bg-orange-50 border-orange-200 text-orange-700',
+        inactive: 'bg-white border-black/5 text-[#666]',
+    },
+    {
+        key: 'lunch',
+        labelKey: 'barber.dashboard.statusLunch',
+        dot: 'bg-yellow-400',
+        ring: 'ring-yellow-200',
+        active: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+        inactive: 'bg-white border-black/5 text-[#666]',
+    },
+    {
+        key: 'closed',
+        labelKey: 'barber.dashboard.statusClosed',
+        dot: 'bg-gray-400',
+        ring: 'ring-gray-200',
+        active: 'bg-gray-100 border-gray-300 text-gray-700',
+        inactive: 'bg-white border-black/5 text-[#666]',
+    },
+];
 
 const SimpleAvatar = ({ name, size = "w-12 h-12" }) => (
     <div className={`${size} rounded-2xl bg-[#f8f8f8] flex items-center justify-center border border-black/5 shrink-0`}>
@@ -19,22 +58,37 @@ const SimpleAvatar = ({ name, size = "w-12 h-12" }) => (
 );
 
 function Dashboard() {
-    const { user } = useAuth();
+    const { user, updateSessionUser } = useAuth();
     const navigate = useNavigate();
 
-    const [isWorking, setIsWorking] = useState(() => {
-        try {
-            const saved = JSON.parse(localStorage.getItem(WORK_STATUS_KEY));
-            if (saved && typeof saved.isWorking === 'boolean') return saved.isWorking;
-        } catch { localStorage.removeItem(WORK_STATUS_KEY); }
-        const wh = user?.working_hours || user?.workingHours || '';
-        return isWithinWorkingHours(wh);
-    });
+    /* ── Barber availability status ───────────────────────────────────────── */
+    const [barberStatus, setBarberStatus] = useState(user?.status || 'available');
+    const [statusUpdating, setStatusUpdating] = useState(false);
 
     const [bookings, setBookings] = useState([]);
     const [clientsById, setClientsById] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const [profileClient, setProfileClient] = useState(null);
+
+    /* ── Toast notification state ─────────────────────────────────────────── */
+    const [toast, setToast] = useState(null); // { message, type: 'success'|'error' }
+    const toastTimer = useRef(null);
+    const prevPendingCount = useRef(0);
+
+    const showToast = useCallback((message, type = 'success') => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToast({ message, type });
+        toastTimer.current = setTimeout(() => setToast(null), 3000);
+    }, []);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 15000); // check time every 15s to be extremely responsive
+        return () => clearInterval(timer);
+    }, []);
 
     const loadDashboard = useCallback(async () => {
         setLoading(true);
@@ -58,292 +112,351 @@ function Dashboard() {
         setLoading(false);
     }, [user?.id]);
 
+    // ── Supabase Realtime channel subscription for instant updates ──
     useEffect(() => {
         loadDashboard();
-        const refreshInterval = setInterval(loadDashboard, 15000);
-        return () => clearInterval(refreshInterval);
-    }, [loadDashboard]);
 
-    const handleStatusUpdate = useCallback(async (bookingId, newStatus) => {
+        if (!user?.id) return;
+
+        const channel = supabase
+            .channel(`barber-dashboard-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'bookings',
+                    filter: `barber_id=eq.${user.id}`
+                },
+                () => {
+                    loadDashboard();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [loadDashboard, user?.id]);
+
+    /* ── Handle barber availability status change ─────────────────────────── */
+    const handleBarberStatusChange = useCallback(async (newStatus) => {
+        if (newStatus === barberStatus || statusUpdating) return;
+        setBarberStatus(newStatus);
+        setStatusUpdating(true);
         try {
-            const { error } = await updateBookingStatus(bookingId, { status: newStatus });
-            if (!error) {
-                setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+            const { data, error } = await updateBarberStatus(user?.id, newStatus);
+            if (!error && data) {
+                updateSessionUser({ ...user, status: newStatus });
+            } else {
+                console.error('[BARBER STATUS] update failed:', error);
             }
         } catch (err) {
-            console.error("Status update failed", err);
+            console.error('[BARBER STATUS] exception:', err);
         }
-    }, []);
+        setStatusUpdating(false);
+    }, [barberStatus, statusUpdating, user, updateSessionUser]);
 
-    useEffect(() => {
-        if (bookings.length === 0) return;
-        const now = getCurrentTime();
-        const overdue = bookings.filter(b => {
-            const status = b.status?.toLowerCase();
-            const isActive = ['accepted'].includes(status);
+    /* ── Handle booking status update ─────────────────────────────────────── */
+    // Telegram notifications are sent by the DB trigger automatically when
+    // the booking status changes — no client-side calls needed.
+    const handleStatusUpdate = useCallback(async (bookingId, newStatus) => {
+        try {
+            const payload = { status: newStatus };
+            if (newStatus === 'cancelled') {
+                payload.cancelled_by = 'barber';
+            }
+            const { data, error: updateError } = await updateBookingStatus(bookingId, payload);
+            if (!updateError && data) {
+                setBookings(prev => prev.map(b => b.id === bookingId ? data : b));
 
-            const todayStr = toDateStr(new Date());
-            const isToday = bookingMatchesDate(b, todayStr);
+                // Specific toast for every possible status transition
+                const toastMessages = {
+                    accepted:  '✅ Navbat qabul qilindi — Mijozga Telegram xabari yuborildi',
+                    rejected:  '❌ Navbat rad etildi — Mijozga Telegram xabari yuborildi',
+                    cancelled: '🚫 Navbat bekor qilindi — Mijozga Telegram xabari yuborildi',
+                    completed: '🎉 Xizmat yakunlandi — Mijoz reyting qoldirishga taklif qilindi',
+                };
+                showToast(toastMessages[newStatus] ?? `Status: ${newStatus}`, 'success');
+            } else if (updateError) {
+                showToast(updateError, 'error');
+            }
+        } catch (err) {
+            console.error('Status update failed', err);
+            showToast('Xatolik yuz berdi', 'error');
+        }
+    }, [showToast]);
 
-            const bookingTime = formatTo24h(b.booking_hours);
-            return isActive && isToday && bookingTime && bookingTime < now;
-        });
-        overdue.forEach(b => handleStatusUpdate(b.id, 'cancelled'));
-    }, [bookings, handleStatusUpdate]);
+    /* ── Derived V2 booking views ── */
+    const todayStr = useMemo(() => toDateStr(currentTime), [currentTime]);
 
-    const handleToggleWork = useCallback(() => {
-        setIsWorking(prev => {
-            const next = !prev;
-            localStorage.setItem(WORK_STATUS_KEY, JSON.stringify({ isWorking: next, updatedAt: new Date().toISOString() }));
-            return next;
-        });
-    }, []);
+    const isBookingExpired = useCallback((booking) => {
+        const bDate = getBookingDateStr(booking);
+        if (!bDate) return true;
 
-    const activeSession = useMemo(() => {
-        const todayStr = toDateStr(new Date());
-        const session = bookings.find(b => {
-            if (b.status !== 'in_progress') return false;
-            return bookingMatchesDate(b, todayStr);
-        });
-        if (!session) return null;
-        const client = session.clientData || clientsById[session.client];
-        return { ...session, clientName: client?.name || client?.fullname || t('common.client') };
-    }, [bookings, clientsById]);
+        if (bDate < todayStr) return true;
+        if (bDate > todayStr) return false;
 
-    const upcomingBookings = useMemo(() => {
-        const todayStr = toDateStr(new Date());
-        return bookings
-            .filter(b => bookingMatchesDate(b, todayStr) && ['accepted'].includes(b.status?.toLowerCase()))
-            .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours));
-    }, [bookings]);
+        if (!booking.booking_hours || !booking.booking_hours.includes(':')) return true;
+        const [bHours, bMins] = booking.booking_hours.split(':').map(Number);
+        const currentHours = currentTime.getHours();
+        const currentMinutes = currentTime.getMinutes();
 
+        return (currentHours > bHours) || (currentHours === bHours && currentMinutes >= bMins);
+    }, [todayStr, currentTime]);
+
+    // 1. Pending Column: Today's pending bookings that have NOT yet expired, ordered by time
     const pendingRequests = useMemo(() =>
         bookings
-            .filter(b => b.status?.toLowerCase() === 'pending')
-            .sort((a, b) => {
-                const dateCmp = compareDateStr(getBookingDateStr(a), getBookingDateStr(b));
-                if (dateCmp !== 0) return dateCmp;
-                return compareTimes(a.booking_hours, b.booking_hours);
-            }),
-        [bookings]
+            .filter(b => b.status === 'pending' && bookingMatchesDate(b, todayStr) && !isBookingExpired(b))
+            .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
+        [bookings, todayStr, isBookingExpired]
     );
 
-    const nextClient = upcomingBookings[0];
-    const laterClients = upcomingBookings.slice(1, 4);
+    // 2. Accepted Column: Today's accepted bookings that have NOT yet expired, ordered by time
+    const acceptedRequests = useMemo(() =>
+        bookings
+            .filter(b => 
+                bookingMatchesDate(b, todayStr) && b.status === 'accepted' && !isBookingExpired(b)
+            )
+            .sort((a, b) => compareTimes(a.booking_hours, b.booking_hours)),
+        [bookings, todayStr, isBookingExpired]
+    );
 
+    /* ── Notify barber when a new pending booking arrives via realtime ───── */
     useEffect(() => {
-        if (!nextClient) return;
-
-        const checkAutoStart = async () => {
-            const nextTime = formatTo24h(nextClient.booking_hours);
-            const currentTime = getCurrentTime();
-
-            if (nextTime && nextTime <= currentTime) {
-                if (nextClient.status !== 'in_progress') {
-                    await handleStatusUpdate(nextClient.id, 'in_progress');
-                }
-            }
-        };
-
-        checkAutoStart();
-        const interval = setInterval(checkAutoStart, 30000);
-        return () => clearInterval(interval);
-    }, [nextClient, handleStatusUpdate]);
+        const currentPending = pendingRequests.length;
+        if (currentPending > prevPendingCount.current && prevPendingCount.current >= 0 && !loading) {
+            showToast('🔔 Yangi bron so\'rovi keldi!', 'success');
+            // Try to vibrate on mobile for haptic feedback
+            if (navigator.vibrate) navigator.vibrate(200);
+        }
+        prevPendingCount.current = currentPending;
+    }, [pendingRequests.length, loading, showToast]);
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 space-y-8 page-animate h-full pb-24 max-w-2xl md:max-w-6xl mx-auto">
+        <div className="min-h-screen bg-[#f5f5f7] px-4 py-6 sm:px-6 sm:py-12 space-y-6 page-animate h-full pb-28 max-w-7xl mx-auto">
+
+            {/* ── Toast Notification ── */}
+            {toast && (
+                <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] font-semibold text-sm flex items-center gap-2.5 animate-slideDown max-w-[90vw] ${
+                    toast.type === 'error'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-[#111] text-white'
+                }`}>
+                    <Bell size={16} className="shrink-0 opacity-80" />
+                    <span>{toast.message}</span>
+                </div>
+            )}
+
             {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('barber.dashboard.title')}</h1>
+                    <h1 className="text-[28px] sm:text-[32px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('barber.dashboard.title')}</h1>
                     <p className="text-sm text-[#666] font-medium mt-1">{t('barber.dashboard.subtitle')}</p>
                 </div>
-                <div className="text-right shrink-0">
-                    <p className="text-[10px] uppercase text-[#888] font-bold tracking-[0.12em] mb-2">{t('barber.dashboard.status')}</p>
-                    <div className="flex items-center gap-2.5 justify-end">
-                        
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={isWorking}
-                            aria-label={isWorking ? t('barber.dashboard.working') : t('barber.dashboard.break')}
-                            onClick={handleToggleWork}
-                            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#85B7EB]/40 focus:ring-offset-1 ${isWorking ? 'bg-[#378ADD]' : 'bg-[#d1d5db]'}`}
-                        >
-                            <span
-                                className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${isWorking ? 'translate-x-6' : 'translate-x-1'}`}
-                            />
-                        </button>
-                        
-                    </div>
-                </div>
             </div>
 
-            <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 md:items-start space-y-8 md:space-y-0">
-                {/* Left Column: Focus area (Current Session, Next Client) */}
-                <div className="space-y-8">
-                    {/* CURRENT SESSION CARD */}
-                    <section>
-                        <h2 className="text-[10px] font-bold uppercase text-[#888] mb-4 tracking-[0.12em]">{t('barber.dashboard.currentSession')}</h2>
-                        {activeSession ? (
-                            <div className="bg-white border border-black/5 rounded-[28px] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] flex items-center gap-4 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)] transition-all duration-200">
-                                <SimpleAvatar name={activeSession.clientName} size="w-14 h-14" />
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg font-bold text-[#111] truncate">{activeSession.clientName}</h3>
-                                    <p className="text-sm text-[#666] font-medium mt-0.5">{activeSession.service_name || t('barber.dashboard.haircut')}</p>
-                                    <div className="flex items-center gap-1.5 mt-1.5 text-[#888] font-semibold">
-                                        <Clock size={13} />
-                                        <span className="text-xs">{formatTo24h(activeSession.booking_hours)} da boshlangan</span>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => handleStatusUpdate(activeSession.id, 'completed')}
-                                    className="bg-[#378ADD] text-white h-12 px-5 rounded-2xl font-semibold text-xs hover:bg-[#185FA5] active:scale-95 transition-all shadow-[0_4px_15px_rgba(55,138,221,0.25)] flex items-center gap-1 shrink-0"
-                                >
-                                    <Check size={14} />
-                                    <span>TUGATISH</span>
-                                </button>
+            {/* ── Barber Availability Status Selector ── */}
+            <section className="bg-white border border-black/5 rounded-[28px] p-5 sm:p-6 shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
+                <p className="text-[10px] uppercase text-[#888] font-bold tracking-[0.12em] mb-3 flex items-center gap-2">
+                    {t('barber.dashboard.myStatus')}
+                    {statusUpdating && <span className="w-1.5 h-1.5 rounded-full bg-[#378ADD] animate-pulse" />}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {BARBER_STATUSES.map(s => {
+                        const isActive = barberStatus === s.key;
+                        return (
+                            <button
+                                key={s.key}
+                                onClick={() => handleBarberStatusChange(s.key)}
+                                disabled={statusUpdating}
+                                className={`
+                                    flex items-center gap-2.5 px-3 sm:px-4 py-4 sm:py-3.5 rounded-2xl border font-bold text-xs sm:text-sm
+                                    transition-all duration-200 active:scale-[0.97] min-h-[48px]
+                                    ${isActive
+                                        ? `${s.active} shadow-sm ring-2 ${s.ring}`
+                                        : `${s.inactive} hover:bg-[#f8f8f8]`
+                                    }
+                                    disabled:opacity-60 disabled:cursor-not-allowed
+                                `}
+                            >
+                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isActive ? s.dot : 'bg-[#ccc]'}`} />
+                                {t(s.labelKey)}
+                            </button>
+                        );
+                    })}
+                </div>
+            </section>
+
+            {error && (
+                <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-100 rounded-2xl p-4 text-sm font-semibold">
+                    <AlertCircle size={18} />
+                    <span>{error}</span>
+                </div>
+            )}
+
+            {/* ── V2 Two Column Queue ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* 1. Pending Column */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                        <h2 className="text-xs font-bold uppercase text-[#888] tracking-[0.12em] flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+                            {t('status.pending')}
+                            <span className="bg-yellow-50 text-yellow-600 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                {pendingRequests.length}
+                            </span>
+                        </h2>
+                    </div>
+
+                    <div className="space-y-3 min-h-[300px]">
+                        {pendingRequests.length === 0 ? (
+                            <div className="bg-[#f8f8f8] border border-dashed border-black/10 rounded-[28px] p-8 text-center flex flex-col items-center justify-center min-h-[200px] sm:min-h-[300px]">
+                                <Coffee className="text-[#aaa] mb-4" size={36} />
+                                <p className="text-[#666] font-semibold text-sm sm:text-base">{t('barber.layout.allCaughtUp')}</p>
+                                <p className="text-[#aaa] text-xs mt-2">{t('barber.dashboard.emptyRefresh')}</p>
                             </div>
                         ) : (
-                            <div className="bg-[#f8f8f8] border border-dashed border-black/10 rounded-[28px] p-8 text-center">
-                                <Coffee className="mx-auto text-[#aaa] mb-3" size={28} />
-                                <p className="text-[#666] font-medium text-sm">{t('barber.dashboard.noOneNow')}</p>
-                                <p className="text-xs text-[#888] font-medium mt-0.5">{t('barber.dashboard.startNextHint')}</p>
-                            </div>
-                        )}
-                    </section>
-
-                    {/* NEXT CLIENT CARD */}
-                    {nextClient && (() => {
-                        const nextTime = formatTo24h(nextClient.booking_hours);
-                        const now = getCurrentTime();
-                        const isOverdue = nextTime && nextTime < now;
-                        return (
-                            <section>
-                                <h2 className="text-[10px] font-bold uppercase text-[#888] mb-4 tracking-[0.12em]">{t('barber.dashboard.nextInQueue')}</h2>
-                                <div className={`bg-white border rounded-[28px] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] flex items-center gap-4 ${isOverdue ? 'border-red-100 bg-red-50/20' : 'border-black/5'}`}>
-                                    <SimpleAvatar name={nextClient.clientData?.name || "C"} />
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-[#111] truncate">{nextClient.clientData?.name || t('common.client')}</h3>
-                                        <p className="text-xs text-[#666] font-semibold mt-0.5">{nextClient.service_name || t('barber.dashboard.haircut')}</p>
-                                        <p className={`font-bold text-xs mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 ${isOverdue ? 'text-red-500' : 'text-[#111]'}`}>
-                                            <span>{formatTo24h(nextClient.booking_hours)}</span>
-                                            <span className="text-[9px] text-[#378ADD] font-bold uppercase tracking-wider">
-                                                {formatBookingDate(getBookingDateStr(nextClient) ?? toDateStr(new Date()), { style: 'short' })}
-                                            </span>
-                                            {isOverdue && <span className="text-[9px] bg-red-50 text-red-500 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-100">{t('barber.dashboard.overdue')}</span>}
-                                        </p>
-                                    </div>
-                                    {isOverdue ? (
-                                        <button
-                                            onClick={() => handleStatusUpdate(nextClient.id, 'cancelled')}
-                                            className="h-10 px-4 bg-red-50 border border-red-100 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all duration-200 font-bold text-xs flex items-center gap-1.5 shrink-0"
-                                        >
-                                            <Trash2 size={13} />
-                                            <span>BEKOR</span>
-                                        </button>
-                                    ) : (
-                                        <div className="text-[10px] bg-[#f8f8f8] border border-black/5 text-[#888] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider shrink-0">
-                                            Kutilmoqda
+                            pendingRequests.map(request => {
+                                const clientName = request.guest_name || request.clientData?.name || request.clientData?.fullname || t('barber.dashboard.newClient');
+                                const phone = request.guest_phone || request.clientData?.phone;
+                                return (
+                                    <div key={request.id} className="bg-white border border-black/5 rounded-[28px] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] flex flex-col gap-4 hover:shadow-[0_15px_50px_rgba(0,0,0,0.06)] transition-all duration-200">
+                                        <div className="flex items-center gap-3.5">
+                                            <SimpleAvatar name={clientName} />
+                                            <div className="min-w-0 flex-1">
+                                                <button
+                                                    onClick={() => {
+                                                        const c = clientsById[request.client] || request.clientData;
+                                                        if (c) {
+                                                            setProfileClient({ id: c.id, name: c.name || c.fullname, phone: c.phone, email: c.email, createdAt: c.createdAt });
+                                                        } else if (request.guest_name) {
+                                                            setProfileClient({ id: `guest_${request.id}`, name: request.guest_name, phone: request.guest_phone || '' });
+                                                        }
+                                                    }}
+                                                    className="font-bold text-[#111] truncate hover:text-[#378ADD] transition-colors text-left"
+                                                >
+                                                    {clientName}
+                                                </button>
+                                                <p className="text-xs text-[#666] font-semibold mt-0.5">{request.service_name || t('barber.dashboard.haircut')}</p>
+                                                {phone && <p className="text-[10px] text-[#888] font-medium mt-0.5">{phone}</p>}
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            </section>
-                        );
-                    })()}
+
+                                        <div className="flex items-center justify-between border-t border-black/5 pt-3.5 mt-1">
+                                            <div className="flex items-center gap-1.5 text-[#111] font-bold text-xs">
+                                                <Clock size={14} className="text-[#888]" />
+                                                <span>{formatTo24h(request.booking_hours)}</span>
+                                                <span className="text-[10px] text-[#378ADD] font-bold uppercase tracking-wider bg-[#378ADD]/5 px-2 py-0.5 rounded-full ml-1">
+                                                    {formatBookingDate(getBookingDateStr(request) ?? todayStr, { style: 'short' })}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleStatusUpdate(request.id, 'accepted')}
+                                                    className="w-10 sm:w-9 h-10 sm:h-9 bg-[#378ADD] text-white rounded-xl flex items-center justify-center hover:bg-[#185FA5] active:scale-[0.93] transition-all shadow-sm"
+                                                    title={t('common.accept')}
+                                                >
+                                                    <Check size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStatusUpdate(request.id, 'rejected')}
+                                                    className="w-10 sm:w-9 h-10 sm:h-9 bg-[#f8f8f8] border border-black/5 text-[#888] rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 active:scale-[0.93] transition-all"
+                                                    title={t('common.reject')}
+                                                >
+                                                    <X size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
 
-                {/* Right Column: Queue details (New Requests, Upcoming Later Today) */}
-                <div className="space-y-8">
-                    {/* PENDING REQUESTS */}
-                    {pendingRequests.length > 0 && (
-                        <section>
-                            <h2 className="text-[10px] font-bold uppercase text-[#888] mb-4 tracking-[0.12em] flex items-center gap-2">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#378ADD] opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#378ADD]"></span>
-                                </span>
-                                {t('barber.dashboard.newRequests')}
-                            </h2>
-                            <div className="space-y-3">
-                                {pendingRequests.map(request => (
-                                    <div key={request.id} className="bg-white border border-black/5 rounded-[28px] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] flex items-center gap-4 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)] transition-all duration-200">
-                                        <SimpleAvatar name={request.clientData?.name || "Y"} />
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold text-[#111] truncate">{request.clientData?.name || t('barber.dashboard.newClient')}</h3>
-                                            <p className="text-xs text-[#666] font-semibold mt-0.5">{request.service_name || t('barber.dashboard.haircut')}</p>
-                                            <p className="font-bold text-xs text-[#111] mt-1 flex flex-wrap gap-x-2 gap-y-0.5 items-center">
-                                                <span>{formatTo24h(request.booking_hours)}</span>
-                                                <span className="text-[9px] text-[#378ADD] font-bold uppercase tracking-wider">
-                                                    {formatBookingDate(getBookingDateStr(request) ?? toDateStr(new Date()), { style: 'short' })}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2 shrink-0">
-                                            <button
-                                                onClick={() => handleStatusUpdate(request.id, 'accepted')}
-                                                className="w-10 h-10 bg-[#378ADD] text-white rounded-2xl flex items-center justify-center hover:bg-[#185FA5] active:scale-95 transition-all shadow-[0_4px_15px_rgba(55,138,221,0.25)]"
-                                            >
-                                                <Check size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleStatusUpdate(request.id, 'rejected')}
-                                                className="w-10 h-10 bg-[#f8f8f8] border border-black/5 text-[#888] rounded-2xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 active:scale-95 transition-all"
-                                            >
-                                                <X size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
+                {/* 2. Accepted Column */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                        <h2 className="text-xs font-bold uppercase text-[#888] tracking-[0.12em] flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#378ADD]" />
+                            {t('status.accepted')}
+                            <span className="bg-[#378ADD]/5 text-[#378ADD] text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                {acceptedRequests.length}
+                            </span>
+                        </h2>
+                    </div>
 
-                    {/* LATER TODAY LIST */}
-                    {laterClients.length > 0 && (
-                        <section>
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-[10px] font-bold uppercase text-[#888] tracking-[0.12em]">{t('barber.dashboard.upcoming')}</h2>
-                                <button onClick={() => navigate('/barber/appointments')} className="text-[#378ADD] hover:text-[#185FA5] text-xs font-bold flex items-center gap-1 transition-colors">
-                                    Hammasi <ChevronRight size={14} />
-                                </button>
+                    <div className="space-y-3 min-h-[300px]">
+                        {acceptedRequests.length === 0 ? (
+                            <div className="bg-[#f8f8f8] border border-dashed border-black/10 rounded-[28px] p-8 text-center flex flex-col items-center justify-center min-h-[200px] sm:min-h-[300px]">
+                                <Calendar className="text-[#aaa] mb-4" size={36} />
+                                <p className="text-[#666] font-semibold text-sm sm:text-base">{t('barber.appointments.emptyTitle')}</p>
+                                <p className="text-[#aaa] text-xs mt-2">{t('barber.dashboard.emptyRefresh')}</p>
                             </div>
-                            <div className="space-y-3">
-                                {laterClients.map((booking) => {
-                                    const bTime = formatTo24h(booking.booking_hours);
-                                    const now = getCurrentTime();
-                                    const isOverdue = bTime && bTime < now;
-                                    return (
-                                        <div key={booking.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 ${isOverdue ? 'bg-red-50/20 border-red-100 shadow-sm' : 'bg-white border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)]'}`}>
-                                            <SimpleAvatar name={booking.clientData?.name || "C"} size="w-10 h-10" />
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-sm font-bold text-[#111] truncate">{booking.clientData?.name || 'Mijoz'}</h4>
-                                                <p className="text-[11px] text-[#666] font-semibold mt-0.5">{booking.service_name || 'Soch turmagi'}</p>
-                                                <p className={`text-xs font-bold mt-1 ${isOverdue ? 'text-red-400' : 'text-[#666]'}`}>
-                                                    {bTime}{isOverdue && ' • Kechikdi'}
-                                                </p>
+                        ) : (
+                            acceptedRequests.map(booking => {
+                                const clientName = booking.guest_name || booking.clientData?.name || booking.clientData?.fullname || t('common.client');
+                                const phone = booking.guest_phone || booking.clientData?.phone;
+                                return (
+                                    <div key={booking.id} className="bg-white border border-black/5 rounded-[28px] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] flex flex-col gap-4 hover:shadow-[0_15px_50px_rgba(0,0,0,0.06)] transition-all duration-200">
+                                        <div className="flex items-center gap-3.5">
+                                            <SimpleAvatar name={clientName} />
+                                            <div className="min-w-0 flex-1">
+                                                <button
+                                                    onClick={() => {
+                                                        const c = clientsById[booking.client] || booking.clientData;
+                                                        if (c) {
+                                                            setProfileClient({ id: c.id, name: c.name || c.fullname, phone: c.phone, email: c.email, createdAt: c.createdAt });
+                                                        } else if (booking.guest_name) {
+                                                            setProfileClient({ id: `guest_${booking.id}`, name: booking.guest_name, phone: booking.guest_phone || '' });
+                                                        }
+                                                    }}
+                                                    className="font-bold text-[#111] truncate hover:text-[#378ADD] transition-colors text-left"
+                                                >
+                                                    {clientName}
+                                                </button>
+                                                <p className="text-xs text-[#666] font-semibold mt-0.5">{booking.service_name || t('barber.dashboard.haircut')}</p>
+                                                {phone && <p className="text-[10px] text-[#888] font-medium mt-0.5">{phone}</p>}
                                             </div>
-                                            {isOverdue && (
+                                        </div>
+
+                                        <div className="flex items-center justify-between border-t border-black/5 pt-3.5 mt-1">
+                                            <div className="flex items-center gap-1.5 text-[#111] font-bold text-xs">
+                                                <Clock size={14} className="text-[#888]" />
+                                                <span>{formatTo24h(booking.booking_hours)}</span>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleStatusUpdate(booking.id, 'completed')}
+                                                    className="h-10 sm:h-9 px-4 bg-[#378ADD] text-white rounded-xl hover:bg-[#185FA5] active:scale-[0.97] transition-all font-bold text-xs flex items-center gap-1.5 shadow-sm min-h-[44px]"
+                                                >
+                                                    <Check size={14} />
+                                                    <span>{t('barber.dashboard.finish')}</span>
+                                                </button>
                                                 <button
                                                     onClick={() => handleStatusUpdate(booking.id, 'cancelled')}
-                                                    className="p-2.5 bg-red-50 text-red-500 border border-red-100 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-200 shrink-0"
+                                                    className="w-10 sm:w-9 h-10 sm:h-9 bg-[#f8f8f8] border border-black/5 text-[#888] rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 active:scale-[0.93] transition-all"
+                                                    title={t('common.cancel')}
                                                 >
-                                                    <Trash2 size={14} />
+                                                    <X size={16} />
                                                 </button>
-                                            )}
-                                            {!isOverdue && (
-                                                <div className="text-xs font-bold text-[#0C447C] bg-[#E6F1FB] border border-[#185FA5]/10 px-2.5 py-1.5 rounded-xl">
-                                                    {bTime}
-                                                </div>
-                                            )}
+                                            </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
+
             </div>
+
+            <ClientProfileModal client={profileClient} isOpen={!!profileClient} onClose={() => setProfileClient(null)} />
         </div>
     );
 }

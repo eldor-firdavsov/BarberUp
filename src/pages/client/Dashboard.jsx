@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBarbers } from '../../api/barberApi.js';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useClient } from '../../context/ClientContext.jsx';
 import { formatTo24h } from '../../utils/time.js';
 import { Heart, MapPin } from 'lucide-react';
 import BarberProfileModal from '../../components/BarberProfileModal.jsx';
 import { t } from '../../utils/i18n.js';
+import { supabase } from '../../api/supabase.js';
 
 
 // NOTE FOR BACKEND:
@@ -24,7 +25,7 @@ import { t } from '../../utils/i18n.js';
 
 
 function Client() {
-    const { user } = useAuth();
+    const { clientPhone } = useClient();
     const [barbers, setBarbers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -36,46 +37,32 @@ function Client() {
     const [profileModal, setProfileModal] = useState({ open: false, barber: null });
     const navigate = useNavigate();
 
-    useEffect(() => {
-        let isMounted = true;
-        async function fetchAPI() {
-            setLoading(true);
-            setError('');
-            console.log('[ClientDashboard] Fetching barbers…');
-            const { data, error: apiError } = await getBarbers();
-
-            if (!isMounted) return;
-
-            console.log('[ClientDashboard] result → data:', data, '| error:', apiError);
-
-            if (apiError || !data) {
-                setError(t('client.dashboard.somethingWrong'));
-                setBarbers([]);
-            } else {
-                const filtered = (data ?? []).filter(
-                    (barber) => barber.id !== user?.id && barber.email !== user?.email
-                );
-                setBarbers(filtered);
-                if (filtered.length > 0) {
-                    const b = filtered[0];
-                    console.log('=== BARBER IMAGE AUDIT ===');
-                    console.log('profile_img:', JSON.stringify(b.profile_img));
-                    console.log('profileImage:', JSON.stringify(b.profileImage));
-                    console.log('office_img:', JSON.stringify(b.office_img));
-                    console.log('shopImage:', JSON.stringify(b.shopImage));
-                    console.log('=== BARBER LOCATION AUDIT ===');
-                    console.log('coordinates:', JSON.stringify(b.coordinates));
-                    console.log('location:', JSON.stringify(b.location));
-                    console.log('address:', JSON.stringify(b.address));
-                    console.log('=== FULL BARBER OBJECT ===');
-                    console.log(JSON.stringify(b, null, 2));
-                }
-            }
-            setLoading(false);
+    const fetchBarbers = useCallback(async () => {
+        setLoading(true);
+        setError('');
+        const { data, error: apiError } = await getBarbers();
+        if (apiError || !data) {
+            setError(t('client.dashboard.somethingWrong'));
+            setBarbers([]);
+        } else {
+            setBarbers(data ?? []);
         }
-        fetchAPI();
-        return () => { isMounted = false; };
-    }, [user?.id, user?.email]);
+        setLoading(false);
+    }, []);
+
+    // Initial load + Supabase Realtime: barber status/availability changes push instantly
+    useEffect(() => {
+        fetchBarbers();
+
+        const channel = supabase
+            .channel('client-dashboard-barbers')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'barbers' }, () => {
+                fetchBarbers();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [fetchBarbers]);
 
     // Get client's current location
     useEffect(() => {
@@ -115,8 +102,8 @@ function Client() {
 
     // Load favorite barbers from localStorage
     useEffect(() => {
-        if (user?.id) {
-            const storageKey = `favorite_barbers_${user.id}`;
+        if (clientPhone) {
+            const storageKey = `favorite_barbers_${clientPhone}`;
             const stored = localStorage.getItem(storageKey);
             if (stored) {
                 try {
@@ -129,17 +116,17 @@ function Client() {
                 }
             }
         }
-    }, [user?.id]);
+    }, [clientPhone]);
 
     const toggleFavorite = (barberId, event) => {
         event.stopPropagation(); // Prevent card click
 
-        if (!user?.id) {
-            console.error('[FAVORITES] Cannot toggle favorite - no user ID');
+        if (!clientPhone) {
+            console.error('[FAVORITES] Cannot toggle favorite - no client phone');
             return;
         }
 
-        const storageKey = `favorite_barbers_${user.id}`;
+        const storageKey = `favorite_barbers_${clientPhone}`;
         let newFavorites;
 
         if (favoriteBarbers.includes(barberId)) {
@@ -171,7 +158,7 @@ function Client() {
 
     const handleBookFromProfile = (barber) => {
         closeProfileModal();
-        navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`);
+        navigate(`/client/barber/${encodeURIComponent(barber.id)}`);
     };
 
     const handleRetry = async () => {
@@ -183,17 +170,20 @@ function Client() {
             setError(t('client.dashboard.somethingWrong'));
             setBarbers([]);
         } else {
-            const filtered = (data ?? []).filter(
-                (barber) => barber.id !== user?.id && barber.email !== user?.email
-            );
-            setBarbers(filtered);
+            setBarbers(data ?? []);
         }
         setLoading(false);
         setRetrying(false);
     };
 
     const getBarberStatus = (barber) => {
-        if (barber.status === 'inactive') return t('status.offline');
+        // Use explicit DB status if set and not just the default
+        const dbStatus = barber.status;
+        if (dbStatus === 'working-busy') return t('status.working-busy');
+        if (dbStatus === 'lunch') return t('status.lunch');
+        if (dbStatus === 'closed') return t('status.closed');
+
+        // For 'available' or missing status, validate against working hours
         const workingHours = barber.working_hours || barber.workingHours || '';
         if (!workingHours) return t('status.available');
         const parts = workingHours.split(' - ');
@@ -293,10 +283,14 @@ function Client() {
                 return true; // Show all for nearby tab
             })
             .sort((a, b) => {
+                // Priority: premium > standard > free
+                const tierRank = { premium: 2, standard: 1, free: 0, pro: 1 }; // pro maps same as standard for legacy
+                const aRank = tierRank[a.tier] ?? 0;
+                const bRank = tierRank[b.tier] ?? 0;
+                if (aRank !== bRank) return bRank - aRank;
+
                 if (activeTab === 'nearby') {
-                    // Barbers with no distance go to end
-                    if (a._dist === null && b._dist === null)
-                        return 0;
+                    if (a._dist === null && b._dist === null) return 0;
                     if (a._dist === null) return 1;
                     if (b._dist === null) return -1;
                     return a._dist - b._dist;
@@ -307,7 +301,7 @@ function Client() {
 
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] max-w-md md:max-w-6xl mx-auto px-4 py-8 sm:px-6 sm:py-12 flex flex-col">
+        <section className="min-h-screen bg-[#f5f5f7] max-w-md md:max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-12 flex flex-col safe-bottom">
             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
                 {t('client.dashboard.titleLine1')}<br />{t('client.dashboard.titleLine2')}
             </h1>
@@ -315,21 +309,25 @@ function Client() {
                 {t('client.dashboard.subtitle')}
             </p>
 
-            <div className="flex bg-[#f8f8f8] p-1.5 rounded-2xl mb-8 border border-black/5">
-                <button
-                    onClick={() => setActiveTab('nearby')}
-                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'nearby' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666]'
+            <div className="sticky top-0 z-20 bg-[#f5f5f7] -mx-4 px-4 pt-2 pb-3 sm:static sm:bg-transparent sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0">
+                <div className="flex bg-[#f8f8f8] p-1.5 rounded-2xl border border-black/5 shadow-sm">
+                    <button
+                        onClick={() => setActiveTab('nearby')}
+                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
+                            activeTab === 'nearby' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666] active:bg-black/5'
                         }`}
-                >
-                    {t('client.dashboard.nearby')}
-                </button>
-                <button
-                    onClick={() => setActiveTab('favorites')}
-                    className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all uppercase tracking-wider ${activeTab === 'favorites' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666]'
+                    >
+                        {t('client.dashboard.nearby')}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('favorites')}
+                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
+                            activeTab === 'favorites' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666] active:bg-black/5'
                         }`}
-                >
-                    {t('client.dashboard.favorites')} {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
-                </button>
+                    >
+                        {t('client.dashboard.favorites')} {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
+                    </button>
+                </div>
             </div>
 
             {/* Loading State */}
@@ -355,7 +353,7 @@ function Client() {
                         <button
                             onClick={handleRetry}
                             disabled={retrying}
-                            className="btn-primary"
+                            className="btn-primary min-h-[48px]"
                         >
                             {retrying ? (
                                 <>
@@ -375,7 +373,7 @@ function Client() {
                 <div className={activeTab === 'favorites' && favoriteBarbers.length === 0 ? "pb-10" : "space-y-8 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 pb-10"}>
                     {/* Show empty state for favorites */}
                     {activeTab === 'favorites' && favoriteBarbers.length === 0 && (
-                        <div className="empty-state">
+                        <div className="empty-state min-h-[300px] sm:min-h-0">
                             <div className="empty-state-icon">
                                 <Heart size={40} className="text-gray-400" />
                             </div>
@@ -385,7 +383,7 @@ function Client() {
                             </p>
                             <button
                                 onClick={() => setActiveTab('nearby')}
-                                className="btn-primary empty-state-action"
+                                className="btn-primary empty-state-action min-h-[44px]"
                             >
                                 {t('client.dashboard.discoverBarbers')}
                             </button>
@@ -395,10 +393,22 @@ function Client() {
                     {filteredAndSortedBarbers.map((barber, index) => (
                         <div
                             key={barber.id ?? index}
-                            onClick={() => navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`)}
+                            onClick={() => navigate(`/client/barber/${encodeURIComponent(barber.id)}`)}
                             className="bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] cursor-pointer group min-h-[120px] transition-all duration-200 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)]"
                         >
                             <div className="relative overflow-hidden rounded-t-[32px]">
+                                {barber.tier === 'premium' && (
+                                    <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-400 text-white font-extrabold text-[9px] px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20l-2-8-5 3.5L12 8l-3 6.5L4 11z" /></svg>
+                                        <span>PREMIUM</span>
+                                    </div>
+                                )}
+                                {(barber.tier === 'standard' || barber.tier === 'pro') && (
+                                    <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-[#378ADD] to-[#185FA5] text-white font-extrabold text-[9px] px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9z" /></svg>
+                                        <span>STANDART</span>
+                                    </div>
+                                )}
                                 <img
                                     src={
                                         (barber.office_img && barber.office_img !== '')
@@ -420,9 +430,25 @@ function Client() {
                                     </button>
                                 </div>
                                 <div className="absolute bottom-4 left-4">
-                                    <span className={getBarberStatus(barber) === t('status.available') ? "bg-green-500 text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full" : "bg-[#185FA5] text-white shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full"}>
-                                        {getBarberStatus(barber)}
-                                    </span>
+                                    {(() => {
+                                        const statusText = getBarberStatus(barber);
+                                        const rawStatus = barber.status;
+                                        let badgeCls = 'bg-[#185FA5] text-white'; // default offline
+                                        if (rawStatus === 'available') badgeCls = 'bg-green-500 text-white';
+                                        else if (rawStatus === 'working-busy') badgeCls = 'bg-orange-500 text-white';
+                                        else if (rawStatus === 'lunch') badgeCls = 'bg-yellow-500 text-white';
+                                        else if (rawStatus === 'closed') badgeCls = 'bg-gray-500 text-white';
+                                        else {
+                                            // fall back to working hours check
+                                            const isAvailable = statusText === t('status.available');
+                                            badgeCls = isAvailable ? 'bg-green-500 text-white' : 'bg-[#185FA5] text-white';
+                                        }
+                                        return (
+                                            <span className={`${badgeCls} shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full`}>
+                                                {statusText}
+                                            </span>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                             <div className="p-6">
@@ -481,15 +507,15 @@ function Client() {
                                                 e.stopPropagation();
                                                 openProfileModal(barber);
                                             }}
-                                            className="h-11 rounded-2xl bg-[#E6F1FB] border border-[#185FA5]/15 text-[#185FA5] font-semibold text-xs transition-all duration-200 hover:bg-[#d9e9f8] hover:border-[#185FA5]/25 shadow-[0_4px_20px_rgba(55,138,221,0.08)]"
+                                            className="h-12 sm:h-11 rounded-2xl bg-[#E6F1FB] border border-[#185FA5]/15 text-[#185FA5] font-semibold text-xs transition-all duration-200 active:bg-[#d9e9f8] active:border-[#185FA5]/25 shadow-[0_4px_20px_rgba(55,138,221,0.08)]"
                                         >
                                             {t('client.dashboard.viewProfile')}
                                         </button>
                                         <button
-                                            className="h-11 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
+                                            className="h-12 sm:h-11 rounded-2xl bg-[#378ADD] active:bg-[#185FA5] text-white font-semibold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(55,138,221,0.25)] active:scale-[0.97]"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                navigate(`/barber/${encodeURIComponent(barber.id ?? barber.email)}`);
+                                                navigate(`/client/barber/${encodeURIComponent(barber.id)}`);
                                             }}
                                         >
                                             {t('client.dashboard.bookSession')}

@@ -1,5 +1,6 @@
-@import 'tailwindcss';
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import 'tailwindcss';
+
 
 /* ── Global Reset & Body ───────────────────────────────────────────────── */
 *,
@@ -265,6 +266,34 @@ body {
 /* Subtle Page Animations */
 .page-animate {
     animation: pageFadeIn var(--transition-slow) ease-out forwards;
+}
+
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slideUp {
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translate(-50%, -20px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.animate-slideDown {
+    animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes pageFadeIn {
@@ -848,5 +877,105 @@ body {
     .input-base,
     .select-base {
         font-size: var(--font-size-small);
+    }
+}
+
+/* ── Very Small Screens (iPhone SE, etc.) ────────────────────────────── */
+@media (max-width: 380px) {
+    :root {
+        --font-size-h1: 1.375rem;
+        --font-size-h2: 1.125rem;
+        --font-size-h3: 1rem;
+        --card-padding: 1.25rem;
+        --spacing-base: 1rem;
+    }
+
+    .card-base {
+        padding: 1.25rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        height: 3rem;
+        font-size: 0.75rem;
+    }
+
+    .input-base,
+    .select-base {
+        height: 3rem;
+        font-size: 0.75rem;
+    }
+
+    .text-h1 { font-size: 1.375rem; }
+    .text-h2 { font-size: 1.125rem; }
+}
+
+/* ── Safe Area Padding for Notched Devices ──────────────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .safe-top {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    .safe-left {
+        padding-left: env(safe-area-inset-left, 0px);
+    }
+
+    .safe-right {
+        padding-right: env(safe-area-inset-right, 0px);
+    }
+
+    .min-safe-bottom {
+        min-height: calc(100vh + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* ── Touch Device Optimizations ─────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+    .btn-primary:hover:not(:disabled),
+    .btn-secondary:hover:not(:disabled),
+    .btn-ghost:hover:not(:disabled) {
+        transform: none;
+    }
+
+    .card-base:hover {
+        transform: none;
+        box-shadow: var(--card-shadow);
+    }
+
+    /* Increase tap targets on touch devices */
+    button, a, label, select, input[type="checkbox"], input[type="radio"] {
+        min-height: 44px;
+    }
+
+    /* Better active state for touch */
+    .btn-primary:active:not(:disabled) {
+        transform: scale(0.97);
+        transition-duration: 50ms;
+    }
+
+    .btn-secondary:active:not(:disabled) {
+        transform: scale(0.97);
+        transition-duration: 50ms;
+    }
+}
+
+/* ── Scrollbar Hide Utility ──────────────────────────────────────────── */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* ── Prevent Mobile Zoom on Input Focus (iOS) ───────────────────────── */
+@media screen and (max-width: 640px) {
+    input, select, textarea {
+        font-size: 16px !important;
     }
 }

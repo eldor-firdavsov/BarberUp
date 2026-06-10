@@ -65,7 +65,7 @@ function ClientLayout() {
             {/* Main Area */}
             <div className="flex-1 flex flex-col min-w-0 pl-0 md:pl-64">
                 {/* Mobile Header */}
-                <header className="w-full fixed top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-md border-b border-black/5 md:hidden">
+                <header className="w-full fixed top-0 z-10 flex items-center justify-between px-5 py-3 bg-white/80 backdrop-blur-md border-b border-black/5 md:hidden safe-top">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-2xl bg-[#378ADD] flex items-center justify-center">
                             <img
@@ -82,12 +82,12 @@ function ClientLayout() {
                 </header>
 
                 {/* Main Content Area */}
-                <main className="flex-grow pt-[72px] md:pt-0 pb-[80px] md:pb-0 min-h-screen">
+                <main className="flex-grow pt-[64px] md:pt-0 pb-[72px] md:pb-0 min-h-screen">
                     <Outlet />
                 </main>
 
                 {/* Mobile Footer Tab Bar */}
-                <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-4 py-3 flex justify-around items-center md:hidden z-10">
+                <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-2 py-2 flex justify-around items-center md:hidden z-10 safe-bottom">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
 
@@ -96,13 +96,13 @@ function ClientLayout() {
                                 key={tab.id}
                                 to={tab.path}
                                 className={({ isActive }) =>
-                                    `flex flex-col items-center gap-1 px-6 py-2 rounded-2xl transition-all duration-200
+                                    `flex flex-col items-center gap-1.5 px-3 py-2 min-w-[64px] rounded-2xl transition-all duration-200
                                     ${isActive
-                                        ? "bg-[#185FA5] text-white"
-                                        : "text-[#888] hover:text-[#111]"}`
+                                        ? "bg-[#185FA5] text-white shadow-sm"
+                                        : "text-[#888] active:text-[#111] active:bg-black/5"}`
                                 }
                             >
-                                <Icon size={20} />
+                                <Icon size={22} />
                                 <span className="text-[9px] font-bold tracking-[0.08em]">
                                     {t(tab.labelKey)}
                                 </span>

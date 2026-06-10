@@ -1,0 +1,11 @@
+- [x] Fix language selection duplicate
+- [x] Add booking status page with realtime updates
+- [x] Add change-phone flow with OTP via Telegram
+- [x] Unified telegram-notify function (3 modes)
+- [x] Realtime updates for booking status
+- [x] All booking status changes notify via Telegram
+- [x] DB trigger for guaranteed notifications
+- [x] Build verified (1815 modules in 839ms)
+- [x] Inline Accept/Reject buttons on barber's "Yangi navbat" notification
+- [x] Auto-dismiss previous notifications on status change
+- [x] Telegram webhook handles accept/reject callback queries

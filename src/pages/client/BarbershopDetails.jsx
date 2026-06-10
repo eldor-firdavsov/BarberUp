@@ -1,19 +1,23 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Clock, MapPin } from "lucide-react";
 import { getBarbers } from "../../api/barberApi.js";
 import {
     bookingMatchesBarber,
-    createBooking,
+    createGuestBooking,
     getBookings,
 } from "../../api/bookingApi.js";
-import { useAuth } from "../../context/AuthContext.jsx";
+// Telegram notifications are handled by the DB trigger on INSERT/UPDATE
+// of bookings — no client-side notification calls needed.
+import { useClient } from "../../context/ClientContext.jsx";
+import { supabase } from "../../api/supabase.js";
 import {
     compareTimes,
     formatTo24h,
     isSlotTaken,
     getCurrentTime,
 } from "../../utils/time.js";
+import { isBlockingSlotStatus, formatBookingErrorMessage } from "../../utils/bookingStatus.js";
 import { t } from "../../utils/i18n.js";
 import {
     toDateStr,
@@ -28,7 +32,7 @@ export default function BarbershopDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { user } = useAuth();
+    const { clientName, clientPhone } = useClient();
 
     const [barber, setBarber] = useState(null);
     const [slots, setSlots] = useState([]);
@@ -162,54 +166,32 @@ export default function BarbershopDetails() {
     async function refreshBookingState(targetBarberId, dateStr = selectedDate) {
         if (!targetBarberId || String(targetBarberId).trim() === "") {
             setError(t("client.barbershopDetails.invalidBarberId"));
-
-            return {
-                latestBookings: [],
-                latestError: t("client.barbershopDetails.invalidBarberId"),
-            };
+            return { latestBookings: [], latestError: t("client.barbershopDetails.invalidBarberId") };
         }
 
-        const {
-            data: latestBookings,
-            error: latestError,
-        } = await getBookings();
+        const { data: latestBookings, error: latestError } = await getBookings();
 
         if (latestError) {
             setError(t("client.dashboard.somethingWrong"));
-
-            return {
-                latestBookings: [],
-                latestError,
-            };
+            return { latestBookings: [], latestError };
         }
 
         const busySlots = (latestBookings ?? [])
-            .filter((booking) =>
-                bookingMatchesBarber(
-                    booking.barber,
-                    targetBarberId
-                )
-            )
+            .filter((booking) => bookingMatchesBarber(booking.barber, targetBarberId))
             .filter((booking) => bookingMatchesDate(booking, dateStr))
-            .filter(
-                (booking) =>
-                    !["rejected", "cancelled"].includes(
-                        String(booking.status || "").toLowerCase()
-                    )
-            )
-            .map((booking) =>
-                formatTo24h(booking.booking_hours)
-            )
+            .filter((booking) => isBlockingSlotStatus(booking.status))
+            .map((booking) => formatTo24h(booking.booking_hours))
             .filter(Boolean)
             .sort(compareTimes);
 
         setBookedSlots(busySlots);
 
-        return {
-            latestBookings,
-            latestError: null,
-        };
+        return { latestBookings, latestError: null };
     }
+
+    // Keep a stable ref so the realtime callback always sees current barber/date
+    const refreshRef = useRef(refreshBookingState);
+    useEffect(() => { refreshRef.current = refreshBookingState; });
 
     useEffect(() => {
         let isMounted = true;
@@ -297,7 +279,7 @@ export default function BarbershopDetails() {
 
                 const initialDate =
                     location.state?.rebookDate &&
-                    dayOptions.some((d) => d.dateStr === location.state.rebookDate)
+                        dayOptions.some((d) => d.dateStr === location.state.rebookDate)
                         ? location.state.rebookDate
                         : toDateStr(new Date());
                 setSelectedDate(initialDate);
@@ -311,17 +293,7 @@ export default function BarbershopDetails() {
                         )
                     )
                     .filter((booking) => bookingMatchesDate(booking, initialDate))
-                    .filter(
-                        (booking) =>
-                            ![
-                                "rejected",
-                                "cancelled",
-                            ].includes(
-                                String(
-                                    booking.status || ""
-                                ).toLowerCase()
-                            )
-                    )
+                    .filter((booking) => isBlockingSlotStatus(booking.status))
                     .map((booking) =>
                         formatTo24h(
                             booking.booking_hours
@@ -348,6 +320,7 @@ export default function BarbershopDetails() {
         };
     }, [id, navigate, location.state?.rebookDate]);
 
+    // Re-fetch booked slots when the selected date changes
     useEffect(() => {
         const barberKey = barber?.id ?? barber?._id;
         if (!barberKey || barber === "not_found") return;
@@ -361,6 +334,27 @@ export default function BarbershopDetails() {
         return () => { cancelled = true; };
     }, [selectedDate, barber?.id, barber?._id]);
 
+    // Supabase Realtime: instant slot availability updates when any booking changes for this barber
+    useEffect(() => {
+        const barberKey = barber?.id ?? barber?._id;
+        if (!barberKey || barber === "not_found") return;
+
+        const channelName = `bookings-barber-${barberKey}`;
+        const channel = supabase
+            .channel(channelName)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'bookings', filter: `barber_id=eq.${barberKey}` },
+                () => {
+                    // Use ref to always have latest barberKey and selectedDate in scope
+                    refreshRef.current(barberKey, selectedDate);
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [barber?.id, barber?._id, selectedDate]);
+
     const toggleSlot = (time) => {
         if (bookedSlots.includes(time)) return;
 
@@ -372,8 +366,8 @@ export default function BarbershopDetails() {
     };
 
     const handleBookSession = async () => {
-        if (!user) {
-            navigate("/login");
+        if (!clientName || !clientPhone) {
+            navigate(`/start?redirect=${encodeURIComponent(window.location.pathname)}`);
             return;
         }
 
@@ -435,9 +429,10 @@ export default function BarbershopDetails() {
         const {
             data: newBooking,
             error: bookingError,
-        } = await createBooking({
-            barber: barberKey,
-            client: user.id,
+        } = await createGuestBooking({
+            barber_id: barberKey,
+            guest_name: clientName,
+            guest_phone: clientPhone,
             booking_date: selectedDate,
             booking_hours: safeSelectedSlot,
             service_name:
@@ -453,34 +448,18 @@ export default function BarbershopDetails() {
         });
 
         if (bookingError) {
-            const duplicateMessage =
-                String(bookingError).toLowerCase();
-
-            if (
-                duplicateMessage.includes("duplicate") ||
-                duplicateMessage.includes("exists") ||
-                duplicateMessage.includes("already") ||
-                duplicateMessage.includes("taken") ||
-                duplicateMessage.includes("booked")
-            ) {
-                setError(t("client.barbershopDetails.slotBooked"));
-            } else {
-                setError(bookingError);
-            }
-
-            await refreshBookingState(barberKey);
+            setError(formatBookingErrorMessage(bookingError, t));
+            await refreshBookingState(barberKey, selectedDate);
         } else {
             setBookingLoading(false);
             setIsBookingInProgress(false);
 
-            if (
-                newBooking &&
-                (newBooking.id || newBooking._id)
-            ) {
-                navigate(
-                    `/client/booking-status/${newBooking.id || newBooking._id
-                    }`
-                );
+            // DB trigger on INSERT fires notifications to both barber
+            // (with inline Accept/Reject buttons) and client automatically.
+            if (newBooking && newBooking.id) {
+                // Send the user to the in-app booking-status screen
+                // so they see pending → accepted/rejected in realtime.
+                navigate(`/client/booking-status/${newBooking.id}`);
             } else {
                 setSuccessMessage(
                     t("client.barbershopDetails.bookingRequested")
@@ -548,16 +527,16 @@ export default function BarbershopDetails() {
                 : [];
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] flex justify-center px-3 py-5 sm:px-6 sm:py-8">
-            <div className="w-full max-w-md md:max-w-5xl bg-white rounded-[32px] overflow-hidden relative border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+        <div className="min-h-screen bg-[#f5f5f7] flex justify-center px-0 sm:px-6 py-0 sm:py-8 safe-bottom">
+            <div className="w-full max-w-md md:max-w-5xl bg-white sm:rounded-[32px] overflow-hidden relative border-0 sm:border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
 
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-5 left-5 z-10 bg-white/20 hover:bg-white/30 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 border border-white/20"
+                    className="absolute top-5 left-5 z-10 bg-white/20 hover:bg-white/30 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 border border-white/20 active:scale-[0.9]"
                 >
                     <svg
-                        width="20"
-                        height="20"
+                        width="22"
+                        height="22"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="white"
@@ -611,11 +590,25 @@ export default function BarbershopDetails() {
                                 )}
 
                                 <div>
-                                    <h2 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">
-                                        {barber.office_name ||
-                                            barber.shopName ||
-                                            t("client.barbershopDetails.gentlemansAtelier")}
-                                    </h2>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h2 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">
+                                            {barber.office_name ||
+                                                barber.shopName ||
+                                                t("client.barbershopDetails.gentlemansAtelier")}
+                                        </h2>
+                                        {barber.tier === 'premium' && (
+                                            <span className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-400 text-white font-extrabold text-[9px] px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider select-none shrink-0">
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20l-2-8-5 3.5L12 8l-3 6.5L4 11z" /></svg>
+                                                <span>PREMIUM</span>
+                                            </span>
+                                        )}
+                                        {(barber.tier === 'standard' || barber.tier === 'pro') && (
+                                            <span className="bg-gradient-to-r from-[#378ADD] to-[#185FA5] text-white font-extrabold text-[9px] px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider select-none shrink-0">
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9z" /></svg>
+                                                <span>STANDART</span>
+                                            </span>
+                                        )}
+                                    </div>
 
                                     <p className="text-sm text-[#666] mt-1 font-medium">
                                         {barber.fullname ||
@@ -653,6 +646,22 @@ export default function BarbershopDetails() {
                                     </p>
                                 </div>
                             </div>
+
+                            {/* Barbershop Photos Gallery */}
+                            {((barber.photos && barber.photos.length > 0) || [barber.photo_1, barber.photo_2, barber.photo_3].filter(Boolean).length > 0) && (
+                                <div>
+                                    <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
+                                        Salon suratlari
+                                    </h3>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {(barber.photos || [barber.photo_1, barber.photo_2, barber.photo_3].filter(Boolean)).map((url, i) => (
+                                            <div key={i} className="aspect-square rounded-3xl overflow-hidden border border-black/5 bg-[#f8f8f8] shadow-sm">
+                                                <img src={url} alt={`Barbershop photo ${i + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer" onClick={() => window.open(url, '_blank')} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
@@ -762,7 +771,7 @@ export default function BarbershopDetails() {
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-3 max-h-[360px] overflow-y-auto pb-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[360px] overflow-y-auto pb-2">
                                     {slots.length > 0 ? (
                                         slots.map((time) => (
                                             <label
@@ -843,7 +852,7 @@ export default function BarbershopDetails() {
                                         onClick={() =>
                                             navigate("/client/dashboard")
                                         }
-                                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 flex items-center justify-center gap-2"
+                                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] active:scale-[0.98] text-white font-semibold text-[15px] transition-all duration-200 flex items-center justify-center gap-2"
                                     >
                                         {t("common.home")}
                                     </button>
@@ -855,7 +864,7 @@ export default function BarbershopDetails() {
                                             bookingLoading ||
                                             isBookingInProgress
                                         }
-                                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)]"
+                                        className="w-full h-14 sm:h-12 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] active:scale-[0.98] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)] sm:relative sm:shadow-none sticky bottom-4 sm:bottom-auto z-10"
                                     >
                                         {bookingLoading ||
                                             isBookingInProgress ? (
@@ -873,6 +882,7 @@ export default function BarbershopDetails() {
                     </div>
                 </div>
             </div>
+
         </div>
     );
 }

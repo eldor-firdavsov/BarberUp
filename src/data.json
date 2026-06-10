@@ -1,7 +1,7 @@
 {
   "ru": {
     "brand": {
-      "name": "NavbatGo",
+      "name": "BarberUp",
       "tagline": "Современный сервис для стрижки"
     },
     "common": {
@@ -47,7 +47,14 @@
       "defaultHaircut": "Стрижка",
       "currencySuffix": "сум",
       "minutes": "минут",
-      "results": "Результаты"
+      "results": "Результаты",
+      "all": "Все",
+      "from": "с",
+      "to": "по",
+      "service": "Услуга",
+      "clear": "Очистить",
+      "visits": "визитов",
+      "lastVisit": "Последний визит"
     },
     "status": {
       "pending": "В ожидании",
@@ -56,8 +63,56 @@
       "cancelled": "Отменено",
       "completed": "Завершено",
       "in_progress": "В процессе",
+      "no_show": "Не пришёл",
       "available": "Доступно",
-      "offline": "Сейчас не в сети"
+      "working-busy": "Занят",
+      "lunch": "Обед",
+      "closed": "Закрыто",
+      "offline": "Не в сети"
+    },
+    "errors": {
+      "freeTierLimit": "Мастер исчерпал лимит бесплатного плана на этот месяц. Попробуйте позже.",
+      "slotTaken": "Это время уже занято. Выберите другое время.",
+      "generic": "Что-то пошло не так. Попробуйте ещё раз."
+    },
+    "guest": {
+      "bookTitle": "Записаться по номеру телефона",
+      "namePlaceholder": "Ваше имя",
+      "phonePlaceholder": "+998 XX XXX XX XX",
+      "phoneError": "Введите корректный номер +998 XX XXX XX XX",
+      "submit": "Записаться",
+      "success": "Запись создана! Ожидайте подтверждения.",
+      "trackTitle": "Статус записи",
+      "phoneVerify": "Введите ваш номер телефона для проверки",
+      "verify": "Проверить",
+      "bookingNotFound": "Запись не найдена для этого номера",
+      "loginCta": "Войти и записаться",
+      "guestCta": "Записаться по телефону"
+    },
+    "subscription": {
+      "title": "Тарифный план",
+      "currentPlan": "Текущий тариф",
+      "free": "Бесплатный",
+      "pro": "Pro",
+      "premium": "Premium",
+      "upgradeBtn": "Улучшить",
+      "bookingsUsed": "Записей в этом месяце",
+      "bookingsLimit": "Лимит записей",
+      "unlimited": "Неограниченно",
+      "priceMonthly": "{{price}} сум/месяц",
+      "proFeatures": ["Неограниченные записи", "Приоритетный показ", "Telegram-уведомления", "История клиентов"],
+      "premiumFeatures": ["Всё из Pro", "Продвижение в топ", "Аналитика", "Кастомная страница"],
+      "active": "Активен до {{date}}",
+      "expired": "Истёк",
+      "pending": "Ожидает оплаты"
+    },
+    "review": {
+      "title": "Оцените услугу",
+      "placeholder": "Оставьте комментарий (необязательно)",
+      "submit": "Отправить",
+      "thankYou": "Спасибо за отзыв!",
+      "skip": "Пропустить",
+      "stars": "{{count}} из 5"
     },
     "settings": {
       "language": {
@@ -68,6 +123,9 @@
       }
     },
     "auth": {
+      "language": {
+        "title": "Выберите язык"
+      },
       "roleSelection": {
         "subtitle": "Выберите способ входа",
         "barberTitle": "Я барбер",
@@ -76,24 +134,24 @@
         "clientDesc": "Бронируйте премиум-услуги"
       },
       "register": {
-        "title": "Добро пожаловать в NavbatGo",
-        "subtitle": "Введите свои данные, чтобы начать",
+        "title": "Добро пожаловать в BarberUp",
+        "subtitle": "Введите номер телефона для регистрации",
         "emailPlaceholder": "example@gmail.com",
         "passwordPlaceholder": "Создайте пароль",
         "checking": "Проверка...",
-        "signUp": "Регистрация",
+        "signUp": "Зарегистрироваться",
         "hasAccount": "Уже есть аккаунт?",
         "signIn": "Войти"
       },
       "login": {
         "title": "Войдите в аккаунт",
-        "subtitle": "Введите ваш email и пароль",
+        "subtitle": "Введите номер телефона",
         "roleLabel": "Я...",
         "client": "Клиент",
         "barber": "Барбер",
         "emailPlaceholder": "Введите ваш email",
         "passwordPlaceholder": "Введите ваш пароль",
-        "signingIn": "Вход...",
+        "signingIn": "Проверка...",
         "signIn": "Войти",
         "noAccount": "Нет аккаунта?",
         "signUp": "Регистрация"
@@ -118,13 +176,14 @@
         "addValidService": "Добавьте как минимум одну корректную услугу (название и цена)."
       },
       "clientOnboarding": {
-        "joinTitle": "Присоединяйтесь к NavbatGo",
-        "setupTitle": "Настройте профиль клиента",
+        "joinTitle": "Присоединяйтесь к BarberUp",
+        "setupTitle": "Настройте профиль",
+        "setupSubtitle": "Регистрация не нужна — просто введите имя и номер.",
         "personalInfo": "Личная информация",
         "profileImageOptional": "Фото профиля (необязательно)",
         "namePlaceholder": "например, Азиз Рахимов",
         "phonePlaceholder": "90 123 45 67",
-        "creatingAccount": "Создание аккаунта..."
+        "creatingAccount": "Проверка…"
       },
       "barberOnboarding": {
         "title": "Настройте профиль барбера",
@@ -141,7 +200,7 @@
         "serviceNamePlaceholder": "Название услуги (например, Стрижка)",
         "pricePlaceholder": "Цена",
         "avgPricePlaceholder": "40000",
-        "addService": "+ Добавить еще услугу",
+        "addService": "Добавить еще услугу",
         "removeService": "Удалить услугу",
         "creatingAccount": "Создание аккаунта...",
         "completeRegistration": "Завершить регистрацию",
@@ -162,12 +221,14 @@
       },
       "barber": {
         "home": "ГЛАВНАЯ",
-        "schedule": "ГРАФИК",
+        "appointments": "ГРАФИК",
         "clients": "КЛИЕНТЫ",
+        "subscription": "ТАРИФ",
+        "analytics": "АНАЛИТИКА",
         "settings": "НАСТРОЙКИ",
         "newBookings": "Новые брони",
-        "pendingCount": "{{count}} брони в ожидании",
-        "pendingCountOne": "{{count}} бронь в ожидании",
+        "pendingCount": "{{count}} в ожидании",
+        "pendingCountOne": "{{count}} в ожидании",
         "noPending": "Нет броней в ожидании",
         "allCaughtUp": "Все в порядке! Запросов в ожидании нет."
       }
@@ -223,7 +284,12 @@
         "cancelledSubtitle": "Это бронирование было отменено.",
         "detailsTitle": "Детали бронирования",
         "service": "Услуга",
-        "notFoundError": "Бронирование не найдено"
+        "notFoundError": "Бронирование не найдено",
+        "completedTitle": "Услуга завершена!",
+        "completedSubtitle": "{{barber}} завершил вашу запись. Спасибо за визит!",
+        "telegramHint": "Ответ также поступит в Telegram-бот автоматически. Если бот не подключён, нажмите кнопку ниже.",
+        "connectBot": "Подключить Telegram-бот",
+        "price": "Цена"
       },
       "barbershopDetails": {
         "notFound": "Барбер не найден",
@@ -232,6 +298,7 @@
         "availableSlots": "Свободное время",
         "selectDate": "Выберите день",
         "selectDateRequired": "Пожалуйста, выберите день для записи",
+        "pastDate": "Нельзя записаться на прошедшую дату",
         "fullyBookedDay": "На выбранный день свободного времени нет.",
         "location": "Локация",
         "averagePrice": "Средняя цена",
@@ -252,7 +319,10 @@
       "settings": {
         "title": "Настройки клиента",
         "profileImage": "Фото профиля",
-        "profileUpdated": "Профиль успешно обновлен!"
+        "profileUpdated": "Профиль успешно обновлен!",
+        "telegram": "Telegram-уведомления",
+        "telegramDesc": "Получайте уведомления о бронях через Telegram",
+        "connectBot": "Подключить @BarberUp_bot"
       }
     },
     "barber": {
@@ -262,6 +332,11 @@
         "status": "Статус",
         "break": "Перерыв",
         "working": "Работаю",
+        "myStatus": "Мой статус",
+        "statusAvailable": "Доступен",
+        "statusBusy": "Занят",
+        "statusLunch": "Обед",
+        "statusClosed": "Закрыто",
         "newRequests": "Новые запросы",
         "currentSession": "Текущий клиент",
         "nextInQueue": "Следующий клиент",
@@ -274,8 +349,11 @@
         "overdue": "Опаздывает",
         "waiting": "В ожидании",
         "finish": "ЗАВЕРШИТЬ",
+        "start": "НАЧАТЬ",
+        "noShow": "НЕ ПРИШЁЛ",
         "cancel": "ОТМЕНА",
-        "viewAll": "Все"
+        "viewAll": "Все",
+        "emptyRefresh": "Обновите страницу, чтобы проверить новые записи"
       },
       "appointments": {
         "title": "График",
@@ -286,7 +364,8 @@
         "tomorrow": "Завтра",
         "timeLabel": "время",
         "emptyTitle": "Нет записей",
-        "emptyDesc": "На этот день записей не обнаружено"
+        "emptyDesc": "На этот день записей не обнаружено",
+        "swipeHint": "Листайте дни"
       },
       "clients": {
         "title": "Клиенты",
@@ -307,10 +386,29 @@
         "businessAvailability": "Бизнес и доступность",
         "profileImage": "Фото профиля",
         "officeName": "Название салона",
-        "officeImage": "Фото салона",
+        "photos": "Фото салона",
+        "photo1": "Фото 1",
+        "photo2": "Фото 2",
+        "photo3": "Фото 3",
         "workingHours": "Часы работы",
         "averagePrice": "Средняя цена",
-        "profileUpdated": "Профиль успешно обновлен!"
+        "profileUpdated": "Профиль успешно обновлен!",
+        "telegram": "Telegram-уведомления",
+        "telegramChatId": "Telegram Chat ID",
+        "telegramChatIdPlaceholder": "Например: 123456789",
+        "telegramToggle": "Включить уведомления",
+        "telegramHint": "Как получить Chat ID?",
+        "telegramInstructions": "Откройте @BarberUp_bot в Telegram, отправьте /start и скопируйте ваш Chat ID."
+      },
+      "analytics": {
+        "title": "Аналитика",
+        "totalBookings": "Всего записей",
+        "completed": "Завершено",
+        "cancelled": "Отменено",
+        "revenue": "Доход за месяц",
+        "popularService": "Популярная услуга",
+        "peakHours": "Пиковые часы",
+        "noData": "Нет данных за этот период"
       }
     },
     "components": {
@@ -358,7 +456,7 @@
 
   "uz": {
     "brand": {
-      "name": "NavbatGo",
+      "name": "BarberUp",
       "tagline": "Zamonaviy sartarosh tajribasi"
     },
     "common": {
@@ -404,7 +502,14 @@
       "defaultHaircut": "Soch olish",
       "currencySuffix": "so'm",
       "minutes": "daqiqa",
-      "results": "Natijalar"
+      "results": "Natijalar",
+      "all": "Barchasi",
+      "from": "dan",
+      "to": "gacha",
+      "service": "Xizmat",
+      "clear": "Tozalash",
+      "visits": "tashrif",
+      "lastVisit": "Oxirgi tashrif"
     },
     "status": {
       "pending": "Kutilmoqda",
@@ -413,8 +518,56 @@
       "cancelled": "Bekor qilindi",
       "completed": "Tugadi",
       "in_progress": "Jarayonda",
+      "no_show": "Kelmadi",
       "available": "Mavjud",
-      "offline": "Hozir oflayn"
+      "working-busy": "Band",
+      "lunch": "Tushlik",
+      "closed": "Yopilgan",
+      "offline": "Oflayn"
+    },
+    "errors": {
+      "freeTierLimit": "Ushbu usta bu oy uchun bepul tartibni to'ldirdi. Keyinroq urinib ko'ring.",
+      "slotTaken": "Bu vaqt allaqachon band. Boshqa vaqtni tanlang.",
+      "generic": "Nimadir xato ketdi. Qayta urinib ko'ring."
+    },
+    "guest": {
+      "bookTitle": "Telefon raqam bilan band qiling",
+      "namePlaceholder": "Ismingiz",
+      "phonePlaceholder": "+998 XX XXX XX XX",
+      "phoneError": "+998 XX XXX XX XX formatida kiriting",
+      "submit": "Band qilish",
+      "success": "Bron yaratildi! Tasdiqlashni kuting.",
+      "trackTitle": "Bron holati",
+      "phoneVerify": "Tekshirish uchun telefon raqamingizni kiriting",
+      "verify": "Tekshirish",
+      "bookingNotFound": "Bu raqam uchun bron topilmadi",
+      "loginCta": "Kirish va band qilish",
+      "guestCta": "Telefon bilan band qilish"
+    },
+    "subscription": {
+      "title": "Tarif rejasi",
+      "currentPlan": "Joriy tarif",
+      "free": "Bepul",
+      "pro": "Pro",
+      "premium": "Premium",
+      "upgradeBtn": "Yangilash",
+      "bookingsUsed": "Bu oy band qilinganlar",
+      "bookingsLimit": "Bron limiti",
+      "unlimited": "Cheksiz",
+      "priceMonthly": "{{price}} so'm/oy",
+      "proFeatures": ["Cheksiz bronlar", "Ustuvor ko'rinish", "Telegram xabarnomalar", "Mijozlar tarixi"],
+      "premiumFeatures": ["Pro dagi hamma narsa", "Top'da ko'rinish", "Tahlillar", "Maxsus sahifa"],
+      "active": "{{date}} gacha faol",
+      "expired": "Muddati tugagan",
+      "pending": "To'lov kutilmoqda"
+    },
+    "review": {
+      "title": "Xizmatni baholang",
+      "placeholder": "Izoh qoldiring (ixtiyoriy)",
+      "submit": "Yuborish",
+      "thankYou": "Bahoyingiz uchun rahmat!",
+      "skip": "O'tkazib yuborish",
+      "stars": "5 dan {{count}}"
     },
     "settings": {
       "language": {
@@ -425,6 +578,9 @@
       }
     },
     "auth": {
+      "language": {
+        "title": "Tilni tanlang"
+      },
       "roleSelection": {
         "subtitle": "Qanday boshlashni tanlang",
         "barberTitle": "Men sartaroshman",
@@ -433,8 +589,8 @@
         "clientDesc": "Premium xizmatlarni bron qiling"
       },
       "register": {
-        "title": "NavbatGo ga xush kelibsiz",
-        "subtitle": "Boshlash uchun ma'lumotlaringizni kiriting",
+        "title": "BarberUp ga xush kelibsiz",
+        "subtitle": "Ro'yxatdan o'tish uchun telefon raqamingizni kiriting",
         "emailPlaceholder": "misol@gmail.com",
         "passwordPlaceholder": "Parol yarating",
         "checking": "Tekshirilmoqda…",
@@ -444,13 +600,13 @@
       },
       "login": {
         "title": "Hisobingizga kiring",
-        "subtitle": "Elektron pochta va parolingizni kiriting",
+        "subtitle": "Telefon raqamingizni kiriting",
         "roleLabel": "Men…",
         "client": "Mijoz",
         "barber": "Sartarosh",
         "emailPlaceholder": "Elektron pochtangizni kiriting",
         "passwordPlaceholder": "Parolingizni kiriting",
-        "signingIn": "Kirish…",
+        "signingIn": "Tekshirilmoqda…",
         "signIn": "Kirish",
         "noAccount": "Hisobingiz yo'qmi?",
         "signUp": "Ro'yxatdan o'tish"
@@ -475,13 +631,14 @@
         "addValidService": "Kamida bitta to'g'ri xizmat (nomi va narxi) qo'shing."
       },
       "clientOnboarding": {
-        "joinTitle": "NavbatGo ga qo'shiling",
-        "setupTitle": "Mijoz profilingizni sozlang",
+        "joinTitle": "BarberUp ga qo'shiling",
+        "setupTitle": "Profilingizni sozlang",
+        "setupSubtitle": "Telefon raqamingiz va ismingizni kiriting — hisob kerak emas.",
         "personalInfo": "Shaxsiy ma'lumotlar",
         "profileImageOptional": "Profil rasmi (ixtiyoriy)",
         "namePlaceholder": "masalan, Aziz Rahimov",
         "phonePlaceholder": "90 123 45 67",
-        "creatingAccount": "Hisob yaratilmoqda…"
+        "creatingAccount": "Tekshirilmoqda…"
       },
       "barberOnboarding": {
         "title": "Sartarosh profilingizni sozlang",
@@ -498,7 +655,7 @@
         "serviceNamePlaceholder": "Xizmat nomi (masalan, Soch olish)",
         "pricePlaceholder": "Narx",
         "avgPricePlaceholder": "40000",
-        "addService": "+ Yana xizmat qo'shish",
+        "addService": "Yana xizmat qo'shish",
         "removeService": "Xizmatni olib tashlash",
         "creatingAccount": "Hisob yaratilmoqda...",
         "completeRegistration": "Ro'yxatdan o'tishni yakunlash",
@@ -519,12 +676,14 @@
       },
       "barber": {
         "home": "BOSH",
-        "schedule": "JADVAL",
+        "appointments": "JADVAL",
         "clients": "MIJOZLAR",
+        "subscription": "TARIF",
+        "analytics": "TAHLIL",
         "settings": "SOZLAMALAR",
         "newBookings": "Yangi bronlar",
-        "pendingCount": "{{count}} ta kutilayotgan bron",
-        "pendingCountOne": "{{count}} ta kutilayotgan bron",
+        "pendingCount": "{{count}} ta kutilmoqda",
+        "pendingCountOne": "{{count}} ta kutilmoqda",
         "noPending": "Kutilayotgan bron yo'q",
         "allCaughtUp": "Hammasi joyida! Kutilayotgan so'rovlar yo'q."
       }
@@ -580,7 +739,12 @@
         "cancelledSubtitle": "Ushbu bron bekor qilindi.",
         "detailsTitle": "Bron tafsilotlari",
         "service": "Xizmat",
-        "notFoundError": "Bron topilmadi"
+        "notFoundError": "Bron topilmadi",
+        "completedTitle": "Xizmat yakunlandi!",
+        "completedSubtitle": "{{barber}} xizmatni yakunladi. Tashrifingiz uchun rahmat!",
+        "telegramHint": "Javobni Telegram bot orqali ham avtomatik olasiz. Agar bot ulanmagan bo'lsa, quyidagi tugmani bosing.",
+        "connectBot": "Telegram botga ulanish",
+        "price": "Narx"
       },
       "barbershopDetails": {
         "notFound": "Sartarosh topilmadi",
@@ -589,6 +753,7 @@
         "availableSlots": "Bo'sh vaqtlar",
         "selectDate": "Kunni tanlang",
         "selectDateRequired": "Iltimos, bron uchun kunni tanlang",
+        "pastDate": "O'tgan kunga bron qilib bo'lmaydi",
         "fullyBookedDay": "Tanlangan kun uchun bo'sh vaqt yo'q.",
         "location": "Joylashuv",
         "averagePrice": "O'rtacha narx",
@@ -609,7 +774,10 @@
       "settings": {
         "title": "Mijoz sozlamalari",
         "profileImage": "Profil rasmi",
-        "profileUpdated": "Profil muvaffaqiyatli yangilandi!"
+        "profileUpdated": "Profil muvaffaqiyatli yangilandi!",
+        "telegram": "Telegram xabarnomalar",
+        "telegramDesc": "Bron xabarlarini Telegram orqali oling",
+        "connectBot": "@BarberUp_bot ga ulanish"
       }
     },
     "barber": {
@@ -619,6 +787,11 @@
         "status": "Holat",
         "break": "Tanaffus",
         "working": "Ishlayapman",
+        "myStatus": "Mening holatim",
+        "statusAvailable": "Mavjud",
+        "statusBusy": "Band",
+        "statusLunch": "Tushlik",
+        "statusClosed": "Yopilgan",
         "newRequests": "Yangi so'rovlar",
         "currentSession": "Hozirgi jarayon",
         "nextInQueue": "Navbatdagi mijoz",
@@ -631,8 +804,11 @@
         "overdue": "Kechikdi",
         "waiting": "Kutilmoqda",
         "finish": "TUGATISH",
+        "start": "BOSHLASH",
+        "noShow": "KELMADI",
         "cancel": "BEKOR",
-        "viewAll": "Hammasi"
+        "viewAll": "Hammasi",
+        "emptyRefresh": "Yangi navbatlarni tekshirish uchun sahifani yangilang"
       },
       "appointments": {
         "title": "Jadval",
@@ -643,7 +819,8 @@
         "tomorrow": "Erta",
         "timeLabel": "vaqt",
         "emptyTitle": "Navbat yo'q",
-        "emptyDesc": "Bu kun uchun birorta ham navbat topilmadi"
+        "emptyDesc": "Bu kun uchun birorta ham navbat topilmadi",
+        "swipeHint": "Kunlarni aylantiring"
       },
       "clients": {
         "title": "Mijozlar",
@@ -664,10 +841,29 @@
         "businessAvailability": "Biznes va mavjudlik",
         "profileImage": "Profil rasmi",
         "officeName": "Ofis nomi",
-        "officeImage": "Ofis rasmi",
+        "photos": "Ofis rasmlari",
+        "photo1": "1-rasm",
+        "photo2": "2-rasm",
+        "photo3": "3-rasm",
         "workingHours": "Ish vaqti",
         "averagePrice": "O'rtacha narx",
-        "profileUpdated": "Profil muvaffaqiyatli yangilandi!"
+        "profileUpdated": "Profil muvaffaqiyatli yangilandi!",
+        "telegram": "Telegram xabarnomalar",
+        "telegramChatId": "Telegram Chat ID",
+        "telegramChatIdPlaceholder": "Masalan: 123456789",
+        "telegramToggle": "Xabarnomalarni yoqish",
+        "telegramHint": "Chat ID ni qanday olish mumkin?",
+        "telegramInstructions": "Telegram'da @BarberUp_bot ni oching, /start yuboring va Chat ID ni nusxa oling."
+      },
+      "analytics": {
+        "title": "Tahlillar",
+        "totalBookings": "Jami bronlar",
+        "completed": "Tugallangan",
+        "cancelled": "Bekor qilingan",
+        "revenue": "Bu oygi daromad",
+        "popularService": "Mashhur xizmat",
+        "peakHours": "Cho'qqi soatlar",
+        "noData": "Bu davr uchun ma'lumot yo'q"
       }
     },
     "components": {

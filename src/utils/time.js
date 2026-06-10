@@ -2,6 +2,8 @@
  * Parse and normalize times to strict "HH:mm" (24h) for booking + availability.
  */
 
+import { isBlockingSlotStatus } from './bookingStatus.js';
+
 function parseTimeParts(hours, minutes) {
     const h = Number(hours);
     const m = Number(minutes);
@@ -65,7 +67,7 @@ export function isSlotTaken(bookings, slot, barberId, bookingDate) {
             !barberKey ||
             (bookingBarber != null && String(bookingBarber).trim() === barberKey);
         const status = String(booking?.status || 'pending').toLowerCase();
-        const activeStatus = !['rejected', 'cancelled'].includes(status);
+        const activeStatus = isBlockingSlotStatus(status);
         if (!sameBarber || !activeStatus || bookingSlot !== normalizedSlot) return false;
 
         let rawDate = booking?.booking_date ?? booking?.date ?? null;

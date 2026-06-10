@@ -1,4 +1,5 @@
-import { AuthProvider } from './context/AuthContext.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { ClientProvider } from './context/ClientContext.jsx';
 import { LanguageProvider, useLanguage } from './context/LanguageContext.jsx';
 import AppRouter from './routes/AppRouter.jsx';
 import LanguageSelection from './pages/LanguageSelection.jsx';
@@ -6,8 +7,9 @@ import { t } from './utils/i18n.js';
 
 function AppShell() {
     const { ready, hasChosenLanguage, language } = useLanguage();
+    const { user, loading: authLoading } = useAuth();
 
-    if (!ready) {
+    if (!ready || authLoading) {
         return (
             <div className="min-h-screen bg-[#f5f5f7] flex justify-center items-center p-6">
                 <div className="flex flex-col items-center">
@@ -18,15 +20,26 @@ function AppShell() {
         );
     }
 
-    if (!hasChosenLanguage) {
+    // Show language selector only on true cold-start (no user, no language
+    // stored). Once a user exists OR a language is stored, the user is in
+    // the app — the language can always be changed later from Settings.
+    if (!hasChosenLanguage && !user) {
         return <LanguageSelection />;
     }
 
     return (
+        <div key={language}>
+            <AppRouter />
+        </div>
+    );
+}
+
+function InnerShell() {
+    return (
         <AuthProvider>
-            <div key={language}>
-                <AppRouter />
-            </div>
+            <ClientProvider>
+                <AppShell />
+            </ClientProvider>
         </AuthProvider>
     );
 }
@@ -34,7 +47,7 @@ function AppShell() {
 function App() {
     return (
         <LanguageProvider>
-            <AppShell />
+            <InnerShell />
         </LanguageProvider>
     );
 }

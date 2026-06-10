@@ -1,4 +1,7 @@
+// ── Added Phone + PhoneChangeIcon icons + navigate for the "Change phone" CTA ──
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Phone, ChevronRight, Send, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { supabase } from '../../api/supabase.js';
 import { uploadImage } from '../../api/uploadApi.js';
@@ -6,6 +9,7 @@ import { t } from '../../utils/i18n.js';
 import LanguageSelector from '../../components/LanguageSelector.jsx';
 
 function Settings() {
+    const navigate = useNavigate();
     const { logout, user, updateSessionUser } = useAuth();
     const [name, setName] = useState(user?.fullname || '');
     const [phone, setPhone] = useState((user?.phone || '').replace(/\D/g, '').replace(/^998/, '').slice(-9));
@@ -113,6 +117,50 @@ function Settings() {
                             }}
                             className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none transition-all duration-200 focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#378ADD] file:text-white hover:file:bg-[#185FA5]"
                         />
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => navigate('/client/change-phone')}
+                    className="w-full flex items-center gap-4 px-5 py-4 bg-white border border-black/5 rounded-[24px] active:bg-[#f8f8f8] transition-colors text-left min-h-[60px]"
+                >
+                    <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
+                        <Phone size={18} className="text-[#378ADD]" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-semibold text-[#111] text-sm">
+                            Telefon raqamini o'zgartirish
+                        </p>
+                        <p className="text-xs text-[#999] font-medium mt-0.5">
+                            {user?.phone || 'Raqam kiritilmagan'}
+                        </p>
+                    </div>
+                    <ChevronRight size={16} className="text-[#bbb]" />
+                </button>
+
+                {/* Telegram Bot Connection */}
+                <div className="bg-white border border-black/5 rounded-[24px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+                    <div className="flex items-center gap-4 px-5 py-4">
+                        <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
+                            <Send size={18} className="text-[#378ADD]" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-semibold text-[#111] text-sm">{t('client.settings.telegram')}</p>
+                            <p className="text-xs text-[#999] font-medium mt-0.5">
+                                {t('client.settings.telegramDesc')}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="px-5 pb-4">
+                        <a
+                            href="https://t.me/BarberUp_bot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-center gap-2 h-11 bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-sm rounded-2xl transition-all shadow-[0_8px_20px_rgba(55,138,221,0.2)] active:scale-[0.98]"
+                        >
+                            <ExternalLink size={15} />
+                            {t('client.settings.connectBot')}
+                        </a>
                     </div>
                 </div>
 

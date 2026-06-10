@@ -1,77 +1,121 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import RoleSelection from '../pages/auth/RoleSelection.jsx';
 import Register from '../pages/auth/Register.jsx';
 import Login from '../pages/auth/Login.jsx';
-import ClientOnboarding from '../pages/auth/ClientOnboarding.jsx';
 import BarberOnboarding from '../pages/auth/BarberOnboarding.jsx';
 
 import ClientLayout from '../layouts/ClientLayout.jsx';
-import ClientDashboard from '../pages/client/Dashboard.jsx';
-import ClientSettings from '../pages/client/Settings.jsx';
-import ClientBooking from '../pages/client/Booking.jsx';
-import BarbershopDetails from '../pages/client/BarbershopDetails.jsx';
-import BookingStatus from '../pages/client/BookingStatus.jsx';
-
 import BarberLayout from '../layouts/BarberLayout.jsx';
-import BarberDashboard from '../pages/barber/Dashboard.jsx';
-import BarberClients from '../pages/barber/Clients.jsx';
-import BarberAppointments from '../pages/barber/Appointments.jsx';
-import BarberSettings from '../pages/barber/Settings.jsx';
 
 import ProtectedRoute from '../components/ProtectedRoute.jsx';
 import PublicRoute from '../components/PublicRoute.jsx';
+import ErrorBoundary from '../components/ErrorBoundary.jsx';
+import { t } from '../utils/i18n.js';
+
+const GuestBooking = lazy(() => import('../pages/client/GuestBooking.jsx'));
+const TrackBooking = lazy(() => import('../pages/client/TrackBooking.jsx'));
+
+const ClientDashboard = lazy(() => import('../pages/client/Dashboard.jsx'));
+const ClientSettings = lazy(() => import('../pages/client/Settings.jsx'));
+const ClientBooking = lazy(() => import('../pages/client/Booking.jsx'));
+const BarbershopDetails = lazy(() => import('../pages/client/BarbershopDetails.jsx'));
+const BookingStatus = lazy(() => import('../pages/client/BookingStatus.jsx'));
+const ClientEntry = lazy(() => import('../pages/client/ClientEntry.jsx'));
+const ChangePhone = lazy(() => import('../pages/client/ChangePhone.jsx'));
+const BarberChangePhone = lazy(() => import('../pages/barber/ChangePhone.jsx'));
+
+const BarberDashboard = lazy(() => import('../pages/barber/Dashboard.jsx'));
+const BarberAppointments = lazy(() => import('../pages/barber/Appointments.jsx'));
+const BarberClients = lazy(() => import('../pages/barber/Clients.jsx'));
+const BarberSettings = lazy(() => import('../pages/barber/Settings.jsx'));
+
+const PageLoader = () => (
+    <div className="min-h-screen bg-[#f5f5f7] flex justify-center items-center">
+        <div className="flex flex-col items-center">
+            <div className="w-10 h-10 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mb-3" />
+            <p className="text-xs font-bold text-[#666] uppercase tracking-wider">{t('common.pleaseWait')}</p>
+        </div>
+    </div>
+);
 
 function AppRouter() {
+    const isLoggedIn = (() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('user') || 'null');
+            return u && u.id && u.role;
+        } catch { return false; }
+    })();
+
     return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<PublicRoute><RoleSelection /></PublicRoute>} />
-                <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-                <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-                <Route path="/onboarding/client" element={<PublicRoute><ClientOnboarding /></PublicRoute>} />
-                <Route path="/onboarding/barber" element={<PublicRoute><BarberOnboarding /></PublicRoute>} />
+        <ErrorBoundary>
+            <BrowserRouter>
+                <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                        {/* Root redirect: go straight to role-select (login) if
+                            a language has been chosen. The LanguageSelection
+                            itself is shown by App.jsx on true cold-start only. */}
+                        <Route path="/" element={
+                            isLoggedIn ? <Navigate to={`/${JSON.parse(localStorage.getItem('user')).role}/dashboard`} replace /> :
+                            <Navigate to="/role-select" replace />
+                        } />
 
-                <Route
-                    path="/barber/:id"
-                    element={
-                        <ProtectedRoute requiredRole="client">
-                            <BarbershopDetails />
-                        </ProtectedRoute>
-                    }
-                />
+                        {/* Public routes */}
+                        <Route path="/role-select" element={<RoleSelection />} />
+                        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+                        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                        <Route path="/onboarding/barber" element={<PublicRoute><BarberOnboarding /></PublicRoute>} />
 
-                <Route
-                    path="/client"
-                    element={
-                        <ProtectedRoute requiredRole="client">
-                            <ClientLayout />
-                        </ProtectedRoute>
-                    }
-                >
-                    <Route path="dashboard" element={<ClientDashboard />} />
-                    <Route path="bookings" element={<ClientBooking />} />
-                    <Route path="settings" element={<ClientSettings />} />
-                    <Route path="booking-status/:id" element={<BookingStatus />} />
-                </Route>
+                        <Route path="/guest-book/:id" element={<GuestBooking />} />
+                        <Route path="/track/:id" element={<TrackBooking />} />
 
-                <Route
-                    path="/barber"
-                    element={
-                        <ProtectedRoute requiredRole="barber">
-                            <BarberLayout />
-                        </ProtectedRoute>
-                    }
-                >
-                    <Route path="dashboard" element={<BarberDashboard />} />
-                    <Route path="clients" element={<BarberClients />} />
-                    <Route path="appointments" element={<BarberAppointments />} />
-                    <Route path="settings" element={<BarberSettings />} />
-                </Route>
+                        {/* Client barber detail (outside layout for full-screen booking) */}
+                        <Route path="/client/barber/:id" element={
+                            <ProtectedRoute requiredRole="client">
+                                <BarbershopDetails />
+                            </ProtectedRoute>
+                        } />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-        </BrowserRouter>
+                        {/* Booking status (used by client after creating a booking) */}
+                        <Route path="/client/booking-status/:id" element={
+                            <ProtectedRoute requiredRole="client">
+                                <BookingStatus />
+                            </ProtectedRoute>
+                        } />
+
+                        {/* Client authenticated routes */}
+                        <Route path="/client" element={
+                            <ProtectedRoute requiredRole="client">
+                                <ClientLayout />
+                            </ProtectedRoute>
+                        }>
+                            <Route path="dashboard" element={<ClientDashboard />} />
+                            <Route path="bookings" element={<ClientBooking />} />
+                            <Route path="settings" element={<ClientSettings />} />
+                            <Route path="change-phone" element={<ChangePhone />} />
+                        </Route>
+
+                        <Route path="/start" element={<PublicRoute><ClientEntry /></PublicRoute>} />
+
+                        {/* Barber authenticated routes */}
+                        <Route path="/barber" element={
+                            <ProtectedRoute requiredRole="barber">
+                                <BarberLayout />
+                            </ProtectedRoute>
+                        }>
+                            <Route path="dashboard" element={<BarberDashboard />} />
+                            <Route path="appointments" element={<BarberAppointments />} />
+                            <Route path="clients" element={<BarberClients />} />
+                            <Route path="settings" element={<BarberSettings />} />
+                            <Route path="change-phone" element={<BarberChangePhone />} />
+                        </Route>
+
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </Suspense>
+            </BrowserRouter>
+        </ErrorBoundary>
     );
 }
 

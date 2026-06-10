@@ -12,8 +12,8 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
             : 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop';
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
-            <div className="bg-white rounded-[32px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-md w-full max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-0 sm:px-4 pb-0 sm:pb-4" onClick={onClose}>
+            <div className="bg-white rounded-t-[32px] sm:rounded-[32px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-md w-full max-h-[92vh] overflow-y-auto animate-slideUp" onClick={e => e.stopPropagation()}>
 
                 {/* Cover Image */}
                 <div className="relative h-56 rounded-t-[32px] overflow-hidden">
@@ -27,9 +27,9 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
 
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 backdrop-blur-md w-10 h-10 rounded-full flex items-center justify-center transition-all border border-white/20"
+                        className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center transition-all border border-white/20 active:scale-[0.9]"
                     >
-                        <X size={18} className="text-white" />
+                        <X size={20} className="text-white" />
                     </button>
 
                     {/* Profile image + name overlay */}
@@ -66,15 +66,15 @@ function BarberProfileModal({ barber, isOpen, onClose, onBookNow, onToggleFavori
                     <div className="flex gap-3">
                         <button
                             onClick={onBookNow}
-                            className="flex-1 h-13 bg-[#378ADD] text-white px-4 py-3 rounded-2xl font-semibold text-sm hover:bg-[#185FA5] transition-all duration-200 shadow-[0_8px_20px_rgba(55,138,221,0.25)]"
+                            className="flex-1 h-12 sm:h-13 bg-[#378ADD] text-white px-4 py-3 rounded-2xl font-semibold text-sm active:bg-[#185FA5] transition-all duration-200 shadow-[0_8px_20px_rgba(55,138,221,0.25)] active:scale-[0.98] min-h-[48px]"
                         >
                             {t('components.barberProfileModal.bookSession')}
                         </button>
                         <button
                             onClick={() => onToggleFavorite(barber.id)}
-                            className={`w-13 h-13 px-3 py-3 rounded-2xl font-bold transition-all duration-200 border ${isFavorite
+                            className={`w-12 sm:w-13 h-12 sm:h-13 px-3 py-3 rounded-2xl font-bold transition-all duration-200 border active:scale-[0.95] flex items-center justify-center ${isFavorite
                                 ? 'bg-[#185FA5] text-white border-[#185FA5]'
-                                : 'bg-[#f8f8f8] text-[#888] border-black/5 hover:bg-[#f0f0f0]'
+                                : 'bg-[#f8f8f8] text-[#888] border-black/5 active:bg-[#f0f0f0]'
                                 }`}
                         >
                             <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} />

@@ -1,10 +1,13 @@
 import { supabase } from './supabase.js';
 import { formatTo24h } from '../utils/time.js';
+import { toDbStatus, fromDbStatus, mapBookingError } from '../utils/bookingStatus.js';
+
+// ─── Normalizers ─────────────────────────────────────────────────────────────
 
 export function normalizeBookingRefId(value) {
     if (value == null || value === '') return null;
-    if (typeof value === 'string') return value.trim() || null;
-    if (typeof value === 'object') return value.id || value._id || null;
+    if (typeof value === 'string')     return value.trim() || null;
+    if (typeof value === 'object')     return value.id || value._id || null;
     return String(value);
 }
 
@@ -22,11 +25,16 @@ export function bookingMatchesClient(bookingClientField, clientId) {
     return String(a) === String(b);
 }
 
+/**
+ * Normalise a raw `bookings` row (with optional joined barbers/clients) into
+ * the unified V2 app model.
+ */
 export function normalizeBooking(raw) {
     if (!raw) return null;
+
     const normalizedHours = formatTo24h(raw.booking_hours);
 
-    // map Supabase relation objects
+    // Hydrate nested join data
     let barberData = null;
     let clientData = null;
 
@@ -36,22 +44,16 @@ export function normalizeBooking(raw) {
             name: raw.barbers.fullname || raw.barbers.name || 'Unknown',
         };
     }
-
     if (raw.clients) {
         clientData = {
             ...raw.clients,
             name: raw.clients.fullname || raw.clients.name || 'Unknown',
         };
     }
-
-    // fallback mapping if old data shapes are passed
     if (!barberData && raw.barberData) barberData = raw.barberData;
     if (!clientData && raw.clientData) clientData = raw.clientData;
 
-    let normalizedStatus = raw.status ?? 'pending';
-    if (normalizedStatus === 'active') normalizedStatus = 'accepted';
-    if (normalizedStatus === 'bajarildi') normalizedStatus = 'completed';
-
+    // Normalise booking_date to YYYY-MM-DD
     let bookingDate = raw.booking_date ?? null;
     if (bookingDate && typeof bookingDate === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(bookingDate.trim())) {
         try {
@@ -64,35 +66,45 @@ export function normalizeBooking(raw) {
 
     return {
         ...raw,
-        id: raw.id ?? null,
-        barber: raw.barber_id ?? raw.barber ?? null,
-        client: raw.client_id ?? raw.client ?? null,
+        id:            raw.id ?? null,
+        barber:        raw.barber_id ?? raw.barber ?? null,
+        client:        raw.client_id ?? raw.client ?? null,
         booking_hours: normalizedHours ?? '',
-        booking_date: bookingDate,
-        status: normalizedStatus,
-        service_name: raw.service_name ?? '',
+        booking_date:  bookingDate,
+        status:        fromDbStatus(raw.status ?? 'pending'),
+        service_name:  raw.service_name ?? '',
         service_price: raw.service_price ?? '',
+        // Guest fields
+        guest_name:    raw.guest_name ?? null,
+        guest_phone:   raw.guest_phone ?? null,
         barberData,
         clientData,
     };
 }
 
+// ─── Authenticated booking (logged-in client) ─────────────────────────────────
+
 export async function createBooking(payload) {
     const bookingDate = payload.booking_date ?? payload.bookingDate ?? null;
     if (!bookingDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(bookingDate).trim())) {
-        return { data: null, error: 'Booking date is required (YYYY-MM-DD).' };
+        return { data: null, error: 'date_required' };
+    }
+
+    const normalizedHours = formatTo24h(payload.booking_hours);
+    if (!normalizedHours) {
+        return { data: null, error: 'Invalid booking time.' };
     }
 
     const safePayload = {
-        barber_id: normalizeBookingRefId(payload.barber),
-        client_id: normalizeBookingRefId(payload.client),
-        booking_hours: formatTo24h(payload.booking_hours),
-        booking_date: String(bookingDate).trim(),
-        status: 'pending',
-        service_name: payload.service_name ?? null,
-        service_price: payload.service_price ?? null
+        barber_id:     normalizeBookingRefId(payload.barber),
+        client_id:     normalizeBookingRefId(payload.client),
+        booking_hours: normalizedHours,
+        booking_date:  String(bookingDate).trim(),
+        status:        'pending',
+        service_name:  payload.service_name ?? null,
+        service_price: payload.service_price ?? null,
     };
-    
+
     try {
         const { data, error } = await supabase
             .from('bookings')
@@ -102,7 +114,7 @@ export async function createBooking(payload) {
 
         if (error) {
             console.error('[BOOKING POST] Supabase error:', error);
-            return { data: null, error: error.message };
+            return { data: null, error: mapBookingError(error) };
         }
 
         return { data: normalizeBooking(data), error: null };
@@ -110,6 +122,83 @@ export async function createBooking(payload) {
         return { data: null, error: 'Failed to create booking.' };
     }
 }
+
+// ─── Guest booking (no auth required) ────────────────────────────────────────
+
+/**
+ * Create a booking for a guest (no Supabase Auth required).
+ * client_id is NULL; identity is held in guest_name + guest_phone.
+ */
+export async function createGuestBooking(payload) {
+    const bookingDate = payload.booking_date ?? payload.bookingDate ?? null;
+    if (!bookingDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(bookingDate).trim())) {
+        return { data: null, error: 'date_required' };
+    }
+
+    const normalizedHours = formatTo24h(payload.booking_hours);
+    if (!normalizedHours) {
+        return { data: null, error: 'Invalid booking time.' };
+    }
+
+    if (!payload.guest_name?.trim() || !payload.guest_phone?.trim()) {
+        return { data: null, error: 'Guest name and phone are required.' };
+    }
+
+    const safePayload = {
+        barber_id:     normalizeBookingRefId(payload.barber_id),
+        client_id:     null,
+        guest_name:    payload.guest_name.trim(),
+        guest_phone:   payload.guest_phone.trim(),
+        booking_hours: normalizedHours,
+        booking_date:  String(bookingDate).trim(),
+        status:        'pending',
+        service_name:  payload.service_name ?? null,
+        service_price: payload.service_price ?? null,
+    };
+
+    try {
+        const { data, error } = await supabase
+            .from('bookings')
+            .insert([safePayload])
+            .select('*, barbers(id, fullname, office_name, profile_img, address, phone)')
+            .single();
+
+        if (error) {
+            console.error('[GUEST BOOKING POST] Supabase error:', error);
+            return { data: null, error: mapBookingError(error) };
+        }
+
+        return { data: normalizeBooking(data), error: null };
+    } catch (err) {
+        return { data: null, error: 'Failed to create guest booking.' };
+    }
+}
+
+/**
+ * Fetch a guest's booking by ID + phone for the tracking page.
+ * No auth required — identity verified by matching guest_phone.
+ */
+export async function getBookingByIdAndPhone(bookingId, phone) {
+    try {
+        const { data, error } = await supabase
+            .from('bookings')
+            .select('*, barbers(id, fullname, office_name, profile_img, address, phone, status)')
+            .eq('id', bookingId)
+            .eq('guest_phone', phone.trim())
+            .single();
+
+        if (error) {
+            console.error('[GUEST TRACK] Supabase error:', error);
+            return { data: null, error: error.message };
+        }
+
+        return { data: normalizeBooking(data), error: null };
+    } catch {
+        return { data: null, error: 'Failed to fetch booking.' };
+    }
+}
+
+// ─── Shared queries ───────────────────────────────────────────────────────────
 
 export async function getBookings() {
     try {
@@ -123,44 +212,36 @@ export async function getBookings() {
         }
 
         return { data: (data || []).map(normalizeBooking), error: null };
-    } catch (err) {
+    } catch {
         return { data: null, error: 'Failed to fetch bookings.' };
     }
 }
-
-const STATUS_MAP = {
-    accepted:    'active',
-    in_progress: 'active',
-    cancelled:   'rejected',
-    completed:   'bajarildi',
-    pending:     'pending',
-    rejected:    'rejected',
-};
 
 export async function updateBookingStatus(id, payload) {
     const safeId = normalizeBookingRefId(id);
     if (!safeId) return { data: null, error: 'Invalid booking id.' };
 
-    let mappedStatus = payload.status;
-    if (payload.status) {
-        mappedStatus = STATUS_MAP[String(payload.status).toLowerCase()] ?? payload.status;
-    }
+    const dbStatus = payload.status ? toDbStatus(payload.status) : undefined;
+
+    // Optional: record who cancelled
+    const updatePayload = dbStatus != null ? { status: dbStatus } : {};
+    if (payload.cancelled_by) updatePayload.cancelled_by = payload.cancelled_by;
 
     try {
         const { data, error } = await supabase
             .from('bookings')
-            .update({ status: mappedStatus })
+            .update(updatePayload)
             .eq('id', safeId)
             .select('*, barbers(*), clients(*)')
             .single();
 
         if (error) {
             console.error('[BOOKING PATCH] Supabase error:', error);
-            return { data: null, error: error.message };
+            return { data: null, error: mapBookingError(error) };
         }
 
         return { data: normalizeBooking(data), error: null };
-    } catch (err) {
+    } catch {
         return { data: null, error: 'Failed to update booking.' };
     }
 }
