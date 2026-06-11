@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useClient } from '../../context/ClientContext.jsx';
 import { getOrCreateClient } from '../../api/clientApi.js';
-import { sendVerificationCode, verifyCode } from '../../api/verificationApi.js';
+import { checkPhoneExists, sendVerificationCode, verifyCode } from '../../api/verificationApi.js';
 import { ExternalLink } from 'lucide-react';
 import { t } from '../../utils/i18n.js';
 
@@ -68,6 +68,25 @@ function Register() {
         setError('');
         setTelegramLinked(null);
         setSent(false);
+
+        const { exists, role: existingRole, error: checkErr } = await checkPhoneExists(formattedPhone);
+        if (checkErr) {
+            setError('Xatolik: ' + checkErr);
+            setLoading(false);
+            inFlight.current = false;
+            return;
+        }
+
+        if (exists) {
+            if (existingRole === role) {
+                setError(`Bu raqam allaqachon ${role === 'barber' ? 'sartarosh' : 'mijoz'} sifatida ro'yxatdan o'tgan. Tizimga kiring.`);
+            } else {
+                setError(`Bu raqam ${existingRole === 'barber' ? 'sartarosh' : 'mijoz'} sifatida ro'yxatdan o'tgan. Bitta raqamdan faqat bitta rolda foydalanish mumkin.`);
+            }
+            setLoading(false);
+            inFlight.current = false;
+            return;
+        }
 
         const { error: sendErr, linked, sent: sentOk } = await sendVerificationCode(formattedPhone);
         if (sendErr) {

@@ -53,6 +53,12 @@ interface NotifyPayload {
   // status changes can delete the original alert).
   booking_id?: string;
 
+  // Venue support (sends a map bubble)
+  latitude?: number;
+  longitude?: number;
+  venue_title?: string;
+  venue_address?: string;
+
   // Delete a previously-sent message in-place (used by the DB trigger to
   // clean up the original "Yangi navbat!" alert after the barber acts).
   delete_message?: { chat_id: string; message_id: number | string };
@@ -80,20 +86,7 @@ serve(async (req) => {
     // ── 1. Handle message deletion ──
     if (body.delete_message) {
       let { chat_id, message_id } = body.delete_message;
-      const overrideChatId = Deno.env.get("OVERRIDE_TELEGRAM_CHAT_ID");
-      const overridePhone = Deno.env.get("OVERRIDE_TELEGRAM_PHONE");
 
-      if (overrideChatId) {
-        chat_id = overrideChatId;
-      } else if (overridePhone) {
-        const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-        const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-        if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
-          const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-          const resolved = await lookupChatIdByPhone(supabase, overridePhone);
-          if (resolved) chat_id = resolved;
-        }
-      }
 
       const url = `https://api.telegram.org/bot${botToken}/deleteMessage`;
       const resp = await fetch(url, {
@@ -117,24 +110,12 @@ serve(async (req) => {
     }
     const parseMode = body.parse_mode || "HTML";
 
-    // Resolve chat_id with override support
+    // Resolve chat_id 
     let chatId: string | null = null;
-    const overrideChatId = Deno.env.get("OVERRIDE_TELEGRAM_CHAT_ID");
-    const overridePhone = Deno.env.get("OVERRIDE_TELEGRAM_PHONE");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
     const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabaseClient = (SUPABASE_URL && SUPABASE_SERVICE_KEY) ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY) : null;
-
-    if (overrideChatId) {
-      chatId = overrideChatId;
-      console.log(`[TELEGRAM NOTIFY] OVERRIDE: Redirecting message to overrideChatId="${chatId}"`);
-    } else if (overridePhone && supabaseClient) {
-      chatId = await lookupChatIdByPhone(supabaseClient, overridePhone);
-      if (chatId) {
-        console.log(`[TELEGRAM NOTIFY] OVERRIDE: Redirecting message to overridePhone="${overridePhone}" chat_id="${chatId}"`);
-      }
-    }
 
     if (!chatId) {
       chatId = body.chat_id || null;
@@ -210,6 +191,22 @@ serve(async (req) => {
 
     const sentMessageId = result.result?.message_id;
     console.log(`[TELEGRAM NOTIFY] sent to chat_id=${chatId} message_id=${sentMessageId}`);
+
+    // If venue coordinates are provided, send a map preview (sendVenue) right after the message
+    if (body.latitude !== undefined && body.longitude !== undefined) {
+      const venueUrl = `https://api.telegram.org/bot${botToken}/sendVenue`;
+      await fetch(venueUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          title: body.venue_title || "Sartaroshxona",
+          address: body.venue_address || "Manzil ko'rsatilmagan",
+        }),
+      }).catch(err => console.error("[TELEGRAM NOTIFY] sendVenue error:", err));
+    }
 
     // Message tracking omitted — telegram_messages column not present in schema.
 

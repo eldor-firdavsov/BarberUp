@@ -105,11 +105,16 @@ ALTER TABLE public.bookings
     ADD COLUMN IF NOT EXISTS service_duration  TEXT,
     ADD COLUMN IF NOT EXISTS guest_name        TEXT,
     ADD COLUMN IF NOT EXISTS guest_phone       TEXT,
-    ADD COLUMN IF NOT EXISTS deposit_amount    NUMERIC   DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS deposit_status    TEXT      DEFAULT 'none',
-    ADD COLUMN IF NOT EXISTS payment_provider  TEXT,
-    ADD COLUMN IF NOT EXISTS payment_ref       TEXT,
     ADD COLUMN IF NOT EXISTS cancelled_by      TEXT;
+
+-- Remove old payment/deposit columns
+ALTER TABLE public.bookings
+    DROP COLUMN IF EXISTS deposit_amount,
+    DROP COLUMN IF EXISTS deposit_status,
+    DROP COLUMN IF EXISTS payment_provider,
+    DROP COLUMN IF EXISTS payment_ref;
+
+ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_deposit_status_check;
 
 -- Check constraints
 DO $$
@@ -117,10 +122,6 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bookings_status_check') THEN
         ALTER TABLE public.bookings ADD CONSTRAINT bookings_status_check
             CHECK (status IN ('pending', 'accepted', 'rejected', 'cancelled', 'completed'));
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bookings_deposit_status_check') THEN
-        ALTER TABLE public.bookings ADD CONSTRAINT bookings_deposit_status_check
-            CHECK (deposit_status IN ('none', 'paid', 'refunded', 'forfeited'));
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'bookings_cancelled_by_check') THEN
         ALTER TABLE public.bookings ADD CONSTRAINT bookings_cancelled_by_check

@@ -31,7 +31,7 @@ BEGIN
       'Authorization', 'Bearer ' || v_anon_key,
       'apikey', v_anon_key
     ),
-    body := p_payload::text
+    body := p_payload
   ) INTO v_request_id;
   RAISE LOG '[notify_telegram] dispatched request_id=%', v_request_id;
 EXCEPTION WHEN OTHERS THEN
@@ -104,6 +104,8 @@ DECLARE
   v_client_text     text;
   v_barber_text     text;
   v_cancelled_by    text;
+  v_latitude        numeric;
+  v_longitude       numeric;
 BEGIN
   -- Skip no-op UPDATEs
   IF TG_OP = 'UPDATE' AND OLD.status IS NOT DISTINCT FROM NEW.status THEN
@@ -137,8 +139,10 @@ BEGIN
     COALESCE(b.office_name, ''),
     COALESCE(b.fullname, ''),
     COALESCE(b.phone, ''),
-    COALESCE(b.address, '')
-  INTO v_barber_office, v_barber_fullname, v_barber_phone, v_barber_address
+    COALESCE(b.address, ''),
+    (b.location->'coordinates'->>1)::numeric,
+    (b.location->'coordinates'->>0)::numeric
+  INTO v_barber_office, v_barber_fullname, v_barber_phone, v_barber_address, v_latitude, v_longitude
   FROM public.barbers b WHERE b.id = NEW.barber_id LIMIT 1;
 
   -- Helper: barber display name
@@ -167,11 +171,19 @@ BEGIN
     );
 
     IF v_client_phone IS NOT NULL THEN
-      PERFORM public.notify_telegram(jsonb_build_object(
-        'target', 'client',
-        'phone',  v_client_phone,
-        'text',   v_client_text
-      ));
+      PERFORM public.notify_telegram(
+        jsonb_strip_nulls(
+          jsonb_build_object(
+            'target', 'client',
+            'phone',  v_client_phone,
+            'text',   v_client_text,
+            'latitude', v_latitude,
+            'longitude', v_longitude,
+            'venue_title', COALESCE(NULLIF(v_barber_office, ''), v_barber_fullname),
+            'venue_address', COALESCE(NULLIF(v_barber_address, ''), 'Joylashuv xaritada ko''rsatilgan')
+          )
+        )
+      );
     END IF;
 
     -- ── BARBER ──
