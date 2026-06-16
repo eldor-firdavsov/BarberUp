@@ -194,7 +194,7 @@ function Settings() {
 
             {/* Profile Card */}
             <div className="bg-white rounded-[28px] border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] p-6 flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-[#378ADD] flex items-center justify-center shrink-0 overflow-hidden shadow-lg shadow-[#378ADD]/20">
+                <div className="w-16 h-16 rounded-2xl bg-[#2563eb] flex items-center justify-center shrink-0 overflow-hidden shadow-lg shadow-[#2563eb]/20">
                     {profilePreview ? (
                         <img src={profilePreview} alt="Profile" className="w-full h-full object-cover" onError={() => setProfilePreview('')} />
                     ) : (
@@ -216,7 +216,7 @@ function Settings() {
                     className="w-full flex items-center gap-4 px-5 sm:px-6 py-4 sm:py-5 active:bg-[#f8f8f8] transition-colors text-left min-h-[60px]"
                 >
                     <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
-                        <User size={18} className="text-[#378ADD]" />
+                        <User size={18} className="text-[#2563eb]" />
                     </div>
                     <div className="flex-1">
                         <p className="font-semibold text-[#111] text-sm">Profilni tahrirlash</p>
@@ -231,7 +231,7 @@ function Settings() {
                     className="w-full flex items-center gap-4 px-5 sm:px-6 py-4 sm:py-5 active:bg-[#f8f8f8] transition-colors text-left min-h-[60px]"
                 >
                     <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
-                        <Clock size={18} className="text-[#378ADD]" />
+                        <Clock size={18} className="text-[#2563eb]" />
                     </div>
                     <div className="flex-1">
                         <p className="font-semibold text-[#111] text-sm">Ish vaqtini tahrirlash</p>
@@ -245,7 +245,7 @@ function Settings() {
                     className="w-full flex items-center gap-4 px-5 sm:px-6 py-4 sm:py-5 active:bg-[#f8f8f8] transition-colors text-left min-h-[60px]"
                 >
                     <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
-                        <Phone size={18} className="text-[#378ADD]" />
+                        <Phone size={18} className="text-[#2563eb]" />
                     </div>
                     <div className="flex-1">
                         <p className="font-semibold text-[#111] text-sm">Telefon raqamini o'zgartirish</p>
@@ -260,7 +260,7 @@ function Settings() {
                     className="w-full flex items-center gap-4 px-5 sm:px-6 py-4 sm:py-5 active:bg-[#f8f8f8] transition-colors text-left min-h-[60px]"
                 >
                     <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
-                        <Coffee size={18} className="text-[#378ADD]" />
+                        <Coffee size={18} className="text-[#2563eb]" />
                     </div>
                     <div className="flex-1">
                         <p className="font-semibold text-[#111] text-sm">Tushlik vaqtini tahrirlash</p>
@@ -274,7 +274,7 @@ function Settings() {
                     className="w-full flex items-center gap-4 px-5 sm:px-6 py-4 sm:py-5 active:bg-[#f8f8f8] transition-colors text-left min-h-[60px]"
                 >
                     <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
-                        <MapPin size={18} className="text-[#378ADD]" />
+                        <MapPin size={18} className="text-[#2563eb]" />
                     </div>
                     <div className="flex-1">
                         <p className="font-semibold text-[#111] text-sm">Salon joylashuvi (manzili)</p>
@@ -289,7 +289,7 @@ function Settings() {
             <div className="bg-white rounded-[28px] border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] overflow-hidden">
                 <div className="flex items-center gap-4 px-5 sm:px-6 py-4 sm:py-5">
                     <div className="w-10 h-10 rounded-2xl bg-[#EBF4FF] flex items-center justify-center shrink-0">
-                        <Send size={18} className="text-[#378ADD]" />
+                        <Send size={18} className="text-[#2563eb]" />
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="font-semibold text-[#111] text-sm">{t('barber.settings.telegram')}</p>
@@ -310,7 +310,7 @@ function Settings() {
                         href="https://t.me/BarberUp_bot"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full flex items-center justify-center gap-2 h-11 bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-sm rounded-2xl transition-all shadow-[0_8px_20px_rgba(55,138,221,0.2)] active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-11 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-semibold text-sm rounded-2xl transition-all shadow-[0_8px_20px_rgba(55,138,221,0.2)] active:scale-[0.98]"
                     >
                         <ExternalLink size={15} />
                         @BarberUp_bot ni ochish
@@ -351,7 +351,7 @@ function Settings() {
                             <div className="space-y-4">
                                 {/* Avatar */}
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-[#378ADD] flex items-center justify-center shrink-0 overflow-hidden">
+                                    <div className="w-14 h-14 rounded-2xl bg-[#2563eb] flex items-center justify-center shrink-0 overflow-hidden">
                                         {profilePreview ? (
                                             <img src={profilePreview} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
@@ -367,13 +367,13 @@ function Settings() {
                                                 const file = e.target.files[0];
                                                 if (file) { setProfileFile(file); setProfilePreview(URL.createObjectURL(file)); }
                                             }}
-                                            className="text-xs text-[#666] file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#378ADD] file:text-white file:min-h-[36px] file:cursor-pointer hover:file:bg-[#185FA5]"
+                                            className="text-xs text-[#666] file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#2563eb] file:text-white file:min-h-[36px] file:cursor-pointer hover:file:bg-[#1d4ed8]"
                                         />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">To'liq ism</label>
-                                    <input type="text" value={fullname} onChange={e => setFullname(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all" />
+                                    <input type="text" value={fullname} onChange={e => setFullname(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#1d4ed8]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Telefon</label>
@@ -384,7 +384,7 @@ function Settings() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Salon nomi</label>
-                                    <input type="text" value={officeName} onChange={e => setOfficeName(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all" />
+                                    <input type="text" value={officeName} onChange={e => setOfficeName(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#1d4ed8]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Salon suratlari (maksimal 3 ta)</label>
@@ -442,12 +442,12 @@ function Settings() {
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1">
                                         <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Boshlanish</label>
-                                        <input type="time" value={workStart} onChange={e => setWorkStart(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
+                                        <input type="time" value={workStart} onChange={e => setWorkStart(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#1d4ed8]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
                                     </div>
                                     <span className="text-[#666] font-bold mt-6">—</span>
                                     <div className="flex-1">
                                         <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Tugash</label>
-                                        <input type="time" value={workEnd} onChange={e => setWorkEnd(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
+                                        <input type="time" value={workEnd} onChange={e => setWorkEnd(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#1d4ed8]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
                                     </div>
                                 </div>
                             </div>
@@ -460,12 +460,12 @@ function Settings() {
                                 <div className="flex items-center gap-3">
                                     <div className="flex-1">
                                         <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Boshlanish</label>
-                                        <input type="time" value={lunchStart} onChange={e => setLunchStart(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
+                                        <input type="time" value={lunchStart} onChange={e => setLunchStart(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#1d4ed8]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
                                     </div>
                                     <span className="text-[#666] font-bold mt-6">—</span>
                                     <div className="flex-1">
                                         <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Tugash</label>
-                                        <input type="time" value={lunchEnd} onChange={e => setLunchEnd(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
+                                        <input type="time" value={lunchEnd} onChange={e => setLunchEnd(e.target.value)} className="w-full h-12 px-4 bg-[#f8f8f8] border border-black/5 rounded-2xl text-[#111] font-medium outline-none focus:border-[#1d4ed8]/30 focus:ring-2 focus:ring-[#85B7EB]/40 focus:bg-white transition-all text-center" />
                                     </div>
                                 </div>
                             </div>
@@ -497,7 +497,7 @@ function Settings() {
                         <button
                             onClick={modal === 'profile' ? handleSaveProfile : modal === 'hours' ? handleSaveHours : modal === 'lunch' ? handleSaveLunch : handleSaveLocation}
                             disabled={loading}
-                            className="w-full h-12 sm:h-11 mt-5 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] active:scale-[0.98] text-white font-bold text-sm transition-all disabled:opacity-50 shadow-[0_10px_25px_rgba(55,138,221,0.25)] cursor-pointer min-h-[48px]"
+                            className="w-full h-12 sm:h-11 mt-5 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.98] text-white font-bold text-sm transition-all disabled:opacity-50 shadow-[0_10px_25px_rgba(55,138,221,0.25)] cursor-pointer min-h-[48px]"
                         >
                             {loading ? 'Saqlanmoqda...' : 'Saqlash'}
                         </button>

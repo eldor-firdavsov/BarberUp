@@ -50,8 +50,8 @@ const BARBER_STATUSES = [
 ];
 
 const SimpleAvatar = ({ name, size = "w-12 h-12" }) => (
-    <div className={`${size} rounded-2xl bg-gradient-to-br from-[#378ADD]/15 to-[#185FA5]/10 flex items-center justify-center border border-[#378ADD]/10 shrink-0`}>
-        <span className="text-[#378ADD] font-bold text-sm">
+    <div className={`${size} rounded-2xl bg-gradient-to-br from-[#2563eb]/15 to-[#1d4ed8]/10 flex items-center justify-center border border-[#2563eb]/10 shrink-0`}>
+        <span className="text-[#2563eb] font-bold text-sm">
             {name?.charAt(0).toUpperCase() || 'C'}
         </span>
     </div>
@@ -278,13 +278,13 @@ function Dashboard() {
                                 if (c) setProfileClient({ id: c.id, name: c.name || c.fullname, phone: c.phone, email: c.email, createdAt: c.createdAt });
                                 else if (booking.guest_name) setProfileClient({ id: `guest_${booking.id}`, name: booking.guest_name, phone: booking.guest_phone || '' });
                             }}
-                            className="font-bold text-[#111] truncate hover:text-[#378ADD] transition-colors text-left text-sm"
+                            className="font-bold text-[#111] truncate hover:text-[#2563eb] transition-colors text-left text-sm"
                         >
                             {clientName}
                         </button>
                         <p className="text-xs text-[#666] font-semibold mt-0.5 truncate">{booking.service_name || t('barber.dashboard.haircut')}</p>
                         {phone && (
-                            <a href={`tel:${phone}`} className="text-[10px] text-[#888] font-medium mt-0.5 hover:text-[#378ADD] transition-colors block truncate">
+                            <a href={`tel:${phone}`} className="text-[10px] text-[#888] font-medium mt-0.5 hover:text-[#2563eb] transition-colors block truncate">
                                 {phone}
                             </a>
                         )}
@@ -310,7 +310,7 @@ function Dashboard() {
                             <>
                                 <button
                                     onClick={() => handleStatusUpdate(booking.id, 'accepted')}
-                                    className="h-10 px-4 bg-[#378ADD] text-white rounded-xl flex items-center gap-1.5 hover:bg-[#185FA5] active:scale-[0.93] transition-all shadow-sm font-bold text-xs"
+                                    className="h-10 px-4 bg-[#2563eb] text-white rounded-xl flex items-center gap-1.5 hover:bg-[#1d4ed8] active:scale-[0.93] transition-all shadow-sm font-bold text-xs"
                                     title={t('common.accept')}
                                 >
                                     <Check size={14} /> Qabul
@@ -378,7 +378,7 @@ function Dashboard() {
             <section className="bg-white border border-black/5 rounded-[28px] p-5 sm:p-6 shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
                 <p className="text-[10px] uppercase text-[#888] font-bold tracking-[0.12em] mb-3 flex items-center gap-2">
                     {t('barber.dashboard.myStatus')}
-                    {statusUpdating && <span className="w-1.5 h-1.5 rounded-full bg-[#378ADD] animate-pulse" />}
+                    {statusUpdating && <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb] animate-pulse" />}
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {BARBER_STATUSES.map(s => {
@@ -457,7 +457,7 @@ function Dashboard() {
                     <div className="space-y-3">
                         {loading ? (
                             <div className="bg-white border border-black/5 rounded-[24px] p-10 text-center">
-                                <div className="w-7 h-7 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mx-auto" />
+                                <div className="w-7 h-7 border-2 border-black/10 border-t-[#2563eb] rounded-full animate-spin mx-auto" />
                             </div>
                         ) : pendingRequests.length === 0 ? (
                             <div className="bg-[#fffbf0] border border-dashed border-amber-200 rounded-[24px] p-8 text-center flex flex-col items-center justify-center min-h-[200px]">

@@ -222,7 +222,7 @@ function Booking() {
                             {tab.label}
                             {count > 0 && (
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black min-w-[18px] text-center ${
-                                    isActive ? 'bg-[#378ADD] text-white' : 'bg-black/5 text-[#888]'
+                                    isActive ? 'bg-[#2563eb] text-white' : 'bg-black/5 text-[#888]'
                                 }`}>
                                     {count}
                                 </span>
@@ -266,7 +266,7 @@ function Booking() {
                     {activeTab === 'active' && (
                         <button
                             onClick={() => navigate('/client/dashboard')}
-                            className="mt-6 h-12 px-6 bg-[#378ADD] text-white font-bold rounded-xl text-xs uppercase tracking-wider hover:bg-[#185FA5] transition-all shadow-[0_8px_20px_rgba(55,138,221,0.2)]"
+                            className="mt-6 h-12 px-6 bg-[#2563eb] text-white font-bold rounded-xl text-xs uppercase tracking-wider hover:bg-[#1d4ed8] transition-all shadow-[0_8px_20px_rgba(55,138,221,0.2)]"
                         >
                             Sartaroshlarni ko'rish
                         </button>
@@ -293,11 +293,11 @@ function Booking() {
                                 <div className="flex justify-between items-start gap-3">
                                     {/* Barber Profile image / avatar */}
                                     <div className="flex gap-4 min-w-0 flex-1">
-                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#378ADD]/15 to-[#185FA5]/10 flex items-center justify-center border border-[#378ADD]/10 shrink-0 font-extrabold text-lg text-[#378ADD]">
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#2563eb]/15 to-[#1d4ed8]/10 flex items-center justify-center border border-[#2563eb]/10 shrink-0 font-extrabold text-lg text-[#2563eb]">
                                             {(barber?.office_name || barber?.fullname || 'B').charAt(0).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="font-extrabold text-[#111] text-sm tracking-tight truncate group-hover:text-[#378ADD] transition-colors">
+                                            <h3 className="font-extrabold text-[#111] text-sm tracking-tight truncate group-hover:text-[#2563eb] transition-colors">
                                                 {barber?.office_name || t('common.barbershop')}
                                             </h3>
                                             <p className="text-xs text-[#666] font-semibold mt-0.5 truncate">{barber?.fullname}</p>
@@ -332,14 +332,14 @@ function Booking() {
                                 {/* Address if provided and confirmed */}
                                 {statusKey === 'accepted' && barber?.address && (
                                     <div className="text-[11px] text-[#888] font-semibold flex items-center gap-1">
-                                        <MapPin size={11} className="text-[#378ADD]" />
+                                        <MapPin size={11} className="text-[#2563eb]" />
                                         <span className="truncate">{barber.address}</span>
                                     </div>
                                 )}
 
                                 {/* Action bar */}
                                 <div className="border-t border-black/5 pt-3.5 flex justify-between items-center">
-                                    <span className="text-[11px] text-[#378ADD] font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                                    <span className="text-[11px] text-[#2563eb] font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
                                         Holatni kuzatish <ChevronRight size={12} />
                                     </span>
 

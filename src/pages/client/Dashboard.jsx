@@ -310,8 +310,8 @@ function Client() {
                 {t('client.dashboard.subtitle')}
             </p>
 
-            <div className="sticky top-0 z-20 bg-[#f5f5f7] -mx-4 px-4 pt-2 pb-3 sm:static sm:bg-transparent sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0">
-                <div className="flex bg-[#f8f8f8] p-1.5 rounded-2xl border border-black/5 shadow-sm">
+            <div className="sticky top-0 z-20 -mx-4 px-4 pt-2 pb-3 sm:static sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0 backdrop-blur-md bg-[#f5f5f7]/80">
+                <div className="flex bg-white/80 p-1.5 rounded-[20px] shadow-sm glass border border-black/5">
                     <button
                         onClick={() => setActiveTab('nearby')}
                         className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
@@ -330,11 +330,12 @@ function Client() {
                     </button>
                     <button
                         onClick={() => setActiveTab('map')}
-                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
-                            activeTab === 'map' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666] active:bg-black/5'
+                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-[14px] transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
+                            activeTab === 'map' ? 'bg-var(--brand-primary) shadow-md text-white' : 'text-[#666] hover:bg-black/5'
                         }`}
+                        style={activeTab === 'map' ? { backgroundColor: 'var(--brand-primary)' } : {}}
                     >
-                        Xarita
+                        {t('client.dashboard.map', 'Xarita')}
                     </button>
                 </div>
             </div>
@@ -411,9 +412,9 @@ function Client() {
                         <div
                             key={barber.id ?? index}
                             onClick={() => navigate(`/client/barber/${encodeURIComponent(barber.id)}`)}
-                            className="bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] cursor-pointer group min-h-[120px] transition-all duration-200 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)]"
+                            className="bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] cursor-pointer group flex flex-col transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] hover:-translate-y-1"
                         >
-                            <div className="relative overflow-hidden rounded-t-[32px]">
+                            <div className="relative overflow-hidden rounded-t-[32px] aspect-[4/3]">
                                 {barber.tier === 'premium' && (
                                     <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-400 text-white font-extrabold text-[9px] px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider">
                                         <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20l-2-8-5 3.5L12 8l-3 6.5L4 11z" /></svg>
@@ -435,15 +436,16 @@ function Client() {
                                                 : 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'
                                     }
                                     alt={t('common.shop')}
-                                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'; }}
                                 />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
                                 <div className="absolute top-4 right-4">
                                     <button
                                         onClick={(e) => toggleFavorite(barber.id, e)}
-                                        className="bg-white/90 backdrop-blur-sm p-2.5 rounded-full hover:bg-white transition-all hover:scale-110 shadow-lg"
+                                        className="glass p-2.5 rounded-full hover:bg-white transition-all hover:scale-110 shadow-lg text-white"
                                     >
-                                        <Heart size={18} fill={isFavorite(barber.id) ? 'red' : 'none'} color={isFavorite(barber.id) ? '#EF4444' : '#9CA3AF'} />
+                                        <Heart size={18} fill={isFavorite(barber.id) ? '#EF4444' : 'none'} color={isFavorite(barber.id) ? '#EF4444' : 'currentColor'} />
                                     </button>
                                 </div>
                                 <div className="absolute bottom-4 left-4">
@@ -524,12 +526,12 @@ function Client() {
                                                 e.stopPropagation();
                                                 openProfileModal(barber);
                                             }}
-                                            className="h-12 sm:h-11 rounded-2xl bg-[#E6F1FB] border border-[#185FA5]/15 text-[#185FA5] font-semibold text-xs transition-all duration-200 active:bg-[#d9e9f8] active:border-[#185FA5]/25 shadow-[0_4px_20px_rgba(55,138,221,0.08)]"
+                                            className="h-12 sm:h-11 rounded-2xl bg-white border border-[#2563eb]/20 text-[#2563eb] font-bold text-xs transition-all duration-200 hover:bg-[#eff6ff] hover:border-[#2563eb]/40 active:scale-[0.98] shadow-sm"
                                         >
                                             {t('client.dashboard.viewProfile')}
                                         </button>
                                         <button
-                                            className="h-12 sm:h-11 rounded-2xl bg-[#378ADD] active:bg-[#185FA5] text-white font-semibold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(55,138,221,0.25)] active:scale-[0.97]"
+                                            className="h-12 sm:h-11 rounded-2xl bg-[#2563eb] active:bg-[#1d4ed8] hover:bg-[#1d4ed8] text-white font-bold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(37,99,235,0.25)] active:scale-[0.98]"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 navigate(`/client/barber/${encodeURIComponent(barber.id)}`);

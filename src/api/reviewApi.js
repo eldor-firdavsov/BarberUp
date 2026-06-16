@@ -49,3 +49,26 @@ export async function getBarberReviews(barberId, limit = 10) {
 
     return { data: data ?? [], error: null };
 }
+
+/**
+ * Delete a review.
+ * Enforces that the guest_phone matches the review to prevent unauthorized deletion.
+ * @param {string} reviewId
+ * @param {string} guestPhone
+ */
+export async function deleteReview(reviewId, guestPhone) {
+    if (!reviewId || !guestPhone) return { error: 'Missing required parameters.' };
+
+    const { error } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('id', reviewId)
+        .eq('guest_phone', guestPhone);
+
+    if (error) {
+        console.error('[REVIEW DELETE]', error);
+        return { error: error.message };
+    }
+
+    return { error: null };
+}

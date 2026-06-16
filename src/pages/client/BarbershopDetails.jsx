@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, Star, Trash2 } from "lucide-react";
 import InteractiveMap from "../../components/InteractiveMap.jsx";
 import { getBarbers } from "../../api/barberApi.js";
+import { getBarberReviews, deleteReview } from "../../api/reviewApi.js";
 import {
     bookingMatchesBarber,
     createGuestBooking,
@@ -47,6 +48,24 @@ export default function BarbershopDetails() {
     const [retrying, setRetrying] = useState(false);
     const [selectedService, setSelectedService] = useState(null);
     const [selectedDate, setSelectedDate] = useState(() => toDateStr(new Date()));
+    const [reviews, setReviews] = useState([]);
+    const [reviewsLoading, setReviewsLoading] = useState(true);
+
+    const averageRating = useMemo(() => {
+        if (!reviews.length) return 0;
+        const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+        return (sum / reviews.length).toFixed(1);
+    }, [reviews]);
+
+    const handleDeleteReview = async (reviewId) => {
+        if (!window.confirm("Sharhni o'chirmoqchimisiz?")) return;
+        const { error } = await deleteReview(reviewId, clientPhone);
+        if (!error) {
+            setReviews(prev => prev.filter(r => r.id !== reviewId));
+        } else {
+            alert("Xatolik yuz berdi");
+        }
+    };
 
     const dayOptions = useMemo(() => getBookingDayOptions(BOOKING_DAY_COUNT), []);
 
@@ -253,6 +272,13 @@ export default function BarbershopDetails() {
                 }
 
                 setBarber(found);
+
+                getBarberReviews(barberKey).then(({ data }) => {
+                    if (isMounted) {
+                        setReviews(data || []);
+                        setReviewsLoading(false);
+                    }
+                });
 
                 const list =
                     found.services &&
@@ -499,10 +525,53 @@ export default function BarbershopDetails() {
 
     if (loading || !barber) {
         return (
-            <div className="min-h-screen bg-[#f5f5f7] flex justify-center items-center">
-                <p className="text-[#777] font-medium">
-                    {t("client.barbershopDetails.loading")}
-                </p>
+            <div className="min-h-screen bg-[#f5f5f7] flex justify-center px-0 sm:px-6 py-0 sm:py-8 safe-bottom">
+                <div className="w-full max-w-md md:max-w-5xl bg-white sm:rounded-[32px] overflow-hidden relative border-0 sm:border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] animate-pulse">
+                    <div className="relative h-[320px] w-full skeleton"></div>
+                    <div className="relative z-10 -mt-8 bg-white rounded-t-[32px] px-6 py-7">
+                        <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 space-y-8 md:space-y-0">
+                            <div className="space-y-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-full skeleton ring-4 ring-[#f5f5f7]"></div>
+                                    <div>
+                                        <div className="h-8 w-48 skeleton rounded-lg mb-2"></div>
+                                        <div className="h-4 w-24 skeleton rounded-md"></div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="h-24 skeleton rounded-3xl"></div>
+                                    <div className="h-24 skeleton rounded-3xl"></div>
+                                </div>
+                                <div>
+                                    <div className="h-6 w-32 skeleton rounded-md mb-4"></div>
+                                    <div className="space-y-3">
+                                        <div className="h-[88px] skeleton rounded-3xl"></div>
+                                        <div className="h-[88px] skeleton rounded-3xl"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-8">
+                                <div>
+                                    <div className="h-6 w-32 skeleton rounded-md mb-4"></div>
+                                    <div className="flex gap-2 mb-6">
+                                        <div className="h-16 w-[72px] skeleton rounded-2xl"></div>
+                                        <div className="h-16 w-[72px] skeleton rounded-2xl"></div>
+                                        <div className="h-16 w-[72px] skeleton rounded-2xl"></div>
+                                    </div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="h-6 w-40 skeleton rounded-md"></div>
+                                        <div className="h-6 w-20 skeleton rounded-full"></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        <div className="h-[88px] skeleton rounded-3xl"></div>
+                                        <div className="h-[88px] skeleton rounded-3xl"></div>
+                                        <div className="h-[88px] skeleton rounded-3xl"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -533,7 +602,7 @@ export default function BarbershopDetails() {
 
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-5 left-5 z-10 bg-white/20 hover:bg-white/30 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 border border-white/20 active:scale-[0.9]"
+                    className="absolute top-5 left-5 z-10 glass hover:bg-white/90 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 border border-white/40 active:scale-[0.9] text-white hover:text-[#111] shadow-lg"
                 >
                     <svg
                         width="22"
@@ -578,7 +647,7 @@ export default function BarbershopDetails() {
                                     />
                                 ) : (
                                     <div className="w-16 h-16 rounded-full bg-[#378ADD] flex items-center justify-center ring-4 ring-[#f5f5f7]">
-                                        <span className="text-white text-lg font-bold">
+                                        <span className="text-white text-xl font-bold">
                                             {(
                                                 barber.fullname ||
                                                 barber.name ||
@@ -597,6 +666,12 @@ export default function BarbershopDetails() {
                                                 barber.shopName ||
                                                 t("client.barbershopDetails.gentlemansAtelier")}
                                         </h2>
+                                        {averageRating > 0 && (
+                                            <div className="flex items-center gap-1 bg-[#f5f5f7] px-2 py-1.5 rounded-lg border border-black/5 shadow-sm">
+                                                <Star size={14} className="text-amber-400 fill-amber-400" />
+                                                <span className="text-[13px] font-bold text-[#111] leading-none">{averageRating}</span>
+                                            </div>
+                                        )}
                                         {barber.tier === 'premium' && (
                                             <span className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-400 text-white font-extrabold text-[9px] px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider select-none shrink-0">
                                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20l-2-8-5 3.5L12 8l-3 6.5L4 11z" /></svg>
@@ -683,10 +758,10 @@ export default function BarbershopDetails() {
                                                         service
                                                     )
                                                 }
-                                                className={`p-5 rounded-3xl border cursor-pointer transition-all duration-200 flex justify-between items-center
+                                                className={`p-5 rounded-3xl border cursor-pointer transition-all duration-200 flex justify-between items-center active:scale-[0.98]
                                                 ${isSelected
-                                                        ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_10px_30px_rgba(24,95,165,0.2)]"
-                                                        : "bg-[#fafafa] border-black/5 hover:border-black/20"
+                                                        ? "bg-[#2563eb] text-white border-[#2563eb] shadow-[0_10px_30px_rgba(37,99,235,0.2)]"
+                                                        : "bg-[#f8f8f8] border-black/5 hover:border-black/15 hover:shadow-sm"
                                                     }`}
                                             >
                                                 <div>
@@ -722,6 +797,57 @@ export default function BarbershopDetails() {
                                     shopName={barber.office_name || barber.shopName}
                                 />
                             </div>
+
+                            {/* Reviews Section */}
+                            <div>
+                                <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em] flex items-center gap-2">
+                                    Sharhlar
+                                    <span className="text-sm font-medium text-[#666] bg-[#f8f8f8] px-2.5 py-0.5 rounded-full border border-black/5">{reviews.length}</span>
+                                </h3>
+
+                                {reviewsLoading ? (
+                                    <div className="space-y-3">
+                                        <div className="h-28 skeleton rounded-3xl"></div>
+                                        <div className="h-28 skeleton rounded-3xl"></div>
+                                    </div>
+                                ) : reviews.length > 0 ? (
+                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 pb-4 scrollbar-hide">
+                                        {reviews.map(review => (
+                                            <div key={review.id} className="p-5 rounded-3xl bg-[#f8f8f8] border border-black/5 relative group transition-all duration-200 hover:border-black/10">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <p className="font-bold text-sm text-[#111]">
+                                                            {review.clients?.fullname || "Mehmon"}
+                                                        </p>
+                                                        <div className="flex text-amber-400 mt-1">
+                                                            {[1,2,3,4,5].map(star => (
+                                                                <Star key={star} size={12} className={star <= review.rating ? "fill-amber-400" : "text-gray-300"} />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[10px] text-[#999] font-medium">{new Date(review.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                                {review.comment && <p className="text-[13px] text-[#444] mt-2.5 leading-relaxed">{review.comment}</p>}
+
+                                                {review.guest_phone === clientPhone && (
+                                                    <button
+                                                        onClick={() => handleDeleteReview(review.id)}
+                                                        className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm text-red-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-50"
+                                                        aria-label="Delete review"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="bg-[#f8f8f8] border border-black/5 rounded-3xl p-6 text-center">
+                                        <Star size={32} className="text-gray-300 mx-auto mb-2" />
+                                        <p className="text-sm font-medium text-[#777]">Hali sharhlar yo'q</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Right Column: Date Selection, Available Slots, Alerts & Booking Button */}
@@ -738,10 +864,10 @@ export default function BarbershopDetails() {
                                                 key={day.dateStr}
                                                 type="button"
                                                 onClick={() => handleSelectDate(day.dateStr)}
-                                                className={`shrink-0 flex flex-col items-center min-w-[72px] py-3 px-3 rounded-2xl border transition-all font-bold
+                                                className={`shrink-0 flex flex-col items-center min-w-[72px] py-3 px-3 rounded-2xl border transition-all font-bold active:scale-95
                                                 ${isSelected
-                                                        ? "bg-[#185FA5] text-white border-[#185FA5] shadow-[0_8px_20px_rgba(24,95,165,0.25)]"
-                                                        : "bg-white text-[#666] border-black/5 hover:border-[#378ADD]/30"
+                                                        ? "bg-[#2563eb] text-white border-[#2563eb] shadow-[0_8px_20px_rgba(37,99,235,0.25)]"
+                                                        : "bg-[#f8f8f8] text-[#666] border-black/5 hover:border-[#2563eb]/30 hover:bg-[#eff6ff]"
                                                     }`}
                                             >
                                                 <span className="text-[10px] uppercase tracking-wider leading-none mb-1 opacity-80">
@@ -770,14 +896,11 @@ export default function BarbershopDetails() {
                                             <label
                                                 key={time}
                                                 className={`flex flex-col items-center justify-center h-[88px] rounded-3xl border transition-all duration-200 cursor-pointer
-                                                ${bookedSlots.includes(
-                                                    time
-                                                )
+                                                ${bookedSlots.includes(time)
                                                         ? "bg-[#f3f3f3] text-[#bbb] border-transparent cursor-not-allowed"
-                                                        : selectedSlot ===
-                                                            time
-                                                            ? "bg-[#185FA5] text-white border-[#185FA5] scale-[1.03] shadow-[0_10px_25px_rgba(24,95,165,0.2)]"
-                                                            : "bg-white border-black/5 hover:border-black/15 hover:bg-[#fafafa]"
+                                                        : selectedSlot === time
+                                                            ? "bg-[#2563eb] text-white border-[#2563eb] shadow-[0_8px_25px_rgba(37,99,235,0.25)]"
+                                                            : "bg-[#f8f8f8] border-black/5 hover:border-[#2563eb]/30 hover:bg-[#eff6ff] active:scale-[0.98]"
                                                     }`}
                                             >
                                                 <span className="text-[11px] uppercase tracking-wide opacity-70">
@@ -845,30 +968,32 @@ export default function BarbershopDetails() {
                                         onClick={() =>
                                             navigate("/client/dashboard")
                                         }
-                                        className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] active:scale-[0.98] text-white font-semibold text-[15px] transition-all duration-200 flex items-center justify-center gap-2"
+                                        className="w-full h-14 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.98] text-white font-bold text-[15px] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
                                     >
                                         {t("common.home")}
                                     </button>
                                 ) : (
-                                    <button
-                                        onClick={handleBookSession}
-                                        disabled={
-                                            !selectedSlot ||
-                                            bookingLoading ||
-                                            isBookingInProgress
-                                        }
-                                        className="w-full h-14 sm:h-12 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] active:scale-[0.98] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(55,138,221,0.25)] sm:relative sm:shadow-none sticky bottom-4 sm:bottom-auto z-10"
-                                    >
-                                        {bookingLoading ||
-                                            isBookingInProgress ? (
-                                            <>
-                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                {t("client.barbershopDetails.booking")}
-                                            </>
-                                        ) : (
-                                            t("client.barbershopDetails.bookNow")
-                                        )}
-                                    </button>
+                                    <div className="action-bar-bottom sm:relative sm:bg-transparent sm:p-0 sm:z-0">
+                                        <button
+                                            onClick={handleBookSession}
+                                            disabled={
+                                                !selectedSlot ||
+                                                bookingLoading ||
+                                                isBookingInProgress
+                                            }
+                                            className="w-full h-14 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.98] text-white font-bold text-[16px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(37,99,235,0.3)]"
+                                        >
+                                            {bookingLoading ||
+                                                isBookingInProgress ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                    {t("client.barbershopDetails.booking")}
+                                                </>
+                                            ) : (
+                                                t("client.barbershopDetails.bookNow")
+                                            )}
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>

@@ -31,9 +31,9 @@ const statusConfig = {
         bg: 'bg-white',
     },
     completed: {
-        border: 'border-l-[#378ADD]',
-        badge: 'bg-[#EBF4FF] text-[#185FA5] border-[#378ADD]/20',
-        dot: 'bg-[#378ADD]',
+        border: 'border-l-[#2563eb]',
+        badge: 'bg-[#EBF4FF] text-[#1d4ed8] border-[#2563eb]/20',
+        dot: 'bg-[#2563eb]',
         bg: 'bg-white',
     },
     cancelled: {
@@ -162,7 +162,7 @@ function Appointments() {
                                 key={value}
                                 onClick={() => setSelectedDate(value)}
                                 className={`flex-1 px-2 sm:px-4 py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.97] min-h-[44px] ${
-                                    selectedDate === value ? 'bg-[#378ADD] text-white shadow-sm' : 'bg-[#f8f8f8] text-[#666] hover:bg-[#f0f0f0]'
+                                    selectedDate === value ? 'bg-[#2563eb] text-white shadow-sm' : 'bg-[#f8f8f8] text-[#666] hover:bg-[#f0f0f0]'
                                 }`}
                             >
                                 {label}
@@ -183,7 +183,7 @@ function Appointments() {
                         type="date"
                         value={selectedDate}
                         onChange={e => setSelectedDate(e.target.value)}
-                        className="text-sm bg-[#f8f8f8] border border-black/5 rounded-xl px-4 py-3 font-medium text-[#111] focus:outline-none focus:ring-2 focus:ring-[#378ADD]/30 min-h-[44px]"
+                        className="text-sm bg-[#f8f8f8] border border-black/5 rounded-xl px-4 py-3 font-medium text-[#111] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30 min-h-[44px]"
                     />
                 </div>
             </div>
@@ -222,7 +222,7 @@ function Appointments() {
             <div className="space-y-3">
                 {loading ? (
                     <div className="bg-white border border-black/5 rounded-[28px] p-12 text-center">
-                        <div className="w-8 h-8 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mx-auto mb-3" />
+                        <div className="w-8 h-8 border-2 border-black/10 border-t-[#2563eb] rounded-full animate-spin mx-auto mb-3" />
                         <p className="text-sm font-medium text-[#666]">{t('common.loading')}</p>
                     </div>
                 ) : filteredBookings.length === 0 ? (
@@ -243,8 +243,8 @@ function Appointments() {
                                     className={`${cfg.bg} border border-black/5 border-l-4 ${cfg.border} rounded-[24px] p-5 shadow-[0_6px_24px_rgba(0,0,0,0.04)] flex flex-col gap-4 hover:shadow-[0_12px_36px_rgba(0,0,0,0.07)] transition-all`}
                                 >
                                     <div className="flex items-center gap-3.5">
-                                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#378ADD]/10 to-[#185FA5]/5 flex items-center justify-center border border-[#378ADD]/10 shrink-0">
-                                            <span className="text-[#378ADD] font-bold text-sm">
+                                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#2563eb]/10 to-[#1d4ed8]/5 flex items-center justify-center border border-[#2563eb]/10 shrink-0">
+                                            <span className="text-[#2563eb] font-bold text-sm">
                                                 {(client?.name || '?').charAt(0).toUpperCase()}
                                             </span>
                                         </div>
@@ -252,7 +252,7 @@ function Appointments() {
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <button
                                                     onClick={() => setProfileClient(client)}
-                                                    className="font-bold text-[#111] hover:text-[#378ADD] transition-colors text-left text-sm"
+                                                    className="font-bold text-[#111] hover:text-[#2563eb] transition-colors text-left text-sm"
                                                 >
                                                     {client?.name || booking.guest_name || t('common.client')}
                                                 </button>
@@ -265,7 +265,7 @@ function Appointments() {
                                             {(booking.guest_phone || client?.phone) && (
                                                 <a
                                                     href={`tel:${booking.guest_phone || client?.phone}`}
-                                                    className="text-[10px] text-[#888] font-medium mt-0.5 hover:text-[#378ADD] transition-colors flex items-center gap-1"
+                                                    className="text-[10px] text-[#888] font-medium mt-0.5 hover:text-[#2563eb] transition-colors flex items-center gap-1"
                                                 >
                                                     <Phone size={9} />
                                                     {booking.guest_phone || client?.phone}
@@ -304,7 +304,7 @@ function Appointments() {
                                                 <>
                                                     <button
                                                         onClick={() => handleStatusUpdate(booking.id, 'completed')}
-                                                        className="h-10 px-3 bg-[#378ADD] text-white rounded-xl hover:bg-[#185FA5] active:scale-[0.97] transition-all font-bold text-xs flex items-center gap-1.5 shadow-sm"
+                                                        className="h-10 px-3 bg-[#2563eb] text-white rounded-xl hover:bg-[#1d4ed8] active:scale-[0.97] transition-all font-bold text-xs flex items-center gap-1.5 shadow-sm"
                                                     >
                                                         <Check size={14} /> Yakunlash
                                                     </button>

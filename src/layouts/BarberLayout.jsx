@@ -355,12 +355,12 @@ function BarberLayout() {
                 </header>
 
                 {/* Main content */}
-                <main className="flex-grow pt-[64px] md:pt-0 pb-[80px] md:pb-0 min-h-screen">
+                <main className="flex-grow pt-[64px] md:pt-0 pb-[90px] md:pb-0 min-h-screen">
                     <Outlet />
                 </main>
 
                 {/* Mobile bottom tabs navigation */}
-                <footer className="w-full fixed bottom-0 bg-white/80 backdrop-blur-md border-t border-black/5 px-2 py-2 flex justify-around items-center md:hidden z-10 safe-bottom">
+                <footer className="bottom-nav md:hidden">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
 
@@ -369,16 +369,11 @@ function BarberLayout() {
                                 key={tab.id}
                                 to={tab.path}
                                 className={({ isActive }) =>
-                                    `flex flex-col items-center gap-1.5 px-3 py-2 min-w-[64px] rounded-2xl transition-all duration-200
-                                    ${isActive
-                                        ? "bg-[#185FA5] text-white shadow-sm"
-                                        : "text-[#888] active:text-[#111] active:bg-black/5"}`
+                                    `bottom-nav-item ${isActive ? "active" : ""}`
                                 }
                             >
-                                <Icon size={22} />
-                                <span className="text-[9px] font-bold tracking-[0.08em]">
-                                    {t(tab.labelKey)}
-                                </span>
+                                <Icon />
+                                <span>{t(tab.labelKey)}</span>
                             </NavLink>
                         );
                     })}
