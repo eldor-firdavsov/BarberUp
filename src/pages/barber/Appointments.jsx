@@ -8,6 +8,7 @@ import { formatTo24h } from '../../utils/time.js';
 import { toDateStr, getBookingDateStr, formatBookingDate, addDaysToDateStr } from '../../utils/dates.js';
 import { t, getStatusLabel } from '../../utils/i18n.js';
 import ClientProfileModal from '../../components/ClientProfileModal.jsx';
+import SkeletonLoader from '../../components/SkeletonLoader.jsx';
 
 const STATUS_TABS = [
     { key: 'all', label: 'Barchasi' },
@@ -221,10 +222,7 @@ function Appointments() {
             {/* Bookings List */}
             <div className="space-y-3">
                 {loading ? (
-                    <div className="bg-white border border-black/5 rounded-[28px] p-12 text-center">
-                        <div className="w-8 h-8 border-2 border-black/10 border-t-[#2563eb] rounded-full animate-spin mx-auto mb-3" />
-                        <p className="text-sm font-medium text-[#666]">{t('common.loading')}</p>
-                    </div>
+                    <SkeletonLoader count={5} type="list" />
                 ) : filteredBookings.length === 0 ? (
                     <div className="bg-white border border-black/5 rounded-[28px] p-12 text-center">
                         <CalendarIcon size={32} className="text-[#ccc] mx-auto mb-3" />

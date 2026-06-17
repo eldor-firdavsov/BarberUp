@@ -6,6 +6,7 @@ import { formatTo24h } from '../../utils/time.js';
 import { Heart, MapPin } from 'lucide-react';
 import BarberProfileModal from '../../components/BarberProfileModal.jsx';
 import AllBarbersMap from '../../components/AllBarbersMap.jsx';
+import SkeletonLoader from '../../components/SkeletonLoader.jsx';
 import { t } from '../../utils/i18n.js';
 import { supabase } from '../../api/supabase.js';
 
@@ -342,10 +343,8 @@ function Client() {
 
             {/* Loading State */}
             {loading && (
-                <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="skeleton-card"></div>
-                    ))}
+                <div className="mt-4 pt-4 md:pt-0">
+                    <SkeletonLoader count={6} />
                 </div>
             )}
 

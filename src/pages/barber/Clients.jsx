@@ -7,6 +7,7 @@ import { supabase } from '../../api/supabase.js';
 import { toDateStr, getBookingDateStr, formatBookingDate } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
 import ClientProfileModal from '../../components/ClientProfileModal.jsx';
+import SkeletonLoader from '../../components/SkeletonLoader.jsx';
 
 function Clients() {
     const { user } = useAuth();
@@ -161,10 +162,7 @@ function Clients() {
             </div>
 
             {loading ? (
-                <div className="bg-white border border-black/5 rounded-[28px] p-12 text-center">
-                    <div className="w-8 h-8 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-sm font-medium text-[#666]">{t('common.loading')}</p>
-                </div>
+                <SkeletonLoader count={5} type="list" />
             ) : clientStats.length === 0 ? (
                 <div className="bg-white border border-black/5 rounded-[28px] p-12 text-center">
                     <Users size={32} className="text-[#ccc] mx-auto mb-3" />

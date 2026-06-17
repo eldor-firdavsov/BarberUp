@@ -595,19 +595,36 @@ body {
 
 /* Skeleton Loaders - Premium */
 .skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading var(--transition-slow) infinite;
+    position: relative;
+    background-color: #E5E7EB;
+    overflow: hidden;
     border-radius: var(--radius-lg);
 }
 
-@keyframes skeleton-loading {
+.skeleton::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(243, 244, 246, 0.6) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    animation: skeleton-shimmer 1.5s infinite ease-in-out;
+    transform: translateX(-100%);
+}
+
+@keyframes skeleton-shimmer {
     0% {
-        background-position: 200% 0;
+        transform: translateX(-100%);
     }
 
     100% {
-        background-position: -200% 0;
+        transform: translateX(100%);
     }
 }
 

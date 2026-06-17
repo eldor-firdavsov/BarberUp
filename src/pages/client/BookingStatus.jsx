@@ -146,9 +146,11 @@ function BookingStatus() {
 
     if (loading && !booking) {
         return (
-            <div className="min-h-screen bg-[#f5f5f7] flex flex-col items-center justify-center p-6">
-                <div className="w-12 h-12 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mb-4" />
-                <p className="text-[#666] font-medium text-sm">{t('client.bookingStatus.loading')}</p>
+            <div className="min-h-screen bg-[#f5f5f7] flex flex-col px-4 py-8 sm:px-6 page-animate max-w-lg mx-auto space-y-4">
+                <div className="h-6 w-24 skeleton rounded-md mb-2" />
+                <div className="h-40 w-full skeleton rounded-[28px]" />
+                <div className="h-72 w-full skeleton rounded-[28px]" />
+                <div className="h-14 w-full skeleton rounded-2xl" />
             </div>
         );
     }

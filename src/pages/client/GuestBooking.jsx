@@ -252,8 +252,20 @@ export default function GuestBooking() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex justify-center items-center bg-[#f5f5f7]">
-                <div className="w-8 h-8 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin" />
+            <div className="min-h-screen bg-[#f5f5f7] flex justify-center px-4 py-8 max-w-5xl mx-auto page-animate">
+                <div className="w-full bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
+                    <div className="h-[240px] w-full skeleton" />
+                    <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-6">
+                            <div className="h-48 w-full skeleton rounded-3xl" />
+                            <div className="h-32 w-full skeleton rounded-2xl" />
+                        </div>
+                        <div className="space-y-6">
+                            <div className="h-24 w-full skeleton rounded-xl" />
+                            <div className="h-64 w-full skeleton rounded-xl" />
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }

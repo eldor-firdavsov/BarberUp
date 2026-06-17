@@ -179,8 +179,11 @@ function TrackBooking() {
 
     if (loading && !booking) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7]">
-                <div className="w-8 h-8 border-4 border-[#378ADD] border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-screen bg-[#f5f5f7] px-4 py-6 max-w-lg mx-auto space-y-4 page-animate">
+                <div className="h-16 w-1/2 mx-auto skeleton rounded-xl mb-6" />
+                <div className="h-32 w-full skeleton rounded-[28px]" />
+                <div className="h-64 w-full skeleton rounded-[28px]" />
+                <div className="h-14 w-full skeleton rounded-2xl" />
             </div>
         );
     }

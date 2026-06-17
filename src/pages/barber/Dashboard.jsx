@@ -12,6 +12,7 @@ import { compareTimes, formatTo24h } from '../../utils/time.js';
 import { toDateStr, getBookingDateStr, bookingMatchesDate, formatBookingDate, compareDateStr } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
 import ClientProfileModal from '../../components/ClientProfileModal.jsx';
+import SkeletonLoader from '../../components/SkeletonLoader.jsx';
 
 /* ── Barber availability statuses ─────────────────────────────────────────── */
 const BARBER_STATUSES = [
@@ -456,9 +457,7 @@ function Dashboard() {
 
                     <div className="space-y-3">
                         {loading ? (
-                            <div className="bg-white border border-black/5 rounded-[24px] p-10 text-center">
-                                <div className="w-7 h-7 border-2 border-black/10 border-t-[#2563eb] rounded-full animate-spin mx-auto" />
-                            </div>
+                            <SkeletonLoader count={3} type="list" />
                         ) : pendingRequests.length === 0 ? (
                             <div className="bg-[#fffbf0] border border-dashed border-amber-200 rounded-[24px] p-8 text-center flex flex-col items-center justify-center min-h-[200px]">
                                 <Coffee className="text-amber-300 mb-3" size={32} />
@@ -489,9 +488,7 @@ function Dashboard() {
 
                     <div className="space-y-3">
                         {loading ? (
-                            <div className="bg-white border border-black/5 rounded-[24px] p-10 text-center">
-                                <div className="w-7 h-7 border-2 border-black/10 border-t-emerald-500 rounded-full animate-spin mx-auto" />
-                            </div>
+                            <SkeletonLoader count={3} type="list" />
                         ) : acceptedRequests.length === 0 ? (
                             <div className="bg-[#f0fdf4] border border-dashed border-emerald-200 rounded-[24px] p-8 text-center flex flex-col items-center justify-center min-h-[200px]">
                                 <Calendar className="text-emerald-300 mb-3" size={32} />
