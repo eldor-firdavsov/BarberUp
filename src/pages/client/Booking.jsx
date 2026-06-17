@@ -180,7 +180,7 @@ function Booking() {
     };
 
     return (
-        <div className="px-4 py-6 sm:px-6 sm:py-10 space-y-6 page-animate max-w-lg md:max-w-5xl mx-auto pb-24 safe-bottom">
+        <div className="px-4 py-6 sm:px-6 sm:py-10 space-y-6 page-animate max-w-lg md:max-w-5xl mx-auto pb-32 safe-bottom">
             {/* Page Title & Count Info */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>

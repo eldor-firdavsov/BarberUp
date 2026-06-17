@@ -96,6 +96,29 @@ function Dashboard() {
     /* ── Mobile tab: 'pending' | 'confirmed' ─────────────────────────────── */
     const [activeTab, setActiveTab] = useState('pending');
 
+    /* ── Swipe gesture for tab switching ──────────────────────────────────── */
+    const BARBER_TAB_ORDER = ['pending', 'confirmed'];
+    const barberTouchRef = useRef({ startX: 0, startY: 0 });
+
+    const onBarberSwipeStart = useCallback((e) => {
+        barberTouchRef.current.startX = e.touches[0].clientX;
+        barberTouchRef.current.startY = e.touches[0].clientY;
+    }, []);
+
+    const onBarberSwipeEnd = useCallback((e) => {
+        const deltaX = barberTouchRef.current.startX - e.changedTouches[0].clientX;
+        const deltaY = barberTouchRef.current.startY - e.changedTouches[0].clientY;
+
+        if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+            setActiveTab(prev => {
+                const i = BARBER_TAB_ORDER.indexOf(prev);
+                if (deltaX > 0 && i < BARBER_TAB_ORDER.length - 1) return BARBER_TAB_ORDER[i + 1];
+                if (deltaX < 0 && i > 0) return BARBER_TAB_ORDER[i - 1];
+                return prev;
+            });
+        }
+    }, []);
+
     /* ── Barber availability status ───────────────────────────────────────── */
     const [barberStatus, setBarberStatus] = useState(user?.status || 'available');
     const [statusUpdating, setStatusUpdating] = useState(false);
@@ -348,7 +371,7 @@ function Dashboard() {
     }, [clientsById, handleStatusUpdate, todayStr, newConfirmedIds]);
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] px-4 py-6 sm:px-6 sm:py-12 space-y-6 page-animate h-full pb-28 max-w-7xl mx-auto">
+        <div className="min-h-screen bg-[#f5f5f7] px-4 py-6 sm:px-6 sm:py-12 space-y-6 page-animate h-full pb-32 max-w-7xl mx-auto">
 
             {/* ── Toast Notification ── */}
             {toast && (
@@ -411,37 +434,58 @@ function Dashboard() {
             )}
 
             {/* ── Mobile Tab Strip ── */}
-            <div className="flex lg:hidden gap-2 bg-white border border-black/5 rounded-2xl p-1.5 shadow-sm">
-                <button
-                    onClick={() => setActiveTab('pending')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                        activeTab === 'pending' ? 'bg-amber-400 text-white shadow-sm' : 'text-[#666] hover:bg-[#f8f8f8]'
-                    }`}
-                >
-                    Kutilmoqda
-                    {pendingRequests.length > 0 && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${activeTab === 'pending' ? 'bg-white/20' : 'bg-amber-100 text-amber-600'}`}>
-                            {pendingRequests.length}
-                        </span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab('confirmed')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                        activeTab === 'confirmed' ? 'bg-emerald-500 text-white shadow-sm' : 'text-[#666] hover:bg-[#f8f8f8]'
-                    }`}
-                >
-                    Tasdiqlangan
-                    {acceptedRequests.length > 0 && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${activeTab === 'confirmed' ? 'bg-white/20' : 'bg-emerald-100 text-emerald-600'}`}>
-                            {acceptedRequests.length}
-                        </span>
-                    )}
-                </button>
+            <div className="lg:hidden bg-white/60 backdrop-blur-xl p-1.5 rounded-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.06)] border border-white/80">
+                <div className="relative flex">
+                    {/* Sliding pill */}
+                    <div 
+                        className="absolute inset-y-0 w-1/2 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                        style={{ transform: `translateX(${activeTab === 'pending' ? 0 : 100}%)` }}
+                    >
+                        <div 
+                            className="w-full h-full rounded-[18px] shadow-lg transition-colors duration-300"
+                            style={{ backgroundColor: activeTab === 'pending' ? '#fbbf24' : '#10b981' }}
+                        />
+                    </div>
+
+                    <button
+                        onClick={() => setActiveTab('pending')}
+                        className={`relative flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[18px] font-bold text-sm transition-colors duration-300 z-10 ${
+                            activeTab === 'pending' ? 'text-white' : 'text-[#666]'
+                        }`}
+                    >
+                        Kutilmoqda
+                        {pendingRequests.length > 0 && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black transition-colors duration-300 ${
+                                activeTab === 'pending' ? 'bg-white/25' : 'bg-amber-100 text-amber-600'
+                            }`}>
+                                {pendingRequests.length}
+                            </span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('confirmed')}
+                        className={`relative flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[18px] font-bold text-sm transition-colors duration-300 z-10 ${
+                            activeTab === 'confirmed' ? 'text-white' : 'text-[#666]'
+                        }`}
+                    >
+                        Tasdiqlangan
+                        {acceptedRequests.length > 0 && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black transition-colors duration-300 ${
+                                activeTab === 'confirmed' ? 'bg-white/25' : 'bg-emerald-100 text-emerald-600'
+                            }`}>
+                                {acceptedRequests.length}
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* ── Desktop: Two Column / Mobile: Single active tab ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+            <div 
+                className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8"
+                onTouchStart={onBarberSwipeStart}
+                onTouchEnd={onBarberSwipeEnd}
+            >
 
                 {/* Pending Column */}
                 <div className={`space-y-4 ${activeTab === 'confirmed' ? 'hidden lg:block' : ''}`}>

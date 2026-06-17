@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { Search, Calendar, Settings } from "lucide-react";
 import { t } from '../utils/i18n.js';
 
@@ -9,6 +9,11 @@ const tabs = [
 ];
 
 function ClientLayout() {
+    const location = useLocation();
+    
+    // Find active index for the liquid glass pill
+    const activeIndex = tabs.findIndex(tab => location.pathname.startsWith(tab.path));
+    const safeActiveIndex = activeIndex >= 0 ? activeIndex : 0;
 
     return (
         <div className="w-full min-h-screen flex bg-[#f5f5f7]">
@@ -83,29 +88,39 @@ function ClientLayout() {
                 </header>
 
                 {/* Main Content Area */}
-                <main className="flex-grow pt-[64px] md:pt-0 pb-[90px] md:pb-0 min-h-screen">
+                <main className="flex-grow pt-[64px] md:pt-0 pb-[120px] md:pb-0 min-h-screen">
                     <Outlet />
                 </main>
 
                 {/* Mobile Footer Tab Bar */}
                 <footer className="bottom-nav md:hidden">
-                    {tabs.map((tab) => {
-                        const Icon = tab.icon;
+                    <div className="relative flex w-full h-full items-center">
+                        {/* Sliding pill */}
+                        <div 
+                            className="absolute inset-y-[6px] w-1/3 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                            style={{ transform: `translateX(${safeActiveIndex * 100}%)` }}
+                        >
+                            <div className="w-full h-full bg-[#2563eb] rounded-[20px] shadow-[0_8px_20px_rgba(37,99,235,0.3)]" />
+                        </div>
 
-                        return (
-                            <NavLink
-                                key={tab.id}
-                                to={tab.path}
-                                aria-label={t(tab.labelKey)}
-                                className={({ isActive }) =>
-                                    `bottom-nav-item ${isActive ? "active" : ""}`
-                                }
-                            >
-                                <Icon aria-hidden="true" />
-                                <span>{t(tab.labelKey)}</span>
-                            </NavLink>
-                        );
-                    })}
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+
+                            return (
+                                <NavLink
+                                    key={tab.id}
+                                    to={tab.path}
+                                    aria-label={t(tab.labelKey)}
+                                    className={({ isActive }) =>
+                                        `bottom-nav-item ${isActive ? "active" : ""}`
+                                    }
+                                >
+                                    <Icon aria-hidden="true" />
+                                    <span>{t(tab.labelKey)}</span>
+                                </NavLink>
+                            );
+                        })}
+                    </div>
                 </footer>
             </div>
         </div>

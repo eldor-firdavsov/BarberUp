@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { Home, Settings, Bell, Check, X, Phone, Clock, Calendar, Users } from "lucide-react";
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -12,6 +12,7 @@ import ClientProfileModal from '../components/ClientProfileModal.jsx';
 
 function BarberLayout() {
     const { user } = useAuth();
+    const location = useLocation();
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [pendingBookings, setPendingBookings] = useState([]);
     const [clientsById, setClientsById] = useState({});
@@ -355,28 +356,44 @@ function BarberLayout() {
                 </header>
 
                 {/* Main content */}
-                <main className="flex-grow pt-[64px] md:pt-0 pb-[90px] md:pb-0 min-h-screen">
+                <main className="flex-grow pt-[64px] md:pt-0 pb-[120px] md:pb-0 min-h-screen">
                     <Outlet />
                 </main>
 
                 {/* Mobile bottom tabs navigation */}
                 <footer className="bottom-nav md:hidden">
-                    {tabs.map((tab) => {
-                        const Icon = tab.icon;
+                    <div className="relative flex w-full h-full items-center">
+                        {/* Sliding pill */}
+                        {(() => {
+                            const activeIndex = tabs.findIndex(tab => location.pathname.startsWith(tab.path));
+                            const safeIndex = activeIndex >= 0 ? activeIndex : 0;
+                            return activeIndex >= 0 ? (
+                                <div 
+                                    className="absolute inset-y-[6px] w-1/4 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                                    style={{ transform: `translateX(${safeIndex * 100}%)` }}
+                                >
+                                    <div className="w-full h-full bg-[#2563eb] rounded-[20px] shadow-[0_8px_20px_rgba(37,99,235,0.3)]" />
+                                </div>
+                            ) : null;
+                        })()}
 
-                        return (
-                            <NavLink
-                                key={tab.id}
-                                to={tab.path}
-                                className={({ isActive }) =>
-                                    `bottom-nav-item ${isActive ? "active" : ""}`
-                                }
-                            >
-                                <Icon />
-                                <span>{t(tab.labelKey)}</span>
-                            </NavLink>
-                        );
-                    })}
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+
+                            return (
+                                <NavLink
+                                    key={tab.id}
+                                    to={tab.path}
+                                    className={({ isActive }) =>
+                                        `bottom-nav-item ${isActive ? "active" : ""}`
+                                    }
+                                >
+                                    <Icon />
+                                    <span>{t(tab.labelKey)}</span>
+                                </NavLink>
+                            );
+                        })}
+                    </div>
                 </footer>
             </div>
         </div>

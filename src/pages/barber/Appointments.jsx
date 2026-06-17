@@ -126,7 +126,7 @@ function Appointments() {
     };
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 space-y-6 page-animate h-full pb-24 max-w-7xl mx-auto">
+        <div className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 space-y-6 page-animate h-full pb-32 max-w-7xl mx-auto">
             <div>
                 <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('barber.appointments.title')}</h1>
                 <p className="text-sm text-[#666] font-medium mt-1">

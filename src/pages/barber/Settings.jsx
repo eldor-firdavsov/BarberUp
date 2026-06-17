@@ -189,7 +189,7 @@ function Settings() {
     const displayPhone = user?.phone ? user.phone.replace(/^\+998/, '+998 ') : '—';
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 max-w-md md:max-w-2xl mx-auto flex flex-col gap-6">
+        <section className="min-h-screen bg-[#f5f5f7] px-4 py-18 sm:px-6 sm:py-12 max-w-md md:max-w-2xl mx-auto flex flex-col gap-6">
             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em]">{t('barber.settings.title')}</h1>
 
             {/* Profile Card */}
@@ -323,7 +323,7 @@ function Settings() {
             {/* Logout */}
             <button
                 onClick={logout}
-                className="w-full flex items-center justify-center gap-2 py-4 sm:py-3.5 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 active:scale-[0.98] transition-all cursor-pointer min-h-[48px]"
+                className="w-full flex mb-32 items-center justify-center gap-2 py-4 sm:py-3.5 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 active:scale-[0.98] transition-all cursor-pointer min-h-[48px]"
             >
                 <LogOut size={18} />
                 {t('common.logOut')}

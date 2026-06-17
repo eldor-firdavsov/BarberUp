@@ -1021,35 +1021,48 @@ body {
 
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: calc(70px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 400px;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1);
+    border-radius: 32px;
     display: flex;
     justify-content: space-around;
     align-items: center;
     z-index: 50;
+    padding: 0 6px;
+}
+
+.glass-dark .bottom-nav {
+    background: rgba(20, 20, 20, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .bottom-nav-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    color: var(--text-tertiary);
+    gap: 3px;
+    color: var(--text-light);
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     flex: 1;
-    height: 100%;
+    height: calc(100% - 12px);
+    border-radius: 24px;
+    z-index: 2;
 }
 
 .bottom-nav-item:active {
@@ -1057,18 +1070,18 @@ body {
 }
 
 .bottom-nav-item.active {
-    color: var(--brand-primary);
+    color: white;
 }
 
 .bottom-nav-item svg {
-    width: 24px;
-    height: 24px;
-    transition: all 0.2s;
+    width: 22px;
+    height: 22px;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .bottom-nav-item.active svg {
     stroke-width: 2.5;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 .has-bottom-nav {

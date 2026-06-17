@@ -172,7 +172,7 @@ function Settings() {
                 <button onClick={handleSave} disabled={!name || !phone || !isPhoneValid} className="w-full h-14 rounded-2xl bg-[#378ADD] hover:bg-[#185FA5] text-white font-semibold text-[15px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_10px_25px_rgba(55,138,221,0.25)] mt-6">{t('common.saveChanges')}</button>
             </div>
 
-            <button onClick={handleLogout} className="mt-10 py-4 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 transition-all cursor-pointer">
+            <button onClick={handleLogout} className="mt-10 mb-32 py-4 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 transition-all cursor-pointer">
                 {t('common.logOut')}
             </button>
         </section>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBarbers } from '../../api/barberApi.js';
 import { useClient } from '../../context/ClientContext.jsx';
@@ -38,6 +38,30 @@ function Client() {
     const [locationError, setLocationError] = useState(null);
     const [profileModal, setProfileModal] = useState({ open: false, barber: null });
     const navigate = useNavigate();
+
+    /* ── Swipe gesture for tab switching ──────────────────────────────────── */
+    const TAB_ORDER = ['nearby', 'favorites', 'map'];
+    const touchRef = useRef({ startX: 0, startY: 0 });
+
+    const onSwipeTouchStart = useCallback((e) => {
+        touchRef.current.startX = e.touches[0].clientX;
+        touchRef.current.startY = e.touches[0].clientY;
+    }, []);
+
+    const onSwipeTouchEnd = useCallback((e) => {
+        const deltaX = touchRef.current.startX - e.changedTouches[0].clientX;
+        const deltaY = touchRef.current.startY - e.changedTouches[0].clientY;
+
+        // Only horizontal swipes that exceed 50px threshold
+        if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+            setActiveTab(prev => {
+                const i = TAB_ORDER.indexOf(prev);
+                if (deltaX > 0 && i < TAB_ORDER.length - 1) return TAB_ORDER[i + 1];
+                if (deltaX < 0 && i > 0) return TAB_ORDER[i - 1];
+                return prev;
+            });
+        }
+    }, []);
 
     const fetchBarbers = useCallback(async () => {
         setLoading(true);
@@ -303,7 +327,7 @@ function Client() {
 
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] max-w-md md:max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-12 flex flex-col safe-bottom">
+        <section className="min-h-screen bg-[#f5f5f7] max-w-md md:max-w-6xl mx-auto px-4 py-6 pb-32 sm:px-6 sm:py-12 flex flex-col safe-bottom">
             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
                 {t('client.dashboard.titleLine1')}<br />{t('client.dashboard.titleLine2')}
             </h1>
@@ -311,36 +335,55 @@ function Client() {
                 {t('client.dashboard.subtitle')}
             </p>
 
-            <div className="sticky top-0 z-20 -mx-4 px-4 pt-2 pb-3 sm:static sm:mx-0 sm:px-0 sm:pt-0 sm:pb-0 backdrop-blur-md bg-[#f5f5f7]/80">
-                <div className="flex bg-white/80 p-1.5 rounded-[20px] shadow-sm glass border border-black/5">
-                    <button
-                        onClick={() => setActiveTab('nearby')}
-                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
-                            activeTab === 'nearby' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666] active:bg-black/5'
-                        }`}
-                    >
-                        {t('client.dashboard.nearby')}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('favorites')}
-                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-xl transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
-                            activeTab === 'favorites' ? 'bg-[#185FA5] shadow-sm text-white' : 'text-[#666] active:bg-black/5'
-                        }`}
-                    >
-                        {t('client.dashboard.favorites')} {favoriteBarbers.length > 0 && `(${favoriteBarbers.length})`}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('map')}
-                        className={`flex-1 py-3 sm:py-2.5 text-xs font-bold rounded-[14px] transition-all uppercase tracking-wider active:scale-[0.98] min-h-[40px] ${
-                            activeTab === 'map' ? 'bg-var(--brand-primary) shadow-md text-white' : 'text-[#666] hover:bg-black/5'
-                        }`}
-                        style={activeTab === 'map' ? { backgroundColor: 'var(--brand-primary)' } : {}}
-                    >
-                        {t('client.dashboard.map', 'Xarita')}
-                    </button>
+            <div className="sticky top-2 z-20 mx-auto w-full max-w-[400px] mb-6 mt-2">
+                <div className="bg-white/60 backdrop-blur-xl p-1.5 rounded-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.06)] border border-white/80">
+                    <div className="relative flex">
+                        {/* Sliding pill — lives inside the flex row so w-1/3 = flex-1 width exactly */}
+                        <div 
+                            className="absolute inset-y-0 w-1/3 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                            style={{ 
+                                transform: `translateX(${
+                                    activeTab === 'nearby' ? 0 : activeTab === 'favorites' ? 100 : 200
+                                }%)`
+                            }}
+                        >
+                            <div className="w-full h-full bg-[#111] rounded-[18px] shadow-lg" />
+                        </div>
+
+                        <button
+                            onClick={() => setActiveTab('nearby')}
+                            className={`relative flex-1 py-3.5 text-[13px] font-bold rounded-[18px] transition-colors duration-300 z-10 ${
+                                activeTab === 'nearby' ? 'text-white' : 'text-[#666]'
+                            }`}
+                        >
+                            {t('client.dashboard.nearby')}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('favorites')}
+                            className={`relative flex-1 py-3.5 text-[13px] font-bold rounded-[18px] transition-colors duration-300 z-10 ${
+                                activeTab === 'favorites' ? 'text-white' : 'text-[#666]'
+                            }`}
+                        >
+                            {t('client.dashboard.favorites')}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('map')}
+                            className={`relative flex-1 py-3.5 text-[13px] font-bold rounded-[18px] transition-colors duration-300 z-10 ${
+                                activeTab === 'map' ? 'text-white' : 'text-[#666]'
+                            }`}
+                        >
+                            {t('client.dashboard.map', 'Xarita')}
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            {/* Swipeable Content Area */}
+            <div
+                onTouchStart={onSwipeTouchStart}
+                onTouchEnd={onSwipeTouchEnd}
+                className="flex-1 min-h-0"
+            >
             {/* Loading State */}
             {loading && (
                 <div className="mt-4 pt-4 md:pt-0">
@@ -555,6 +598,7 @@ function Client() {
                     <p className="text-base text-[#666] font-semibold">{t('client.dashboard.noBarbers')}</p>
                 </div>
             )}
+            </div>{/* End swipeable area */}
 
             {/* Barber Profile Modal */}
             <BarberProfileModal

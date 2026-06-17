@@ -242,7 +242,7 @@ function TrackBooking() {
     }[booking.status] || 'bg-amber-50 border-amber-200';
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] px-4 py-6 max-w-lg mx-auto space-y-4 page-animate pb-24">
+        <div className="min-h-screen bg-[#f5f5f7] px-4 py-6 max-w-lg mx-auto space-y-4 page-animate pb-32">
 
             {/* Header */}
             <div className="text-center pt-2">

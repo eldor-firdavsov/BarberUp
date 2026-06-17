@@ -786,17 +786,6 @@ export default function BarbershopDetails() {
                                 </div>
                             </div>
 
-                            <div>
-                                <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
-                                    {t("client.barbershopDetails.location")}
-                                </h3>
-
-                                <InteractiveMap
-                                    coordinates={barber.location}
-                                    address={barber.address || barber.location?.address || t("client.barbershopDetails.addressNotProvided")}
-                                    shopName={barber.office_name || barber.shopName}
-                                />
-                            </div>
 
                             {/* Reviews Section */}
                             <div>
@@ -997,6 +986,18 @@ export default function BarbershopDetails() {
                                 )}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Location Map — placed at the very bottom after booking flow */}
+                    <div className="mt-8 pt-8 border-t border-black/5">
+                        <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
+                            {t("client.barbershopDetails.location")}
+                        </h3>
+                        <InteractiveMap
+                            coordinates={barber.location}
+                            address={barber.address || barber.location?.address || t("client.barbershopDetails.addressNotProvided")}
+                            shopName={barber.office_name || barber.shopName}
+                        />
                     </div>
                 </div>
             </div>
