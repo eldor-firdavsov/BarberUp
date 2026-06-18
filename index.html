@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BarberUp</title>
+    <!-- Telegram Web App Integration -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      // Initialize Telegram Web App and expand to full height
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

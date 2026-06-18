@@ -4,10 +4,21 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext.jsx';
 import AppRouter from './routes/AppRouter.jsx';
 import LanguageSelection from './pages/LanguageSelection.jsx';
 import { t } from './utils/i18n.js';
+import { useEffect } from 'react';
 
 function AppShell() {
     const { ready, hasChosenLanguage, language } = useLanguage();
     const { user, loading: authLoading } = useAuth();
+
+    // Initialize the Telegram Mini App SDK as early as possible.
+    // This is safe to call even outside Telegram — the guard prevents errors.
+    useEffect(() => {
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+    }, []);
 
     if (!ready || authLoading) {
         return (
@@ -16,6 +27,17 @@ function AppShell() {
                     <div className="w-12 h-12 border-2 border-black/10 border-t-[#378ADD] rounded-full animate-spin mb-4" />
                     <p className="text-sm font-semibold text-[#666]">{t('common.pleaseWait')}</p>
                 </div>
+            </div>
+        );
+    }
+
+    // Inside Telegram, skip language selection — go straight to the router
+    // (TelegramEntry handles everything from there).
+    const isInTelegram = !!window.Telegram?.WebApp?.initDataUnsafe?.user;
+    if (isInTelegram) {
+        return (
+            <div key={language}>
+                <AppRouter />
             </div>
         );
     }

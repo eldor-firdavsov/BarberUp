@@ -2,8 +2,8 @@
 //
 // Receives inbound updates from the @BarberUp_bot:
 //   • /start command             — greet + ask for phone
-//   • Shared contact             — link phone → chat_id
-//   • Manual "+998XXXXXXXXX" text — link phone → chat_id
+//   • Shared contact             — link phone → chat_id + telegram_user_id
+//   • Manual "+998XXXXXXXXX" text — link phone → chat_id + telegram_user_id
 //   • Inline button callback     — Accept/Reject a pending booking
 //                                  (callback_data format: "accept:<id>"
 //                                  or "reject:<id>")
@@ -18,6 +18,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? SUPABASE_ANON_KEY;
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+
+// Mini App URL — already registered in BotFather
+const MINI_APP_URL = "https://barberup.uz/tg";
 
 // Use the service-role key so we can update the bookings table and call
 // the new set_booking_status RPC regardless of RLS.
@@ -68,6 +71,25 @@ serve(async (req) => {
       });
     };
 
+    // ── Helper: send "Open BarberUp" Mini App inline button ───────────
+    const sendOpenAppButton = async (chatId: number | string) => {
+      await sendTelegram(
+        chatId,
+        "🚀 *BarberUp ilovasini oching:*\n\nSartaroshxona qidirish va navbat band qilish uchun quyidagi tugmani bosing.",
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [[
+              {
+                text: "✂️ BarberUp'ni ochish",
+                web_app: { url: MINI_APP_URL },
+              },
+            ]],
+          },
+        }
+      );
+    };
+
     // ── 1. Inline keyboard callback (Accept / Reject) ─────────────────
     if (update.callback_query) {
       const cq = update.callback_query;
@@ -101,10 +123,6 @@ serve(async (req) => {
           newStatus === "accepted" ? "✅ Qabul qilindi" : "❌ Rad etildi",
         );
 
-        // Edit the original message in-place so the buttons disappear
-        // and the message reflects the new state. This satisfies the
-        // requirement that the notification "is removed" once the
-        // barber confirms the booking.
         if (chatId && messageId) {
           const updatedText = newStatus === "accepted"
             ? `✅ <b>Qabul qilindi</b>\n\n👤 ${clientName}\n✂️ ${service}\n🕐 ${bookingAt}\n\nMijozga xabar yuborildi.`
@@ -125,7 +143,6 @@ serve(async (req) => {
         return new Response("ok");
       }
 
-      // Unknown callback — dismiss it so the spinner stops.
       await answerCallback(cq.id);
       return new Response("ok");
     }
@@ -135,21 +152,67 @@ serve(async (req) => {
     if (!chatId) return new Response("ok");
 
     // ── /start command ──────────────────────────────────────────────────
-    if (update.message.text === "/start") {
-      await sendTelegram(
-        chatId,
-        "BarberUp botiga xush kelibsiz!\n\n" +
-          "Telefon raqamingizni yuboring yoki quyidagi tugmani bosing.",
-        {
-          reply_markup: {
-            keyboard: [[{ text: "📱 Telefon raqamni yuborish", request_contact: true }]],
-            resize_keyboard: true,
-            one_time_keyboard: true,
-          },
-        },
-      );
+    if (update.message.text === "/start" || update.message.text?.startsWith("/start ")) {
+      const telegramUserId = String(update.message.from?.id ?? chatId);
+
+      // Check if this user has already linked their phone
+      const { data: existingLink } = await supabase
+        .from("telegram_links")
+        .select("phone")
+        .or(`chat_id.eq.${String(chatId)},telegram_user_id.eq.${telegramUserId}`)
+        .maybeSingle();
+
+      if (existingLink?.phone) {
+        // ── Returning user ─────────────────────────────────────────────
+        const firstName = update.message.from?.first_name ?? "Foydalanuvchi";
+        await sendTelegram(
+          chatId,
+          `👋 *Qaytib keldingiz, ${firstName}!*\n\n` +
+            `✅ Telefon raqamingiz (${existingLink.phone}) ulangan.\n\n` +
+            `Sartaroshxona qidirish yoki navbatlaringizni ko'rish uchun ilovani oching:`,
+          {
+            parse_mode: "Markdown",
+            reply_markup: {
+              inline_keyboard: [[
+                {
+                  text: "✂️ BarberUp'ni ochish",
+                  web_app: { url: MINI_APP_URL },
+                },
+              ]],
+            },
+          }
+        );
+      } else {
+        // ── First-time user ─────────────────────────────────────────────
+        // Step 1: rich welcome card
+        await sendTelegram(
+          chatId,
+          "✂️ *BarberUp'ga xush kelibsiz!*\n\n" +
+            "Sartaroshxona qidirish va navbat band qilishning eng qulay yo'li.\n\n" +
+            "🔹 Yaqin atrofdagi sartaroshxonalarni toping\n" +
+            "🔹 Onlayn navbat band qiling — kutmasdan boring\n" +
+            "🔹 Bron holati haqida darhol xabar oling\n\n" +
+            "Boshlash uchun *telefon raqamingizni ulang* 👇",
+          { parse_mode: "Markdown" }
+        );
+
+        // Step 2: contact-share keyboard
+        await sendTelegram(
+          chatId,
+          "📱 Quyidagi tugmani bosib telefon raqamingizni yuboring:",
+          {
+            reply_markup: {
+              keyboard: [[{ text: "📱 Telefon raqamni yuborish", request_contact: true }]],
+              resize_keyboard: true,
+              one_time_keyboard: true,
+            },
+          }
+        );
+      }
+
       return new Response("ok");
     }
+
 
     // ── Shared contact ──────────────────────────────────────────────────
     if (update.message?.contact) {
@@ -157,9 +220,19 @@ serve(async (req) => {
         ? update.message.contact.phone_number
         : `+${update.message.contact.phone_number}`;
 
+      // For a self-share: contact.user_id === message.from.id.
+      // We store telegram_user_id so the Mini App can look up the phone
+      // using window.Telegram.WebApp.initDataUnsafe.user.id.
+      const telegramUserId = String(
+        update.message.contact.user_id ?? update.message.from?.id ?? chatId
+      );
+
       const { error: upsertError } = await supabase
         .from("telegram_links")
-        .upsert({ phone, chat_id: String(chatId) }, { onConflict: "phone" });
+        .upsert(
+          { phone, chat_id: String(chatId), telegram_user_id: telegramUserId },
+          { onConflict: "phone" }
+        );
 
       if (upsertError) {
         console.error("[TELEGRAM WEBHOOK] upsert error:", upsertError);
@@ -167,14 +240,22 @@ serve(async (req) => {
         return new Response("ok");
       }
 
-      console.log(`[TELEGRAM WEBHOOK] linked phone=${phone} chat_id=${chatId}`);
+      console.log(`[TELEGRAM WEBHOOK] linked phone=${phone} chat_id=${chatId} tg_user_id=${telegramUserId}`);
 
+      // Remove contact-share keyboard, then send success message
       await sendTelegram(
         chatId,
-        "✅ Telefon raqamingiz tasdiqlandi!\n\n" +
-          "Endi BarberUp ilovasidagi bronlar bo'yicha barcha xabarnomalar shu yerga keladi.",
-        { reply_markup: { remove_keyboard: true } },
+        "✅ *Telefon raqamingiz tasdiqlandi!*\n\n" +
+          "Endi sartaroshxona bronlari bo'yicha barcha xabarnomalar shu yerga keladi.",
+        {
+          parse_mode: "Markdown",
+          reply_markup: { remove_keyboard: true },
+        },
       );
+
+      // Follow up with the Open App button
+      await sendOpenAppButton(chatId);
+
       return new Response("ok");
     }
 
@@ -182,10 +263,14 @@ serve(async (req) => {
     const phoneRegex = /^\+998\d{9}$/;
     if (update.message?.text && phoneRegex.test(update.message.text.trim())) {
       const phone = update.message.text.trim();
+      const telegramUserId = String(update.message.from?.id ?? chatId);
 
       const { error: upsertError } = await supabase
         .from("telegram_links")
-        .upsert({ phone, chat_id: String(chatId) }, { onConflict: "phone" });
+        .upsert(
+          { phone, chat_id: String(chatId), telegram_user_id: telegramUserId },
+          { onConflict: "phone" }
+        );
 
       if (upsertError) {
         console.error("[TELEGRAM WEBHOOK] upsert error:", upsertError);
@@ -193,14 +278,20 @@ serve(async (req) => {
         return new Response("ok");
       }
 
-      console.log(`[TELEGRAM WEBHOOK] linked phone=${phone} chat_id=${chatId}`);
+      console.log(`[TELEGRAM WEBHOOK] linked phone=${phone} chat_id=${chatId} tg_user_id=${telegramUserId}`);
 
       await sendTelegram(
         chatId,
-        "✅ Telefon raqamingiz tasdiqlandi!\n\n" +
-          "Endi BarberUp ilovasidagi bronlar bo'yicha barcha xabarnomalar shu yerga keladi.",
-        { reply_markup: { remove_keyboard: true } },
+        "✅ *Telefon raqamingiz tasdiqlandi!*\n\n" +
+          "Endi sartaroshxona bronlari bo'yicha barcha xabarnomalar shu yerga keladi.",
+        {
+          parse_mode: "Markdown",
+          reply_markup: { remove_keyboard: true },
+        },
       );
+
+      await sendOpenAppButton(chatId);
+
       return new Response("ok");
     }
 

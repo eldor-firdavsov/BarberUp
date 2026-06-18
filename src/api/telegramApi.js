@@ -22,7 +22,47 @@
  *      rejected, cancelled) are delivered to the bot.
  */
 
+import { supabase } from './supabase.js';
+
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL ?? '';
+
+/**
+ * Mini App helper: look up the linked phone for a Telegram user.
+ *
+ * The telegram-webhook stores { phone, chat_id, telegram_user_id } in
+ * telegram_links whenever a user shares their contact with the bot.
+ * chat_id == telegram_user_id for direct messages (which is always the
+ * case for bot interactions). We try both columns for maximum resilience.
+ *
+ * @param {string|number} telegramUserId — from window.Telegram.WebApp.initDataUnsafe.user.id
+ * @returns {{ phone: string|null, error: string|null }}
+ */
+export async function getTelegramLinkByChatId(telegramUserId) {
+    if (!telegramUserId) return { phone: null, error: 'No Telegram user ID' };
+    const id = String(telegramUserId);
+    try {
+        // Try telegram_user_id column first (set by updated webhook)
+        let { data, error } = await supabase
+            .from('telegram_links')
+            .select('phone')
+            .eq('telegram_user_id', id)
+            .maybeSingle();
+
+        if (!error && data?.phone) return { phone: data.phone, error: null };
+
+        // Fallback: chat_id is the same value for DM-based bots
+        ({ data, error } = await supabase
+            .from('telegram_links')
+            .select('phone')
+            .eq('chat_id', id)
+            .maybeSingle());
+
+        if (error) return { phone: null, error: error.message };
+        return { phone: data?.phone ?? null, error: null };
+    } catch (err) {
+        return { phone: null, error: err.message };
+    }
+}
 
 /**
  * Low-level: send any text to any resolved target.

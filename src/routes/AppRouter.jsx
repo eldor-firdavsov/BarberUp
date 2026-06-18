@@ -5,6 +5,7 @@ import RoleSelection from '../pages/auth/RoleSelection.jsx';
 import Register from '../pages/auth/Register.jsx';
 import Login from '../pages/auth/Login.jsx';
 import BarberOnboarding from '../pages/auth/BarberOnboarding.jsx';
+import TelegramEntry from '../pages/auth/TelegramEntry.jsx';
 
 import ClientLayout from '../layouts/ClientLayout.jsx';
 import BarberLayout from '../layouts/BarberLayout.jsx';
@@ -48,17 +49,24 @@ function AppRouter() {
         } catch { return false; }
     })();
 
+    // If the Mini App is opened from within Telegram, go to TelegramEntry
+    const isInTelegram = !!window.Telegram?.WebApp?.initDataUnsafe?.user;
+
     return (
         <ErrorBoundary>
             <BrowserRouter>
                 <Suspense fallback={<PageLoader />}>
                     <Routes>
-                        {/* Root redirect: go straight to role-select (login) if
-                            a language has been chosen. The LanguageSelection
-                            itself is shown by App.jsx on true cold-start only. */}
+                        {/* Root redirect:
+                            - Logged-in users go straight to their dashboard.
+                            - Telegram Mini App opens go to /tg (TelegramEntry).
+                            - Everyone else goes to /role-select. */}
                         <Route path="/" element={
-                            isLoggedIn ? <Navigate to={`/${JSON.parse(localStorage.getItem('user')).role}/dashboard`} replace /> :
-                            <Navigate to="/role-select" replace />
+                            isLoggedIn
+                                ? <Navigate to={`/${JSON.parse(localStorage.getItem('user')).role}/dashboard`} replace />
+                                : isInTelegram
+                                    ? <Navigate to="/tg" replace />
+                                    : <Navigate to="/role-select" replace />
                         } />
 
                         {/* Public routes */}
@@ -66,6 +74,9 @@ function AppRouter() {
                         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
                         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                         <Route path="/onboarding/barber" element={<PublicRoute><BarberOnboarding /></PublicRoute>} />
+
+                        {/* Telegram Mini App entry — opened via the bot's "Open App" button */}
+                        <Route path="/tg" element={<TelegramEntry />} />
 
                         <Route path="/guest-book/:id" element={<GuestBooking />} />
                         <Route path="/track/:id" element={<TrackBooking />} />
