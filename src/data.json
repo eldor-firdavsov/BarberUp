@@ -1,5 +1,22 @@
 {
   "ru": {
+    "layout": {
+      "client": {
+        "explore": "Обзор",
+        "bookings": "Брони",
+        "settings": "Настройки"
+      },
+      "barber": {
+        "home": "Главная",
+        "appointments": "Записи",
+        "clients": "Клиенты",
+        "settings": "Настройки",
+        "newBookings": "Новые запросы",
+        "pendingCount": "Всего: {{count}}",
+        "noPending": "Нет новых запросов",
+        "allCaughtUp": "Все запросы обработаны"
+      }
+    },
     "brand": {
       "name": "BarberUp",
       "tagline": "Современный сервис для стрижки"
@@ -54,7 +71,9 @@
       "service": "Услуга",
       "clear": "Очистить",
       "visits": "визитов",
-      "lastVisit": "Последний визит"
+      "lastVisit": "Последний визит",
+      "appointmentAt": "{{date}} · {{time}}",
+      "optional": "необязательно"
     },
     "status": {
       "pending": "В ожидании",
@@ -88,6 +107,19 @@
       "bookingNotFound": "Запись не найдена для этого номера",
       "loginCta": "Войти и записаться",
       "guestCta": "Записаться по телефону"
+    },
+    "booking": {
+      "rescheduleConfirm": "Изменение времени записи",
+      "current": "Текущая запись",
+      "reschedule": "Перенести запись",
+      "dayOff": "Выходной",
+      "noSlots": "Нет свободных мест на выбранный день",
+      "countdown": "Осталось времени на подтверждение",
+      "countdownExpired": "Время подтверждения истекло",
+      "notes": "Пожелания к записи",
+      "notesPlaceholder": "Например: стрижка под насадку, помыть голову, особые пожелания...",
+      "walkIn": "Живая очередь",
+      "walkInSuccess": "Клиент добавлен"
     },
     "subscription": {
       "title": "Тарифный план",
@@ -155,6 +187,28 @@
         "signIn": "Войти",
         "noAccount": "Нет аккаунта?",
         "signUp": "Регистрация"
+      },
+      "barberLogin": {
+        "title": "Вход для барбера",
+        "subtitle": "Введите номер телефона мастера",
+        "signIn": "Войти",
+        "noAccount": "Ещё не зарегистрированы?",
+        "signUp": "Регистрация мастера"
+      },
+      "clientEntry": {
+        "title": "Продолжить",
+        "subtitle": "Введите номер телефона — код придёт в Telegram",
+        "verifyTitle": "Подтверждение",
+        "codeSent": "— код отправлен",
+        "nameTitle": "Как вас зовут?",
+        "nameSubtitle": "Укажите имя для записи",
+        "continue": "Получить код",
+        "verify": "Подтвердить",
+        "resend": "Отправить код снова",
+        "resendIn": "Повторная отправка через",
+        "telegramHint": "Подключите Telegram через @BarberUp_bot, чтобы получать коды.",
+        "barberPrompt": "Вы мастер?",
+        "barberLink": "Вход для барбера →"
       },
       "errors": {
         "fieldsEmpty": "Поля не должны быть пустыми.",
@@ -249,6 +303,7 @@
         "noBarbers": "Нет доступных барберов",
         "distance": "Расстояние",
         "statusLabel": "Статус",
+        "workingHours": "Часы работы",
         "kmAway": "{{distance}} км от вас",
         "locationNotSet": "Локация не указана",
         "viewProfile": "Посмотреть профиль",
@@ -268,7 +323,14 @@
         "cancelBooking": "Отменить запись",
         "cancelBookingTitle": "Отмена записи",
         "rebookTitle": "Повторное бронирование",
-        "rebook": "Повторить бронь"
+        "rebook": "Повторить бронь",
+        "tabActive": "Активные",
+        "tabHistory": "История",
+        "emptyActive": "Нет активных записей",
+        "emptyActiveDesc": "Выберите барбера и запишитесь на удобное время",
+        "emptyHistory": "История пуста",
+        "emptyHistoryDesc": "Завершённые и отменённые записи появятся здесь",
+        "browseBarbers": "Найти барбера"
       },
       "bookingStatus": {
         "loading": "Загрузка статуса...",
@@ -284,6 +346,9 @@
         "cancelledTitle": "Бронирование отменено",
         "cancelledSubtitle": "Это бронирование было отменено.",
         "detailsTitle": "Детали бронирования",
+        "rejectedNotice": "Запись отклонена. Выберите другое время.",
+        "cancelledNotice": "Запись отменена.",
+        "pendingNotice": "Ожидайте подтверждения от барбера.",
         "service": "Услуга",
         "notFoundError": "Бронирование не найдено",
         "completedTitle": "Услуга завершена!",
@@ -354,7 +419,11 @@
         "noShow": "НЕ ПРИШЁЛ",
         "cancel": "ОТМЕНА",
         "viewAll": "Все",
-        "emptyRefresh": "Обновите страницу, чтобы проверить новые записи"
+        "emptyRefresh": "Обновите страницу, чтобы проверить новые записи",
+        "scheduleHint": "Записи открываются только в ваши рабочие часы",
+        "todayTimeline": "Сегодня",
+        "needsAction": "Требует ответа",
+        "confirmedToday": "Подтверждённые"
       },
       "appointments": {
         "title": "График",
@@ -410,6 +479,14 @@
         "popularService": "Популярная услуга",
         "peakHours": "Пиковые часы",
         "noData": "Нет данных за этот период"
+      },
+      "stats": {
+        "todayRevenue": "Доход за сегодня",
+        "completed": "Завершено сегодня",
+        "completionRate": "Процент визитов"
+      },
+      "walkIn": {
+        "title": "Регистрация живой очереди"
       }
     },
     "components": {
@@ -456,6 +533,23 @@
   },
 
   "uz": {
+    "layout": {
+      "client": {
+        "explore": "Izlash",
+        "bookings": "Bronlar",
+        "settings": "Sozlamalar"
+      },
+      "barber": {
+        "home": "Asosiy",
+        "appointments": "Jadval",
+        "clients": "Mijozlar",
+        "settings": "Sozlamalar",
+        "newBookings": "Yangi bronlar",
+        "pendingCount": "Jami: {{count}}",
+        "noPending": "Yangi bronlar yo'q",
+        "allCaughtUp": "Barcha so'rovlar ko'rib chiqildi"
+      }
+    },
     "brand": {
       "name": "BarberUp",
       "tagline": "Zamonaviy sartarosh tajribasi"
@@ -510,7 +604,9 @@
       "service": "Xizmat",
       "clear": "Tozalash",
       "visits": "tashrif",
-      "lastVisit": "Oxirgi tashrif"
+      "lastVisit": "Oxirgi tashrif",
+      "appointmentAt": "{{date}} · {{time}}",
+      "optional": "ixtiyoriy"
     },
     "status": {
       "pending": "Kutilmoqda",
@@ -542,8 +638,21 @@
       "phoneVerify": "Tekshirish uchun telefon raqamingizni kiriting",
       "verify": "Tekshirish",
       "bookingNotFound": "Bu raqam uchun bron topilmadi",
-      "loginCta": "Kirish va band qilish",
-      "guestCta": "Telefon bilan band qilish"
+      "loginCta": "Kirish va yozilish",
+      "guestCta": "Telefon orqali yozilish"
+    },
+    "booking": {
+      "rescheduleConfirm": "Bron vaqtini o'zgartirish",
+      "current": "Joriy bron",
+      "reschedule": "Vaqtini ko'chirish",
+      "dayOff": "Dam olish kuni",
+      "noSlots": "Tanlangan kun uchun bo'sh joylar yo'q",
+      "countdown": "Tasdiqlash uchun qolgan vaqt",
+      "countdownExpired": "Tasdiqlash vaqti tugadi",
+      "notes": "Bron bo'yicha maxsus eslatma",
+      "notesPlaceholder": "Masalan: soch yuvish, alohida talablar...",
+      "walkIn": "Navbat (Walk-in)",
+      "walkInSuccess": "Mijoz muvaffaqiyatli qo'shildi"
     },
     "subscription": {
       "title": "Tarif rejasi",
@@ -611,6 +720,28 @@
         "signIn": "Kirish",
         "noAccount": "Hisobingiz yo'qmi?",
         "signUp": "Ro'yxatdan o'tish"
+      },
+      "barberLogin": {
+        "title": "Sartarosh kirishi",
+        "subtitle": "Telefon raqamingizni kiriting",
+        "signIn": "Kirish",
+        "noAccount": "Hali ro'yxatdan o'tmaganmisiz?",
+        "signUp": "Sartarosh sifatida ro'yxatdan o'tish"
+      },
+      "clientEntry": {
+        "title": "Davom etish",
+        "subtitle": "Telefon raqamingizni kiriting — kod Telegram orqali keladi",
+        "verifyTitle": "Tasdiqlash",
+        "codeSent": "raqamiga kod yuborildi",
+        "nameTitle": "Ismingiz nima?",
+        "nameSubtitle": "Navbat uchun ismingizni kiriting",
+        "continue": "Kod olish",
+        "verify": "Tasdiqlash",
+        "resend": "Kodni qayta yuborish",
+        "resendIn": "Qayta yuborish",
+        "telegramHint": "Kod olish uchun @BarberUp_bot orqali Telegramni ulang.",
+        "barberPrompt": "Siz usta misiz?",
+        "barberLink": "Usta sifatida kirish →"
       },
       "errors": {
         "fieldsEmpty": "Maydonlar bo'sh bo'lmasligi kerak.",
@@ -705,6 +836,7 @@
         "noBarbers": "Sartaroshlar mavjud emas",
         "distance": "Masofa",
         "statusLabel": "Holat",
+        "workingHours": "Ish vaqti",
         "kmAway": "{{distance}} km uzoqlikda",
         "locationNotSet": "Joylashuv ko'rsatilmagan",
         "viewProfile": "Profilni ko'rish",
@@ -724,7 +856,14 @@
         "cancelBooking": "Bronni bekor qilish",
         "cancelBookingTitle": "Bronni bekor qilish",
         "rebookTitle": "Qayta bron qilish",
-        "rebook": "Qayta bron"
+        "rebook": "Qayta bron",
+        "tabActive": "Faol",
+        "tabHistory": "Tarix",
+        "emptyActive": "Faol bronlar yo'q",
+        "emptyActiveDesc": "Sartarosh tanlang va qulay vaqtga yoziling",
+        "emptyHistory": "Tarix bo'sh",
+        "emptyHistoryDesc": "Tugagan va bekor qilingan bronlar shu yerda ko'rinadi",
+        "browseBarbers": "Sartaroshlarni ko'rish"
       },
       "bookingStatus": {
         "loading": "Holat yuklanmoqda...",
@@ -740,6 +879,9 @@
         "cancelledTitle": "Bron bekor qilindi",
         "cancelledSubtitle": "Ushbu bron bekor qilindi.",
         "detailsTitle": "Bron tafsilotlari",
+        "rejectedNotice": "Bron rad etildi. Boshqa vaqt tanlang.",
+        "cancelledNotice": "Bron bekor qilindi.",
+        "pendingNotice": "Sartarosh tasdiqlashini kuting.",
         "service": "Xizmat",
         "notFoundError": "Bron topilmadi",
         "completedTitle": "Xizmat yakunlandi!",
@@ -810,7 +952,11 @@
         "noShow": "KELMADI",
         "cancel": "BEKOR",
         "viewAll": "Hammasi",
-        "emptyRefresh": "Yangi navbatlarni tekshirish uchun sahifani yangilang"
+        "emptyRefresh": "Yangi navbatlarni tekshirish uchun sahifani yangilang",
+        "scheduleHint": "Navbatlar faqat ish vaqtingiz bo'yicha ochiladi",
+        "todayTimeline": "Bugun",
+        "needsAction": "Javob kerak",
+        "confirmedToday": "Tasdiqlangan"
       },
       "appointments": {
         "title": "Jadval",
@@ -866,6 +1012,14 @@
         "popularService": "Mashhur xizmat",
         "peakHours": "Cho'qqi soatlar",
         "noData": "Bu davr uchun ma'lumot yo'q"
+      },
+      "stats": {
+        "todayRevenue": "Bugungi tushum",
+        "completed": "Tugallangan",
+        "completionRate": "Kelish foizi"
+      },
+      "walkIn": {
+        "title": "Jonli navbatni ro'yxatdan o'tkazish"
       }
     },
     "components": {

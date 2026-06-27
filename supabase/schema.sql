@@ -105,7 +105,8 @@ ALTER TABLE public.bookings
     ADD COLUMN IF NOT EXISTS service_duration  TEXT,
     ADD COLUMN IF NOT EXISTS guest_name        TEXT,
     ADD COLUMN IF NOT EXISTS guest_phone       TEXT,
-    ADD COLUMN IF NOT EXISTS cancelled_by      TEXT;
+    ADD COLUMN IF NOT EXISTS cancelled_by      TEXT,
+    ADD COLUMN IF NOT EXISTS reminder_30m_sent_at TIMESTAMPTZ;
 
 -- Remove old payment/deposit columns
 ALTER TABLE public.bookings

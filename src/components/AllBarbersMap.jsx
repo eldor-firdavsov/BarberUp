@@ -171,7 +171,7 @@ export default function AllBarbersMap({ barbers, clientCoords }) {
             <div ref={mapRef} className="w-full h-full z-0" />
 
             {/* Barber Details Bottom Sheet */}
-            <div className={`absolute bottom-0 left-0 right-0 z-50 p-4 transition-transform duration-300 ease-out ${selectedBarber ? 'translate-y-0' : 'translate-y-[120%]'}`}>
+            <div className={`absolute bottom-[calc(56px+env(safe-area-inset-bottom,0px))] md:bottom-0 left-0 right-0 z-50 p-4 transition-transform duration-300 ease-out ${selectedBarber ? 'translate-y-0' : 'translate-y-[120%]'}`}>
                 {selectedBarber && (
                     <div className="bg-white rounded-3xl p-5 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border border-black/5 relative">
                         <button 

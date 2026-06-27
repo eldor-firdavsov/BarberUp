@@ -8,6 +8,7 @@ import { t } from '../../utils/i18n.js';
 import { User, Phone, Clock, Coffee, ChevronRight, LogOut, X, Check, Send, ExternalLink, MapPin } from 'lucide-react';
 import LanguageSelector from '../../components/LanguageSelector.jsx';
 import MapPicker from '../../components/MapPicker.jsx';
+import PageContainer from '../../components/layout/PageContainer.jsx';
 
 function Settings() {
     const { logout, user, updateSessionUser } = useAuth();
@@ -189,8 +190,17 @@ function Settings() {
     const displayPhone = user?.phone ? user.phone.replace(/^\+998/, '+998 ') : '—';
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] px-4 py-18 sm:px-6 sm:py-12 max-w-md md:max-w-2xl mx-auto flex flex-col gap-6">
-            <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em]">{t('barber.settings.title')}</h1>
+        <PageContainer
+            hasHeader={true}
+            hasBottomNav={true}
+            extraBottom={16}
+            className="max-w-md md:max-w-2xl mx-auto flex flex-col gap-5"
+        >
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('barber.settings.title')}</h1>
+
+            <div className="bg-[var(--brand-primary-light)] border border-[var(--brand-primary)]/10 rounded-[var(--radius-card)] p-4">
+                <p className="text-xs text-[var(--brand-primary-dark)] font-medium">{t('barber.dashboard.scheduleHint')}</p>
+            </div>
 
             {/* Profile Card */}
             <div className="bg-white rounded-[28px] border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] p-6 flex items-center gap-5">
@@ -504,7 +514,7 @@ function Settings() {
                     </div>
                 </div>
             )}
-        </section>
+        </PageContainer>
     );
 }
 

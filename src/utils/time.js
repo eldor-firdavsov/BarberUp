@@ -93,6 +93,92 @@ export function getCurrentTime() {
 }
 
 /**
+ * Parse a schedule range string like "09:00 - 18:00" into { start, end } HH:mm.
+ */
+export function parseScheduleRange(str) {
+    if (!str || str === 'N/A') return null;
+    const parts = String(str).split(/[-–—]/).map((s) => s.trim());
+    if (parts.length < 2) return null;
+    const start = formatTo24h(parts[0]);
+    const end = formatTo24h(parts[1]);
+    if (!start || !end) return null;
+    return { start, end };
+}
+
+/**
+ * True if `now` (HH:mm) falls within work hours and outside lunch break.
+ */
+export function isWithinSchedule(now, workStart, workEnd, lunchStart, lunchEnd) {
+    const current = formatTo24h(now);
+    const start = formatTo24h(workStart);
+    const end = formatTo24h(workEnd);
+    if (!current || !start || !end) return true;
+    if (current < start || current >= end) return false;
+    const lunchS = formatTo24h(lunchStart);
+    const lunchE = formatTo24h(lunchEnd);
+    if (lunchS && lunchE && current >= lunchS && current < lunchE) return false;
+    return true;
+}
+
+/**
+ * Generate bookable time slots from barber schedule.
+ * @param {object} barberData - normalized barber with workStart/workEnd/lunchStart/lunchEnd
+ * @param {number} durationMins - slot step in minutes
+ * @param {string} dateStr - YYYY-MM-DD
+ * @param {string} todayStr - today's date YYYY-MM-DD
+ */
+export function generateAvailableSlots(barberData, durationMins = 30, dateStr, todayStr) {
+    const work = parseScheduleRange(barberData?.working_hours || barberData?.workingHours);
+    if (!work) return [];
+
+    const workStart = barberData?.workStart || work.start;
+    const workEnd = barberData?.workEnd || work.end;
+    const lunchStart = barberData?.lunchStart || parseScheduleRange(barberData?.lunch_break || barberData?.lunchBreak)?.start;
+    const lunchEnd = barberData?.lunchEnd || parseScheduleRange(barberData?.lunch_break || barberData?.lunchBreak)?.end;
+
+    const [startH, startM] = workStart.split(':').map(Number);
+    const [endH, endM] = workEnd.split(':').map(Number);
+
+    let lStart = -1;
+    let lEnd = -1;
+    if (lunchStart && lunchEnd) {
+        const [lsH, lsM] = lunchStart.split(':').map(Number);
+        const [leH, leM] = lunchEnd.split(':').map(Number);
+        lStart = lsH * 60 + lsM;
+        lEnd = leH * 60 + leM;
+    }
+
+    const isToday = dateStr === todayStr;
+    const now = getCurrentTime();
+    const availableSlots = [];
+
+    let curHour = startH;
+    let curMin = startM;
+    let count = 0;
+
+    while ((curHour < endH || (curHour === endH && curMin < endM)) && count < 100) {
+        const timeMins = curHour * 60 + curMin;
+        const isLunch = lStart !== -1 && timeMins >= lStart && timeMins < lEnd;
+
+        if (!isLunch) {
+            const normalized = formatTo24h(`${String(curHour).padStart(2, '0')}:${String(curMin).padStart(2, '0')}`);
+            if (normalized && (!isToday || normalized >= now)) {
+                availableSlots.push(normalized);
+            }
+        }
+
+        curMin += durationMins;
+        while (curMin >= 60) {
+            curMin -= 60;
+            curHour += 1;
+        }
+        count += 1;
+    }
+
+    return availableSlots;
+}
+
+/**
  * True if current time falls within the given working hours range.
  * workingHours should be a string like "09:00 - 18:00".
  * Returns true if workingHours is empty/invalid (no restriction).

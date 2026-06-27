@@ -17,11 +17,11 @@ function ProtectedRoute({ children, requiredRole }) {
     }
 
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/start" replace />;
     }
 
     if (!['client', 'barber'].includes(user.role)) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/start" replace />;
     }
 
     if (user.role !== requiredRole) {

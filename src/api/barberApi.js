@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { formatTo24h } from '../utils/time.js';
+import { formatTo24h, parseScheduleRange } from '../utils/time.js';
 
 /**
  * Normalise a raw Supabase `barbers` row into the V2 app model.
@@ -9,9 +9,14 @@ export function normalizeBarber(raw) {
     if (!raw) return null;
 
     const workingHoursRaw = raw.working_hours ?? raw.workingHours ?? '';
-    const [startRaw, endRaw] = String(workingHoursRaw).split('-').map((v) => v.trim());
-    const start = formatTo24h(startRaw);
-    const end   = formatTo24h(endRaw);
+    const workRange = parseScheduleRange(workingHoursRaw);
+    const start = workRange?.start ?? formatTo24h(String(workingHoursRaw).split('-').map((v) => v.trim())[0]);
+    const end = workRange?.end ?? formatTo24h(String(workingHoursRaw).split('-').map((v) => v.trim())[1]);
+
+    const lunchRaw = raw.lunch_break ?? raw.lunchBreak ?? '';
+    const lunchRange = parseScheduleRange(lunchRaw);
+    const lunchStart = lunchRange?.start ?? null;
+    const lunchEnd = lunchRange?.end ?? null;
 
     const photos = [raw.photo_1, raw.photo_2, raw.photo_3].filter(Boolean);
 
@@ -55,9 +60,12 @@ export function normalizeBarber(raw) {
         email: raw.email ?? '',
         phone: raw.phone ?? '',
         services: servicesList,
-        status: raw.status ?? 'available',
-        lunchBreak: raw.lunch_break ?? '',
-        lunch_break: raw.lunch_break ?? '',
+        workStart: start,
+        workEnd: end,
+        lunchStart,
+        lunchEnd,
+        lunchBreak: lunchStart && lunchEnd ? `${lunchStart} - ${lunchEnd}` : (raw.lunch_break ?? ''),
+        lunch_break: lunchStart && lunchEnd ? `${lunchStart} - ${lunchEnd}` : (raw.lunch_break ?? ''),
         telegramChatId: raw.telegram_chat_id ?? null,
         telegramNotifications: raw.telegram_notifications ?? false,
         rating: Number(raw.rating ?? 0),
@@ -167,27 +175,8 @@ export async function loginBarber(phone) {
     }
 }
 
-/**
- * Update the barber's real-time availability status.
- * @param {string} barberId
- * @param {'available'|'working-busy'|'lunch'|'closed'} status
- */
+/** @deprecated Barber availability is schedule-only; this API is no longer used. */
 export async function updateBarberStatus(barberId, status) {
-    try {
-        const { data, error } = await supabase
-            .from('barbers')
-            .update({ status })
-            .eq('id', barberId)
-            .select()
-            .single();
-
-        if (error) {
-            console.error('[BARBER STATUS UPDATE] error:', error);
-            return { data: null, error: error.message };
-        }
-
-        return { data: normalizeBarber(data), error: null };
-    } catch {
-        return { data: null, error: 'Failed to update barber status.' };
-    }
+    console.warn('[updateBarberStatus] deprecated — availability is controlled by working_hours only');
+    return { data: null, error: null };
 }

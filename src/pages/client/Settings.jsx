@@ -7,6 +7,7 @@ import { supabase } from '../../api/supabase.js';
 import { uploadImage } from '../../api/uploadApi.js';
 import { t } from '../../utils/i18n.js';
 import LanguageSelector from '../../components/LanguageSelector.jsx';
+import PageContainer from '../../components/layout/PageContainer.jsx';
 
 function Settings() {
     const navigate = useNavigate();
@@ -81,7 +82,12 @@ function Settings() {
     };
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 max-w-md md:max-w-2xl mx-auto flex flex-col">
+        <PageContainer
+            hasHeader={true}
+            hasBottomNav={true}
+            extraBottom={16}
+            className="max-w-md md:max-w-2xl mx-auto flex flex-col gap-5"
+        >
             <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-8">{t('client.settings.title')}</h1>
 
             <div className="space-y-6 flex-grow">
@@ -175,7 +181,7 @@ function Settings() {
             <button onClick={handleLogout} className="mt-10 mb-32 py-4 font-bold text-red-500 border border-red-100 rounded-2xl hover:bg-red-50 transition-all cursor-pointer">
                 {t('common.logOut')}
             </button>
-        </section>
+        </PageContainer>
     );
 }
 

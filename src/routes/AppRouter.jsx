@@ -66,36 +66,34 @@ function AppRouter() {
                                 ? <Navigate to={`/${JSON.parse(localStorage.getItem('user')).role}/dashboard`} replace />
                                 : isInTelegram
                                     ? <Navigate to="/tg" replace />
-                                    : <Navigate to="/role-select" replace />
+                                    : <Navigate to="/start" replace />
                         } />
 
                         {/* Public routes */}
                         <Route path="/role-select" element={<RoleSelection />} />
-                        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
                         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+                        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+                        <Route path="/start" element={<PublicRoute><ClientEntry /></PublicRoute>} />
                         <Route path="/onboarding/barber" element={<PublicRoute><BarberOnboarding /></PublicRoute>} />
 
-                        {/* Telegram Mini App entry — opened via the bot's "Open App" button */}
+                        {/* Telegram Mini App entry */}
                         <Route path="/tg" element={<TelegramEntry />} />
 
                         <Route path="/guest-book/:id" element={<GuestBooking />} />
                         <Route path="/track/:id" element={<TrackBooking />} />
 
-                        {/* Client barber detail (outside layout for full-screen booking) */}
                         <Route path="/client/barber/:id" element={
                             <ProtectedRoute requiredRole="client">
                                 <BarbershopDetails />
                             </ProtectedRoute>
                         } />
 
-                        {/* Booking status (used by client after creating a booking) */}
                         <Route path="/client/booking-status/:id" element={
                             <ProtectedRoute requiredRole="client">
                                 <BookingStatus />
                             </ProtectedRoute>
                         } />
 
-                        {/* Client authenticated routes */}
                         <Route path="/client" element={
                             <ProtectedRoute requiredRole="client">
                                 <ClientLayout />
@@ -106,8 +104,6 @@ function AppRouter() {
                             <Route path="settings" element={<ClientSettings />} />
                             <Route path="change-phone" element={<ChangePhone />} />
                         </Route>
-
-                        <Route path="/start" element={<PublicRoute><ClientEntry /></PublicRoute>} />
 
                         {/* Barber authenticated routes */}
                         <Route path="/barber" element={

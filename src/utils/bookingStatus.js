@@ -14,14 +14,6 @@ export const BOOKING_STATUSES = {
     COMPLETED: 'completed',
 };
 
-/** Barber availability statuses stored in Supabase `barbers.status` */
-export const BARBER_STATUS = {
-    available:    'available',
-    working_busy: 'working-busy',
-    lunch:        'lunch',
-    closed:       'closed',
-};
-
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 /** True if this status should block a calendar time slot from being re-booked. */

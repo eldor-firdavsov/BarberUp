@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Clock, MapPin, Star, Trash2 } from "lucide-react";
+import { Star, Trash2 } from "lucide-react";
 import InteractiveMap from "../../components/InteractiveMap.jsx";
+import BookingSheet from "../../components/BookingSheet.jsx";
+import { Button, Card } from "../../components/ui/index.js";
+import PageContainer from "../../components/layout/PageContainer.jsx";
 import { getBarbers } from "../../api/barberApi.js";
 import { getBarberReviews, deleteReview } from "../../api/reviewApi.js";
 import {
     bookingMatchesBarber,
     createGuestBooking,
-    getBookings,
+    getBookingsForBarber,
 } from "../../api/bookingApi.js";
 // Telegram notifications are handled by the DB trigger on INSERT/UPDATE
 // of bookings — no client-side notification calls needed.
@@ -18,6 +21,7 @@ import {
     formatTo24h,
     isSlotTaken,
     getCurrentTime,
+    generateAvailableSlots,
 } from "../../utils/time.js";
 import { isBlockingSlotStatus, formatBookingErrorMessage } from "../../utils/bookingStatus.js";
 import { t } from "../../utils/i18n.js";
@@ -50,6 +54,8 @@ export default function BarbershopDetails() {
     const [selectedDate, setSelectedDate] = useState(() => toDateStr(new Date()));
     const [reviews, setReviews] = useState([]);
     const [reviewsLoading, setReviewsLoading] = useState(true);
+    const [bookingOpen, setBookingOpen] = useState(false);
+    const [notes, setNotes] = useState('');
 
     const averageRating = useMemo(() => {
         if (!reviews.length) return 0;
@@ -70,97 +76,14 @@ export default function BarbershopDetails() {
     const dayOptions = useMemo(() => getBookingDayOptions(BOOKING_DAY_COUNT), []);
 
     function generateSlots(barberData, durationMins = 30, dateStr = toDateStr(new Date())) {
-        if (barberData.isWorkingNow === false) {
-            setSlots([]);
-            return;
-        }
-
-        const hours = barberData.working_hours || barberData.workingHours;
-
-        if (!hours || !hours.includes("-")) return;
-
-        const [startStr, endStr] = hours.split("-").map((s) => s.trim());
-
-        let startMatch = startStr.match(/^(\d{1,2}):(\d{2})$/);
-        let endMatch = endStr.match(/^(\d{1,2}):(\d{2})$/);
-
-        if (!startMatch || !endMatch) return;
-
-        let curHour = parseInt(startMatch[1], 10);
-        let curMin = parseInt(startMatch[2], 10);
-
-        const endHour = parseInt(endMatch[1], 10);
-        const endMin = parseInt(endMatch[2], 10);
-
-        let lStart = -1;
-        let lEnd = -1;
-
-        if (barberData.lunchStart && barberData.lunchEnd) {
-            const [lsH, lsM] = barberData.lunchStart
-                .split(":")
-                .map(Number);
-
-            const [leH, leM] = barberData.lunchEnd
-                .split(":")
-                .map(Number);
-
-            lStart = lsH * 60 + lsM;
-            lEnd = leH * 60 + leM;
-        }
-
-        const allSlots = [];
-        const availableSlots = [];
         const todayStr = toDateStr(new Date());
-        const isToday = dateStr === todayStr;
-
-        let count = 0;
-        const now = getCurrentTime();
-
-        while (
-            (curHour < endHour ||
-                (curHour === endHour && curMin < endMin)) &&
-            count < 100
-        ) {
-            const timeMins = curHour * 60 + curMin;
-
-            const isLunch =
-                lStart !== -1 &&
-                timeMins >= lStart &&
-                timeMins < lEnd;
-
-            if (!isLunch) {
-                const timeString = `${curHour
-                    .toString()
-                    .padStart(2, "0")}:${curMin
-                        .toString()
-                        .padStart(2, "0")}`;
-
-                const normalized = formatTo24h(timeString);
-
-                if (normalized) {
-                    allSlots.push(normalized);
-                    if (!isToday || normalized >= now) {
-                        availableSlots.push(normalized);
-                    }
-                }
-            }
-
-            curMin += durationMins;
-
-            while (curMin >= 60) {
-                curMin -= 60;
-                curHour += 1;
-            }
-
-            count++;
-        }
-
-        setSlots(availableSlots);
+        setSlots(generateAvailableSlots(barberData, durationMins, dateStr, todayStr));
     }
 
     const handleSelectService = (service) => {
         setSelectedService(service);
         setSelectedSlot(null);
+        setBookingOpen(true);
 
         if (barber) {
             const duration = service
@@ -189,7 +112,7 @@ export default function BarbershopDetails() {
             return { latestBookings: [], latestError: t("client.barbershopDetails.invalidBarberId") };
         }
 
-        const { data: latestBookings, error: latestError } = await getBookings();
+        const { data: latestBookings, error: latestError } = await getBookingsForBarber(targetBarberId, dateStr);
 
         if (latestError) {
             setError(t("client.dashboard.somethingWrong"));
@@ -197,8 +120,6 @@ export default function BarbershopDetails() {
         }
 
         const busySlots = (latestBookings ?? [])
-            .filter((booking) => bookingMatchesBarber(booking.barber, targetBarberId))
-            .filter((booking) => bookingMatchesDate(booking, dateStr))
             .filter((booking) => isBlockingSlotStatus(booking.status))
             .map((booking) => formatTo24h(booking.booking_hours))
             .filter(Boolean)
@@ -226,16 +147,7 @@ export default function BarbershopDetails() {
             setError("");
             setSuccessMessage("");
 
-            const [
-                { data, error },
-                {
-                    data: bookings,
-                    error: bookingError,
-                },
-            ] = await Promise.all([
-                getBarbers(),
-                getBookings(),
-            ]);
+            const { data, error } = await getBarbers();
 
             if (!isMounted) return;
 
@@ -312,14 +224,9 @@ export default function BarbershopDetails() {
                 setSelectedDate(initialDate);
                 generateSlots(found, duration, initialDate);
 
+                const { data: bookings, error: bookingError } = await getBookingsForBarber(barberKey, initialDate);
+
                 const busySlots = (bookings ?? [])
-                    .filter((booking) =>
-                        bookingMatchesBarber(
-                            booking.barber,
-                            barberKey
-                        )
-                    )
-                    .filter((booking) => bookingMatchesDate(booking, initialDate))
                     .filter((booking) => isBlockingSlotStatus(booking.status))
                     .map((booking) =>
                         formatTo24h(
@@ -381,16 +288,6 @@ export default function BarbershopDetails() {
 
         return () => { supabase.removeChannel(channel); };
     }, [barber?.id, barber?._id, selectedDate]);
-
-    const toggleSlot = (time) => {
-        if (bookedSlots.includes(time)) return;
-
-        setSelectedSlot((prev) =>
-            prev === time ? null : time
-        );
-
-        setSuccessMessage("");
-    };
 
     const handleBookSession = async () => {
         if (!clientName || !clientPhone) {
@@ -472,6 +369,7 @@ export default function BarbershopDetails() {
                     barber.avgPrice ??
                     "40000"
                 ),
+            notes: notes.trim(),
         });
 
         if (bookingError) {
@@ -486,8 +384,10 @@ export default function BarbershopDetails() {
             if (newBooking && newBooking.id) {
                 // Send the user to the in-app booking-status screen
                 // so they see pending → accepted/rejected in realtime.
+                setNotes('');
                 navigate(`/client/booking-status/${newBooking.id}`);
             } else {
+                setNotes('');
                 setSuccessMessage(
                     t("client.barbershopDetails.bookingRequested")
                 );
@@ -515,7 +415,7 @@ export default function BarbershopDetails() {
 
     if (barber === "not_found") {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#f5f5f7]">
+            <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
                 <h2 className="text-xl font-bold text-[#111]">
                     {t("client.barbershopDetails.notFound")}
                 </h2>
@@ -525,7 +425,7 @@ export default function BarbershopDetails() {
 
     if (loading || !barber) {
         return (
-            <div className="min-h-screen bg-[#f5f5f7] flex justify-center px-0 sm:px-6 py-0 sm:py-8 safe-bottom">
+            <div className="min-h-screen bg-[var(--bg-base)] flex justify-center px-0 sm:px-6 py-0 sm:py-8 safe-bottom">
                 <div className="w-full max-w-md md:max-w-5xl bg-white sm:rounded-[32px] overflow-hidden relative border-0 sm:border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)] animate-pulse">
                     <div className="relative h-[320px] w-full skeleton"></div>
                     <div className="relative z-10 -mt-8 bg-white rounded-t-[32px] px-6 py-7">
@@ -597,7 +497,12 @@ export default function BarbershopDetails() {
                 : [];
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] flex justify-center px-0 sm:px-6 py-0 sm:py-8 safe-bottom">
+        <PageContainer
+            hasHeader={false}
+            hasBottomNav={false}
+            extraBottom={80}
+            className="flex justify-center px-0 sm:px-6 py-0 sm:py-8"
+        >
             <div className="w-full max-w-md md:max-w-5xl bg-white sm:rounded-[32px] overflow-hidden relative border-0 sm:border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
 
                 <button
@@ -667,7 +572,7 @@ export default function BarbershopDetails() {
                                                 t("client.barbershopDetails.gentlemansAtelier")}
                                         </h2>
                                         {averageRating > 0 && (
-                                            <div className="flex items-center gap-1 bg-[#f5f5f7] px-2 py-1.5 rounded-lg border border-black/5 shadow-sm">
+                                            <div className="flex items-center gap-1 bg-[var(--bg-base)] px-2 py-1.5 rounded-lg border border-black/5 shadow-sm">
                                                 <Star size={14} className="text-amber-400 fill-amber-400" />
                                                 <span className="text-[13px] font-bold text-[#111] leading-none">{averageRating}</span>
                                             </div>
@@ -744,43 +649,26 @@ export default function BarbershopDetails() {
                                     {t("client.barbershopDetails.services")}
                                 </h3>
 
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {barberServices.map((service) => {
-                                        const isSelected =
-                                            selectedService?.id ===
-                                            service.id;
-
+                                        const isSelected = selectedService?.id === service.id;
                                         return (
-                                            <div
+                                            <Card
                                                 key={service.id}
-                                                onClick={() =>
-                                                    handleSelectService(
-                                                        service
-                                                    )
-                                                }
-                                                className={`p-5 rounded-3xl border cursor-pointer transition-all duration-200 flex justify-between items-center active:scale-[0.98]
-                                                ${isSelected
-                                                        ? "bg-[#2563eb] text-white border-[#2563eb] shadow-[0_10px_30px_rgba(37,99,235,0.2)]"
-                                                        : "bg-[#f8f8f8] border-black/5 hover:border-black/15 hover:shadow-sm"
-                                                    }`}
+                                                interactive
+                                                className={`p-4 flex justify-between items-center ${isSelected ? 'ring-2 ring-[var(--brand-primary)]' : ''}`}
+                                                onClick={() => handleSelectService(service)}
                                             >
                                                 <div>
-                                                    <p className="font-bold">
-                                                        {service.name}
-                                                    </p>
-
-                                                    <p className="text-xs opacity-70 mt-1">
+                                                    <p className="font-bold text-[var(--text-primary)]">{service.name}</p>
+                                                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                                                         {service.duration} {t("common.minutes")}
                                                     </p>
                                                 </div>
-
-                                                <p className="font-bold text-lg">
-                                                    {Number(
-                                                        service.price
-                                                    ).toLocaleString()}{" "}
-                                                    {t("common.uzs")}
+                                                <p className="font-bold text-[var(--text-primary)]">
+                                                    {Number(service.price).toLocaleString()} {t("common.uzs")}
                                                 </p>
-                                            </div>
+                                            </Card>
                                         );
                                     })}
                                 </div>
@@ -839,153 +727,6 @@ export default function BarbershopDetails() {
                             </div>
                         </div>
 
-                        {/* Right Column: Date Selection, Available Slots, Alerts & Booking Button */}
-                        <div className="space-y-8">
-                            <div>
-                                <h3 className="text-[20px] font-bold text-[#111] mb-4 tracking-[-0.02em]">
-                                    {t("client.barbershopDetails.selectDate")}
-                                </h3>
-                                <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide mb-6">
-                                    {dayOptions.map((day) => {
-                                        const isSelected = selectedDate === day.dateStr;
-                                        return (
-                                            <button
-                                                key={day.dateStr}
-                                                type="button"
-                                                onClick={() => handleSelectDate(day.dateStr)}
-                                                className={`shrink-0 flex flex-col items-center min-w-[72px] py-3 px-3 rounded-2xl border transition-all font-bold active:scale-95
-                                                ${isSelected
-                                                        ? "bg-[#2563eb] text-white border-[#2563eb] shadow-[0_8px_20px_rgba(37,99,235,0.25)]"
-                                                        : "bg-[#f8f8f8] text-[#666] border-black/5 hover:border-[#2563eb]/30 hover:bg-[#eff6ff]"
-                                                    }`}
-                                            >
-                                                <span className="text-[10px] uppercase tracking-wider leading-none mb-1 opacity-80">
-                                                    {day.label}
-                                                </span>
-                                                <span className="text-base leading-none">
-                                                    {day.dateStr.slice(-2)}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-[20px] font-bold text-[#111] tracking-[-0.02em]">
-                                        {t("client.barbershopDetails.availableSlots")}
-                                    </h3>
-                                    <span className="text-xs bg-[#E6F1FB] text-[#0C447C] px-3 py-1 rounded-full font-medium">
-                                        {formatBookingDate(selectedDate, { style: "short" })}
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[360px] overflow-y-auto pb-2">
-                                    {slots.length > 0 ? (
-                                        slots.map((time) => (
-                                            <label
-                                                key={time}
-                                                className={`flex flex-col items-center justify-center h-[88px] rounded-3xl border transition-all duration-200 cursor-pointer
-                                                ${bookedSlots.includes(time)
-                                                        ? "bg-[#f3f3f3] text-[#bbb] border-transparent cursor-not-allowed"
-                                                        : selectedSlot === time
-                                                            ? "bg-[#2563eb] text-white border-[#2563eb] shadow-[0_8px_25px_rgba(37,99,235,0.25)]"
-                                                            : "bg-[#f8f8f8] border-black/5 hover:border-[#2563eb]/30 hover:bg-[#eff6ff] active:scale-[0.98]"
-                                                    }`}
-                                            >
-                                                <span className="text-[11px] uppercase tracking-wide opacity-70">
-                                                    {t("common.time")}
-                                                </span>
-
-                                                <span className="text-lg font-bold">
-                                                    {time}
-                                                </span>
-
-                                                <input
-                                                    type="checkbox"
-                                                    className="hidden"
-                                                    checked={
-                                                        selectedSlot ===
-                                                        time
-                                                    }
-                                                    disabled={bookedSlots.includes(
-                                                        time
-                                                    )}
-                                                    onChange={() =>
-                                                        toggleSlot(time)
-                                                    }
-                                                />
-                                            </label>
-                                        ))
-                                    ) : (
-                                        <div className="col-span-3 flex flex-col items-center justify-center py-10 text-center">
-                                            <Clock
-                                                size={34}
-                                                className="text-gray-400 mb-3"
-                                            />
-
-                                            <h3 className="font-bold text-[#111]">
-                                                {t("client.barbershopDetails.noSlots")}
-                                            </h3>
-
-                                            <p className="text-sm text-[#777] mt-2">
-                                                {t("client.barbershopDetails.fullyBookedDay")}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 pt-4 border-t border-black/5">
-                                {error && (
-                                    <div className="rounded-3xl border border-red-100 bg-red-50 p-5 animate-fade-in">
-                                        <p className="font-semibold text-red-700">
-                                            {error}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {successMessage && (
-                                    <div className="rounded-3xl border border-green-100 bg-green-50 p-5 animate-fade-in">
-                                        <p className="font-semibold text-green-700">
-                                            {successMessage}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {successMessage ? (
-                                    <button
-                                        onClick={() =>
-                                            navigate("/client/dashboard")
-                                        }
-                                        className="w-full h-14 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.98] text-white font-bold text-[15px] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
-                                    >
-                                        {t("common.home")}
-                                    </button>
-                                ) : (
-                                    <div className="action-bar-bottom sm:relative sm:bg-transparent sm:p-0 sm:z-0">
-                                        <button
-                                            onClick={handleBookSession}
-                                            disabled={
-                                                !selectedSlot ||
-                                                bookingLoading ||
-                                                isBookingInProgress
-                                            }
-                                            className="w-full h-14 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.98] text-white font-bold text-[16px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(37,99,235,0.3)]"
-                                        >
-                                            {bookingLoading ||
-                                                isBookingInProgress ? (
-                                                <>
-                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                    {t("client.barbershopDetails.booking")}
-                                                </>
-                                            ) : (
-                                                t("client.barbershopDetails.bookNow")
-                                            )}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
                     </div>
 
                     {/* Location Map — placed at the very bottom after booking flow */}
@@ -1000,8 +741,42 @@ export default function BarbershopDetails() {
                         />
                     </div>
                 </div>
+
+                <div className="sticky bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-[var(--border-subtle)] safe-bottom z-20">
+                    <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={() => setBookingOpen(true)}
+                    >
+                        {selectedService
+                            ? `${t('client.barbershopDetails.bookNow')} — ${selectedService.name}`
+                            : t('client.barbershopDetails.bookNow')}
+                    </Button>
+                </div>
             </div>
 
-        </div>
+            <BookingSheet
+                isOpen={bookingOpen}
+                onClose={() => { if (!bookingLoading) setBookingOpen(false); }}
+                services={barberServices}
+                selectedService={selectedService}
+                onSelectService={handleSelectService}
+                dayOptions={dayOptions}
+                selectedDate={selectedDate}
+                onSelectDate={handleSelectDate}
+                slots={slots}
+                bookedSlots={bookedSlots}
+                selectedSlot={selectedSlot}
+                onSelectSlot={(time) => setSelectedSlot(selectedSlot === time ? null : time)}
+                error={error}
+                successMessage={successMessage}
+                loading={bookingLoading || isBookingInProgress}
+                onConfirm={handleBookSession}
+                onGoHome={() => navigate('/client/dashboard')}
+                barber={barber}
+                notes={notes}
+                onNotesChange={setNotes}
+            />
+        </PageContainer>
     );
 }

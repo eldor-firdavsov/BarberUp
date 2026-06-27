@@ -1,13 +1,14 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Search, Calendar, Filter, X, Users, Clock, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { bookingMatchesBarber, getBookings } from '../../api/bookingApi.js';
+import { getBookingsForBarber } from '../../api/bookingApi.js';
 import { getClients } from '../../api/clientApi.js';
 import { supabase } from '../../api/supabase.js';
 import { toDateStr, getBookingDateStr, formatBookingDate } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
 import ClientProfileModal from '../../components/ClientProfileModal.jsx';
 import SkeletonLoader from '../../components/SkeletonLoader.jsx';
+import PageContainer from '../../components/layout/PageContainer.jsx';
 
 function Clients() {
     const { user } = useAuth();
@@ -23,16 +24,15 @@ function Clients() {
 
     const loadData = useCallback(async () => {
         setLoading(true);
+        const barberId = user?.id ?? user?._id;
+        if (!barberId) { setLoading(false); return; }
+
         const [{ data: bookingList }, { data: clients }] = await Promise.all([
-            getBookings(),
+            getBookingsForBarber(barberId),
             getClients(),
         ]);
 
-        const filtered = (bookingList ?? []).filter(b =>
-            bookingMatchesBarber(b.barber, user?.id) || bookingMatchesBarber(b.barber, user?._id)
-        );
-
-        setBookings(filtered);
+        setBookings(bookingList ?? []);
         setClientsById(Object.fromEntries((clients ?? []).map(c => [c.id, c])));
         setLoading(false);
     }, [user?.id]);
@@ -105,7 +105,12 @@ function Clients() {
     const hasActiveFilters = search || dateFrom || dateTo || serviceFilter;
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] px-4 py-8 sm:px-6 sm:py-12 space-y-8 page-animate h-full pb-32 max-w-7xl mx-auto">
+        <PageContainer
+            hasHeader={true}
+            hasBottomNav={true}
+            extraBottom={16}
+            className="max-w-2xl mx-auto space-y-5 page-animate"
+        >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight">{t('barber.clients.title')}</h1>
@@ -223,7 +228,7 @@ function Clients() {
             )}
 
             <ClientProfileModal client={profileClient} isOpen={!!profileClient} onClose={() => setProfileClient(null)} />
-        </div>
+        </PageContainer>
     );
 }
 

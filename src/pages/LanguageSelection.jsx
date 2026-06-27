@@ -1,43 +1,39 @@
 import { useLanguage } from '../context/LanguageContext.jsx';
+import { Card } from '../components/ui/index.js';
+import { t } from '../utils/i18n.js';
 
 function LanguageSelection() {
     const { setLanguage } = useLanguage();
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] flex flex-col justify-center px-6 py-12 max-w-md mx-auto page-animate">
-            <div className="text-center mb-12">
-                <div className="w-16 h-16 bg-[#378ADD] rounded-[20px] flex items-center justify-center mx-auto mb-6 shadow-[0_10px_30px_rgba(55,138,221,0.25)]">
-                    <img src="./Scissor.png" alt="BarberUp" className="w-8 h-8 object-contain invert" onError={e => e.target.style.display = 'none'} />
+        <section className="min-h-screen bg-[var(--bg-base)] flex flex-col justify-center px-6 py-12 max-w-md mx-auto page-animate">
+            <div className="text-center mb-10">
+                <div className="w-14 h-14 bg-[var(--brand-primary)] rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5">
+                    <img src="./Scissor.png" alt="BarberUp" className="w-7 h-7 object-contain invert" onError={e => e.target.style.display = 'none'} />
                 </div>
-                <h1 className="text-[32px] font-bold text-[#111] tracking-[-0.04em] leading-tight mb-3">BarberUp</h1>
-                <p className="text-sm text-[#666] font-medium">Tilni tanlang</p>
-                <p className="text-sm text-[#666] font-medium mt-1">Выберите язык</p>
+                <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">{t('brand.name')}</h1>
+                <p className="text-sm text-[var(--text-secondary)]">{t('language.title')}</p>
             </div>
 
-            <div className="space-y-4">
-            <button
-                type="button"
-                onClick={() => setLanguage('uz')}
-                className="w-full flex items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] hover:border-[#378ADD]/30 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
-            >
-                <div className="text-left">
-                    <h2 className="text-[17px] font-bold text-[#111] tracking-[-0.02em]">O&apos;zbekcha</h2>
-                    <p className="text-sm text-[#666] font-medium mt-0.5">Uzbek</p>
-                </div>
-                <span className="text-2xl" aria-hidden>🇺🇿</span>
-            </button>
-
-                <button
-                    type="button"
-                    onClick={() => setLanguage('ru')}
-                    className="w-full flex items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] hover:border-[#378ADD]/30 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
-                >
-                    <div className="text-left">
-                        <h2 className="text-[17px] font-bold text-[#111] tracking-[-0.02em]">Русский</h2>
-                        <p className="text-sm text-[#666] font-medium mt-0.5">Russian</p>
+            <div className="space-y-3">
+                <Card interactive className="p-5" onClick={() => setLanguage('uz')}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="font-bold text-[var(--text-primary)]">O&apos;zbekcha</h2>
+                            <p className="text-sm text-[var(--text-secondary)]">Uzbek</p>
+                        </div>
+                        <span className="text-2xl">🇺🇿</span>
                     </div>
-                    <span className="text-2xl" aria-hidden>🇷🇺</span>
-                </button>
+                </Card>
+                <Card interactive className="p-5" onClick={() => setLanguage('ru')}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="font-bold text-[var(--text-primary)]">Русский</h2>
+                            <p className="text-sm text-[var(--text-secondary)]">Russian</p>
+                        </div>
+                        <span className="text-2xl">🇷🇺</span>
+                    </div>
+                </Card>
             </div>
         </section>
     );

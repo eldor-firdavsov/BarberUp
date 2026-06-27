@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBarbers } from '../../api/barberApi.js';
 import { useClient } from '../../context/ClientContext.jsx';
-import { formatTo24h } from '../../utils/time.js';
-import { Heart, MapPin } from 'lucide-react';
+import { Heart, MapPin, Clock } from 'lucide-react';
 import BarberProfileModal from '../../components/BarberProfileModal.jsx';
 import AllBarbersMap from '../../components/AllBarbersMap.jsx';
 import SkeletonLoader from '../../components/SkeletonLoader.jsx';
+import { SegmentedControl, ShortcutCard, Button, EmptyState } from '../../components/ui/index.js';
 import { t } from '../../utils/i18n.js';
+import PageContainer from '../../components/layout/PageContainer.jsx';
 import { supabase } from '../../api/supabase.js';
 
 
@@ -76,7 +77,7 @@ function Client() {
         setLoading(false);
     }, []);
 
-    // Initial load + Supabase Realtime: barber status/availability changes push instantly
+    // Initial load + Supabase Realtime: barber profile/hours changes push instantly
     useEffect(() => {
         fetchBarbers();
 
@@ -202,31 +203,6 @@ function Client() {
         setRetrying(false);
     };
 
-    const getBarberStatus = (barber) => {
-        // Use explicit DB status if set and not just the default
-        const dbStatus = barber.status;
-        if (dbStatus === 'working-busy') return t('status.working-busy');
-        if (dbStatus === 'lunch') return t('status.lunch');
-        if (dbStatus === 'closed') return t('status.closed');
-
-        // For 'available' or missing status, validate against working hours
-        const workingHours = barber.working_hours || barber.workingHours || '';
-        if (!workingHours) return t('status.available');
-        const parts = workingHours.split(' - ');
-        if (parts.length < 2) return t('status.available');
-        const start = formatTo24h(parts[0]);
-        const end = formatTo24h(parts[1]);
-        if (!start || !end) return t('status.available');
-        const now = new Date();
-        const nowMins = now.getHours() * 60 + now.getMinutes();
-        const [sh, sm] = start.split(':').map(Number);
-        const [eh, em] = end.split(':').map(Number);
-        const startMins = sh * 60 + sm;
-        const endMins = eh * 60 + em;
-        if (nowMins < startMins || nowMins >= endMins) return t('status.offline');
-        return t('status.available');
-    };
-
     // Memoized client location to avoid repeated localStorage parsing
     const clientLocation = useMemo(() => {
         try {
@@ -327,56 +303,27 @@ function Client() {
 
 
     return (
-        <section className="min-h-screen bg-[#f5f5f7] max-w-md md:max-w-6xl mx-auto px-4 py-6 pb-32 sm:px-6 sm:py-12 flex flex-col safe-bottom">
-            <h1 className="text-[28px] font-bold text-[#111] tracking-[-0.03em] leading-tight mb-3">
-                {t('client.dashboard.titleLine1')}<br />{t('client.dashboard.titleLine2')}
+        <PageContainer
+            hasHeader={true}
+            hasBottomNav={true}
+            extraBottom={16}
+            className="max-w-lg md:max-w-2xl mx-auto flex flex-col page-animate"
+        >
+            <h1 className="text-2xl font-bold text-[var(--text-primary)] leading-tight mb-1">
+                {t('client.dashboard.titleLine1')}
             </h1>
-            <p className="text-sm text-[#666] font-medium mb-8">
-                {t('client.dashboard.subtitle')}
-            </p>
+            <p className="text-sm text-[var(--text-secondary)] mb-5">{t('client.dashboard.subtitle')}</p>
 
-            <div className="sticky top-2 z-20 mx-auto w-full max-w-[400px] mb-6 mt-2">
-                <div className="bg-white/60 backdrop-blur-xl p-1.5 rounded-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.06)] border border-white/80">
-                    <div className="relative flex">
-                        {/* Sliding pill — lives inside the flex row so w-1/3 = flex-1 width exactly */}
-                        <div 
-                            className="absolute inset-y-0 w-1/3 pointer-events-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                            style={{ 
-                                transform: `translateX(${
-                                    activeTab === 'nearby' ? 0 : activeTab === 'favorites' ? 100 : 200
-                                }%)`
-                            }}
-                        >
-                            <div className="w-full h-full bg-[#111] rounded-[18px] shadow-lg" />
-                        </div>
-
-                        <button
-                            onClick={() => setActiveTab('nearby')}
-                            className={`relative flex-1 py-3.5 text-[13px] font-bold rounded-[18px] transition-colors duration-300 z-10 ${
-                                activeTab === 'nearby' ? 'text-white' : 'text-[#666]'
-                            }`}
-                        >
-                            {t('client.dashboard.nearby')}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('favorites')}
-                            className={`relative flex-1 py-3.5 text-[13px] font-bold rounded-[18px] transition-colors duration-300 z-10 ${
-                                activeTab === 'favorites' ? 'text-white' : 'text-[#666]'
-                            }`}
-                        >
-                            {t('client.dashboard.favorites')}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('map')}
-                            className={`relative flex-1 py-3.5 text-[13px] font-bold rounded-[18px] transition-colors duration-300 z-10 ${
-                                activeTab === 'map' ? 'text-white' : 'text-[#666]'
-                            }`}
-                        >
-                            {t('client.dashboard.map', 'Xarita')}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <SegmentedControl
+                className="mb-5"
+                value={activeTab}
+                onChange={setActiveTab}
+                options={[
+                    { value: 'nearby', label: t('client.dashboard.nearby') },
+                    { value: 'favorites', label: t('client.dashboard.favorites') },
+                    { value: 'map', label: t('client.dashboard.map') },
+                ]}
+            />
 
             {/* Swipeable Content Area */}
             <div
@@ -430,162 +377,58 @@ function Client() {
                         />
                     </div>
                 ) : (
-                <div className={activeTab === 'favorites' && favoriteBarbers.length === 0 ? "pb-10 fade-in" : "space-y-8 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 pb-10 fade-in"}>
-                    {/* Show empty state for favorites */}
+                <div className="space-y-3 pb-6">
                     {activeTab === 'favorites' && favoriteBarbers.length === 0 && (
-                        <div className="empty-state min-h-[300px] sm:min-h-0">
-                            <div className="empty-state-icon">
-                                <Heart size={40} className="text-gray-400" />
-                            </div>
-                            <h3 className="empty-state-title">{t('client.dashboard.noFavoritesTitle')}</h3>
-                            <p className="empty-state-description">
-                                {t('client.dashboard.noFavoritesDesc')}
-                            </p>
-                            <button
-                                onClick={() => setActiveTab('nearby')}
-                                className="btn-primary empty-state-action min-h-[44px]"
-                            >
-                                {t('client.dashboard.discoverBarbers')}
-                            </button>
-                        </div>
+                        <EmptyState
+                            icon={Heart}
+                            title={t('client.dashboard.noFavoritesTitle')}
+                            description={t('client.dashboard.noFavoritesDesc')}
+                            action={<Button onClick={() => setActiveTab('nearby')}>{t('client.dashboard.discoverBarbers')}</Button>}
+                        />
                     )}
 
-                    {filteredAndSortedBarbers.map((barber, index) => (
-                        <div
-                            key={barber.id ?? index}
-                            onClick={() => navigate(`/client/barber/${encodeURIComponent(barber.id)}`)}
-                            className="bg-white rounded-[32px] overflow-hidden border border-black/5 shadow-[0_10px_40px_rgba(0,0,0,0.04)] cursor-pointer group flex flex-col transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)] hover:-translate-y-1"
-                        >
-                            <div className="relative overflow-hidden rounded-t-[32px] aspect-[4/3]">
-                                {barber.tier === 'premium' && (
-                                    <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-400 text-white font-extrabold text-[9px] px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M2 19h20l-2-8-5 3.5L12 8l-3 6.5L4 11z" /></svg>
-                                        <span>PREMIUM</span>
-                                    </div>
-                                )}
-                                {(barber.tier === 'standard' || barber.tier === 'pro') && (
-                                    <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-[#378ADD] to-[#185FA5] text-white font-extrabold text-[9px] px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9z" /></svg>
-                                        <span>STANDART</span>
-                                    </div>
-                                )}
-                                <img
-                                    src={
-                                        (barber.office_img && barber.office_img !== '')
-                                            ? barber.office_img
-                                            : (barber.shopImage && barber.shopImage !== '')
-                                                ? barber.shopImage
-                                                : 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'
-                                    }
-                                    alt={t('common.shop')}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&auto=format&fit=crop'; }}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
-                                <div className="absolute top-4 right-4">
+                    {filteredAndSortedBarbers.map((barber, index) => {
+                        const imgSrc = (barber.office_img && barber.office_img !== '')
+                            ? barber.office_img
+                            : (barber.shopImage && barber.shopImage !== '')
+                                ? barber.shopImage
+                                : 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=400&auto=format&fit=crop';
+
+                        return (
+                            <ShortcutCard
+                                key={barber.id ?? index}
+                                onClick={() => navigate(`/client/barber/${encodeURIComponent(barber.id)}`)}
+                                image={<img src={imgSrc} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=400&auto=format&fit=crop'; }} />}
+                                title={barber.office_name || barber.shopName || t('common.barbershop')}
+                                subtitle={barber.fullname || barber.name || t('common.barber')}
+                                meta={
+                                    <>
+                                        <span className="meta-chip">
+                                            <Clock size={10} />
+                                            {barber.working_hours || barber.workingHours || t('common.defaultWorkingHours')}
+                                        </span>
+                                        {activeTab === 'nearby' && barber._dist != null && (
+                                            <span className="meta-chip">
+                                                <MapPin size={10} />
+                                                {t('client.dashboard.kmAway', { distance: Number(barber._dist).toFixed(1) })}
+                                            </span>
+                                        )}
+                                        <span className="meta-chip">
+                                            {(barber.average_price ?? barber.avgPrice ?? 0).toLocaleString()} {t('common.uzs')}
+                                        </span>
+                                    </>
+                                }
+                                action={
                                     <button
                                         onClick={(e) => toggleFavorite(barber.id, e)}
-                                        className="glass p-2.5 rounded-full hover:bg-white transition-all hover:scale-110 shadow-lg text-white"
+                                        className="p-2 rounded-full hover:bg-[var(--bg-hover)]"
                                     >
-                                        <Heart size={18} fill={isFavorite(barber.id) ? '#EF4444' : 'none'} color={isFavorite(barber.id) ? '#EF4444' : 'currentColor'} />
+                                        <Heart size={18} fill={isFavorite(barber.id) ? '#EF4444' : 'none'} color={isFavorite(barber.id) ? '#EF4444' : 'var(--text-secondary)'} />
                                     </button>
-                                </div>
-                                <div className="absolute bottom-4 left-4">
-                                    {(() => {
-                                        const statusText = getBarberStatus(barber);
-                                        const rawStatus = barber.status;
-                                        let badgeCls = 'bg-[#185FA5] text-white'; // default offline
-                                        if (rawStatus === 'available') badgeCls = 'bg-green-500 text-white';
-                                        else if (rawStatus === 'working-busy') badgeCls = 'bg-orange-500 text-white';
-                                        else if (rawStatus === 'lunch') badgeCls = 'bg-yellow-500 text-white';
-                                        else if (rawStatus === 'closed') badgeCls = 'bg-gray-500 text-white';
-                                        else {
-                                            // fall back to working hours check
-                                            const isAvailable = statusText === t('status.available');
-                                            badgeCls = isAvailable ? 'bg-green-500 text-white' : 'bg-[#185FA5] text-white';
-                                        }
-                                        return (
-                                            <span className={`${badgeCls} shadow-md text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-full`}>
-                                                {statusText}
-                                            </span>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                            <div className="p-6">
-                                <div className="mb-4">
-                                    <h3 className="text-xl mb-1 font-bold text-[#111] truncate">{barber.office_name || barber.shopName || t('common.barbershop')}</h3>
-                                    <div className="flex items-center gap-3 mt-2">
-                                        <div className="flex items-center gap-2">
-                                            {(barber.profile_img && barber.profile_img.trim() !== '') ? (
-                                                <img
-                                                    src={barber.profile_img}
-                                                    alt={barber.fullname || barber.name || 'B'}
-                                                    className="w-7 h-7 rounded-full object-cover bg-[#f8f8f8] flex-shrink-0 border border-black/5"
-                                                    onError={(e) => {
-                                                        e.target.style.display = 'none';
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div className="w-7 h-7 bg-[#f8f8f8] rounded-full flex items-center justify-center flex-shrink-0 border border-black/5">
-                                                    <span className="text-[#111] text-xs font-bold">
-                                                        {(barber.fullname || barber.name || 'B').charAt(0).toUpperCase()}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <span className="font-semibold text-sm text-[#666] truncate">{barber.fullname || barber.name || t('common.barber')}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 mt-3">
-                                        <div className="bg-[#f8f8f8] px-2.5 py-1 rounded-xl text-xs font-semibold text-[#666] border border-black/5">
-                                            {(barber.average_price ?? barber.avgPrice ?? 0).toLocaleString()} UZS
-                                        </div>
-                                        <div className="bg-[#f8f8f8] px-2.5 py-1 rounded-xl text-xs font-semibold text-[#666] border border-black/5">
-                                            {barber.working_hours || barber.workingHours || t('common.defaultWorkingHours')}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="pt-4 border-t border-black/5 flex flex-col gap-4">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <h2 className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-0.5">
-                                                {activeTab === 'nearby' ? t('client.dashboard.distance') : t('client.dashboard.statusLabel')}
-                                            </h2>
-                                            {activeTab === 'nearby' ? (
-                                                <span className="text-sm font-bold text-[#111] flex items-center gap-1">
-                                                    <MapPin size={16} className="text-[#378ADD]" /> {barber._dist !== null && barber._dist !== undefined ? t('client.dashboard.kmAway', { distance: Number(barber._dist).toFixed(1) }) : t('client.dashboard.locationNotSet')}
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm font-bold text-[#111]">
-                                                    {getBarberStatus(barber)}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openProfileModal(barber);
-                                            }}
-                                            className="h-12 sm:h-11 rounded-2xl bg-white border border-[#2563eb]/20 text-[#2563eb] font-bold text-xs transition-all duration-200 hover:bg-[#eff6ff] hover:border-[#2563eb]/40 active:scale-[0.98] shadow-sm"
-                                        >
-                                            {t('client.dashboard.viewProfile')}
-                                        </button>
-                                        <button
-                                            className="h-12 sm:h-11 rounded-2xl bg-[#2563eb] active:bg-[#1d4ed8] hover:bg-[#1d4ed8] text-white font-bold text-xs transition-all duration-200 shadow-[0_10px_25px_rgba(37,99,235,0.25)] active:scale-[0.98]"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                navigate(`/client/barber/${encodeURIComponent(barber.id)}`);
-                                            }}
-                                        >
-                                            {t('client.dashboard.bookSession')}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                                }
+                            />
+                        );
+                    })}
                 </div>
                 )
             )}
@@ -609,7 +452,7 @@ function Client() {
                 onToggleFavorite={(barberId) => toggleFavorite(barberId, { stopPropagation: () => { } })}
                 isFavorite={profileModal.barber ? isFavorite(profileModal.barber.id) : false}
             />
-        </section>
+        </PageContainer>
     );
 }
 

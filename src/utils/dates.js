@@ -1,5 +1,25 @@
 import { t, getLocale } from './i18n.js';
 
+const MONTHS = {
+    ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
+    uz: ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+};
+
+const MONTHS_SHORT = {
+    ru: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+    uz: ['yan', 'fev', 'mar', 'apr', 'may', 'iyun', 'iyul', 'avg', 'sen', 'okt', 'noy', 'dek']
+};
+
+const WEEKDAYS = {
+    ru: ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
+    uz: ['yakshanba', 'dushanba', 'seshanba', 'chorshanba', 'payshanba', 'juma', 'shanba']
+};
+
+const WEEKDAYS_SHORT = {
+    ru: ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'],
+    uz: ['yak', 'dush', 'sesh', 'chor', 'pay', 'jum', 'shan']
+};
+
 /** YYYY-MM-DD in local timezone */
 export function toDateStr(date = new Date()) {
     const d = date instanceof Date ? date : new Date(date);
@@ -69,11 +89,28 @@ export function formatBookingDate(dateStr, options = {}) {
     const date = parseDateStr(dateStr);
     if (!date) return dateStr ?? '';
 
-    const locale = getLocale() === 'ru' ? 'ru-RU' : 'uz-UZ';
+    const lang = getLocale() === 'ru' ? 'ru' : 'uz';
+    const day = date.getDate();
+    const monthIdx = date.getMonth();
+    const weekdayIdx = date.getDay();
+
     if (style === 'short') {
-        return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
+        const wd = WEEKDAYS_SHORT[lang][weekdayIdx];
+        const m = MONTHS_SHORT[lang][monthIdx];
+        if (lang === 'uz') {
+            return `${day}-${m}, ${wd}`;
+        } else {
+            return `${day} ${m}, ${wd}`;
+        }
     }
-    return date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
+
+    const wd = WEEKDAYS[lang][weekdayIdx];
+    const m = MONTHS[lang][monthIdx];
+    if (lang === 'uz') {
+        return `${day}-${m}, ${wd}`;
+    } else {
+        return `${day} ${m}, ${wd}`;
+    }
 }
 
 /** Build selectable booking days: today + next (count - 1) days */

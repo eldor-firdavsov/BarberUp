@@ -22,7 +22,7 @@ function PublicRoute({ children }) {
         } else if (user.role === 'barber') {
             return <Navigate to="/barber/dashboard" replace />;
         }
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/start" replace />;
     }
 
     return children;

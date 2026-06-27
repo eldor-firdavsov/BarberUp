@@ -1,207 +1,348 @@
-import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { ExternalLink } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useClient } from '../../context/ClientContext.jsx';
+import { getOrCreateClient, loginClient } from '../../api/clientApi.js';
+import { sendVerificationCode, verifyCode } from '../../api/verificationApi.js';
+import AuthShell from '../../components/AuthShell.jsx';
+import { Button } from '../../components/ui/index.js';
 import { t } from '../../utils/i18n.js';
-import { supabase } from '../../api/supabase.js';
 
-const UZ_PHONE_REGEX = /^\+998\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$/;
+const BOT_USERNAME = 'BarberUp_bot';
 
-function formatPhone(raw) {
-    let val = raw.replace(/\D/g, '');
-    if (val.startsWith('998')) val = '+' + val;
-    else if (val.startsWith('0'))  val = '+998' + val.slice(1);
-    else if (!val.startsWith('+')) val = '+998' + val;
-    return val;
+function cleanPhone(value) {
+    let digits = value.replace(/\D/g, '');
+    if (digits.length >= 12 && digits.startsWith('998')) {
+        digits = digits.slice(3);
+    }
+    return digits;
 }
 
 export default function ClientEntry() {
+    const { login } = useAuth();
     const { identify } = useClient();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const redirectTo = searchParams.get('redirect') || '/client/dashboard';
 
+    const [step, setStep] = useState('phone');
     const [phone, setPhone] = useState('');
-    const [name, setName] = useState('');
-    const [step, setStep] = useState('phone'); // 'phone' | 'name'
-    const [loading, setLoading] = useState(false);
+    const [code, setCode] = useState(['', '', '', '', '', '']);
+    const [fullname, setFullname] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [telegramLinked, setTelegramLinked] = useState(null);
+    const [sent, setSent] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+    const [resending, setResending] = useState(false);
 
-    async function handlePhoneSubmit(e) {
-        e.preventDefault();
+    const inFlight = useRef(false);
+    const inputsRef = useRef([]);
+
+    const phoneDigits = cleanPhone(phone);
+    const isPhoneValid = phoneDigits.length === 9;
+    const formattedPhone = `+998${phoneDigits}`;
+
+    useEffect(() => {
+        if (countdown > 0) {
+            const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [countdown]);
+
+    const finishClientSession = (clientUser) => {
+        const name = clientUser.fullname || clientUser.name || fullname.trim();
+        identify(name, formattedPhone);
+        login({
+            ...clientUser,
+            role: 'client',
+            id: clientUser.id,
+            phone: formattedPhone,
+        });
+        navigate(redirectTo, { replace: true });
+    };
+
+    const handleSendCode = async () => {
+        if (inFlight.current || loading) return;
+        if (!isPhoneValid) {
+            setError(t('auth.errors.phoneNineDigitsShort'));
+            return;
+        }
+
+        inFlight.current = true;
+        setLoading(true);
         setError('');
-        const formatted = formatPhone(phone);
+        setTelegramLinked(null);
+        setSent(false);
 
-        if (!UZ_PHONE_REGEX.test(formatted)) {
-            setError(t('guest.phoneError') || 'Telefon raqam noto\'g\'ri (+998 XX XXX XX XX)');
+        const { error: sendErr, linked, sent: sentOk } = await sendVerificationCode(formattedPhone);
+        if (sendErr) {
+            setError(`Kod yuborishda xatolik: ${sendErr}`);
+            setLoading(false);
+            inFlight.current = false;
+            return;
+        }
+
+        setTelegramLinked(!!linked);
+        setSent(!!sentOk);
+        if (linked && !sentOk) {
+            setError('Kodni Telegram orqali yuborishda xatolik. Telefon raqamingiz botda ulanganligini tekshiring.');
+        }
+        setStep('verify');
+        setCountdown(60);
+        setLoading(false);
+        inFlight.current = false;
+    };
+
+    const resendCode = async () => {
+        if (inFlight.current || loading) return;
+        setResending(true);
+        setError('');
+        const { error: sendErr, linked, sent: sentOk } = await sendVerificationCode(formattedPhone);
+        if (sendErr) {
+            setError(`Kod yuborishda xatolik: ${sendErr}`);
+        } else {
+            setTelegramLinked(!!linked);
+            setSent(!!sentOk);
+        }
+        setResending(false);
+        setCountdown(60);
+    };
+
+    const handleCodeChange = (index, value) => {
+        if (value && !/^\d$/.test(value)) return;
+        const newCode = [...code];
+        newCode[index] = value;
+        setCode(newCode);
+        if (value && index < 5) inputsRef.current[index + 1]?.focus();
+        if (!value && index > 0) inputsRef.current[index - 1]?.focus();
+    };
+
+    const handleCodeKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !code[index] && index > 0) inputsRef.current[index - 1]?.focus();
+        if (e.key === 'Enter') handleVerify();
+    };
+
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        const newCode = [...code];
+        for (let i = 0; i < pasted.length; i++) newCode[i] = pasted[i];
+        setCode(newCode);
+    };
+
+    const handleVerify = async () => {
+        const fullCode = code.join('');
+        if (fullCode.length !== 6) {
+            setError('Kodni to\'liq kiriting');
             return;
         }
 
         setLoading(true);
-        try {
-            // Check if there are any previous bookings for this phone number
-            const { data, error: dbError } = await supabase
-                .from('bookings')
-                .select('guest_name')
-                .eq('guest_phone', formatted)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (dbError) {
-                console.error('[DB CHECK ERROR]', dbError);
-                setError('Xatolik yuz berdi, iltimos qayta urinib ko\'ring.');
-                setLoading(false);
-                return;
-            }
-
-            if (data && data.guest_name) {
-                // Returning user found! Log them in directly
-                identify(data.guest_name, formatted);
-                navigate(redirectTo);
-            } else {
-                // New user - proceed to name step
-                setStep('name');
-            }
-        } catch (err) {
-            console.error('[SUBMIT EXCEPTION]', err);
-            setError('Tarmoq xatoligi yuz berdi.');
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    function handleNameSubmit(e) {
-        e.preventDefault();
         setError('');
 
-        if (!name.trim()) {
-            setError(t('errors.nameRequired') || 'Ism kiritish majburiy');
+        const { error: verifyErr } = await verifyCode(formattedPhone, fullCode);
+        if (verifyErr) {
+            setError(verifyErr);
+            setLoading(false);
             return;
         }
 
-        const formatted = formatPhone(phone);
-        identify(name.trim(), formatted);
-        navigate(redirectTo);
-    }
+        const { data, error: clientErr } = await loginClient(formattedPhone);
+        if (data?.user?.fullname && data.user.fullname !== 'Unknown') {
+            finishClientSession(data.user);
+            setLoading(false);
+            return;
+        }
+
+        if (data?.user) {
+            setFullname(data.user.fullname === 'Unknown' ? '' : (data.user.fullname || ''));
+        }
+
+        setStep('name');
+        setLoading(false);
+    };
+
+    const handleNameSubmit = async () => {
+        if (!fullname.trim()) {
+            setError(t('auth.errors.fieldsEmpty'));
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        const { data: clientUser, error: clientErr } = await getOrCreateClient(fullname.trim(), formattedPhone);
+        if (clientErr || !clientUser) {
+            setError(clientErr || t('auth.errors.somethingWrong'));
+            setLoading(false);
+            return;
+        }
+
+        finishClientSession(clientUser);
+        setLoading(false);
+    };
+
+    const handlePhoneChange = (val) => {
+        setPhone(cleanPhone(val));
+    };
+
+    const handleBack = () => {
+        if (step === 'verify') {
+            setStep('phone');
+            setCode(['', '', '', '', '', '']);
+        } else if (step === 'name') {
+            setStep('verify');
+        } else {
+            navigate('/');
+        }
+        setError('');
+    };
+
+    const stepTitle = step === 'phone'
+        ? t('auth.clientEntry.title')
+        : step === 'verify'
+            ? t('auth.clientEntry.verifyTitle')
+            : t('auth.clientEntry.nameTitle');
+
+    const stepSubtitle = step === 'phone'
+        ? t('auth.clientEntry.subtitle')
+        : step === 'verify'
+            ? `${formattedPhone} ${t('auth.clientEntry.codeSent')}`
+            : t('auth.clientEntry.nameSubtitle');
 
     return (
-        <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center px-4">
-            <div className="w-full max-w-sm bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.06)] border border-black/5 p-8 space-y-7 relative overflow-hidden">
-                
-                {/* Back button if in name step */}
-                {step === 'name' && (
-                    <button 
-                        onClick={() => { setStep('phone'); setError(''); }}
-                        className="absolute left-6 top-6 text-[#888] hover:text-[#111] transition-colors"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
-                        </svg>
-                    </button>
-                )}
-
-                {/* Logo */}
-                <div className="text-center space-y-2">
-                    <div className="w-14 h-14 bg-[#378ADD] rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-[#378ADD]/25">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M6 3h12l4 6-10 13L2 9z"/>
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold text-[#111] tracking-[-0.03em]">BarberUp</h1>
-                    <p className="text-xs text-[#888] font-medium">
-                        {step === 'phone' 
-                            ? (t('app.tagline') || 'Sartaroshxonangizda navbatni onlayn band qiling')
-                            : 'Profilni yakunlash uchun ismingizni kiriting'}
-                    </p>
-                </div>
-
-                {step === 'phone' ? (
-                    <form onSubmit={handlePhoneSubmit} className="space-y-4">
-                        {/* Phone */}
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-bold text-[#888] uppercase tracking-[0.1em]">
-                                {t('auth.phone') || 'Telefon raqam'}
-                            </label>
+        <AuthShell
+            title={stepTitle}
+            subtitle={stepSubtitle}
+            onBack={handleBack}
+            footer={
+                <p className="text-center text-sm text-[var(--text-secondary)]">
+                    {t('auth.clientEntry.barberPrompt')}{' '}
+                    <Link to="/login" className="font-semibold text-[var(--brand-primary)]">
+                        {t('auth.clientEntry.barberLink')}
+                    </Link>
+                </p>
+            }
+        >
+            {step === 'phone' && (
+                <div className="space-y-5">
+                    <div>
+                        <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-2">
+                            {t('common.mobileNumber')}
+                        </label>
+                        <div className="flex items-center bg-[var(--bg-input)] rounded-[var(--radius-lg)] px-4 border border-[var(--border-subtle)] focus-within:border-[var(--brand-primary)] h-12">
+                            <span className="font-medium">+998</span>
                             <input
                                 type="tel"
+                                className="w-full ml-2 bg-transparent outline-none"
+                                placeholder={t('auth.clientOnboarding.phonePlaceholder')}
                                 value={phone}
-                                onChange={e => { setPhone(e.target.value); setError(''); }}
-                                placeholder="+998 90 123 45 67"
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-sm font-medium text-[#111] outline-none transition-all focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/20 focus:bg-white"
+                                onChange={(e) => handlePhoneChange(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSendCode()}
                                 disabled={loading}
                                 autoFocus
                             />
                         </div>
+                    </div>
 
-                        {error && (
-                            <p className="text-xs font-semibold text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
-                                {error}
-                            </p>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading || !phone}
-                            className="w-full h-14 bg-[#378ADD] hover:bg-[#185FA5] text-white rounded-2xl text-sm font-bold transition-all duration-200 shadow-[0_10px_25px_rgba(55,138,221,0.25)] active:scale-95 disabled:opacity-50 flex items-center justify-center"
-                        >
-                            {loading ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                                t('guest.submit') || 'Davom etish'
-                            )}
-                        </button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleNameSubmit} className="space-y-4">
-                        {/* Name */}
-                        <div className="space-y-1.5">
-                            <label className="text-[11px] font-bold text-[#888] uppercase tracking-[0.1em]">
-                                {t('auth.fullname') || 'To\'liq ism'}
-                            </label>
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={e => { setName(e.target.value); setError(''); }}
-                                placeholder={t('guest.namePlaceholder') || 'Ismingizni kiriting'}
-                                className="w-full h-14 px-5 bg-[#f8f8f8] border border-black/5 rounded-2xl text-sm font-medium text-[#111] outline-none transition-all focus:border-[#185FA5]/30 focus:ring-2 focus:ring-[#85B7EB]/20 focus:bg-white"
-                                autoFocus
-                            />
+                    {error && (
+                        <div className="rounded-[var(--radius-lg)] border border-red-100 bg-red-50 p-3">
+                            <p className="text-sm font-semibold text-red-700">{error}</p>
                         </div>
+                    )}
 
-                        {error && (
-                            <p className="text-xs font-semibold text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
-                                {error}
-                            </p>
-                        )}
-
-                        <button
-                            type="submit"
-                            className="w-full h-14 bg-[#378ADD] hover:bg-[#185FA5] text-white rounded-2xl text-sm font-bold transition-all duration-200 shadow-[0_10px_25px_rgba(55,138,221,0.25)] active:scale-95"
-                        >
-                            {t('guest.submit') || 'Davom etish'}
-                        </button>
-                    </form>
-                )}
-
-                {/* Divider */}
-                <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-black/5" />
-                    <span className="text-[11px] font-medium text-[#bbb]">yoki</span>
-                    <div className="flex-1 h-px bg-black/5" />
+                    <Button className="w-full" size="lg" onClick={handleSendCode} disabled={!isPhoneValid || loading}>
+                        {loading ? t('common.pleaseWait') : t('auth.clientEntry.continue')}
+                    </Button>
                 </div>
+            )}
 
-                {/* Barber login link */}
-                <p className="text-center text-xs text-[#888]">
-                    Siz usta misiz?{' '}
-                    <a
-                        href="/barber/login"
-                        className="text-[#378ADD] font-bold hover:underline"
-                    >
-                        Usta sifatida kirish →
-                    </a>
-                </p>
-            </div>
-        </div>
+            {step === 'verify' && (
+                <div className="space-y-5">
+                    {telegramLinked === false && !sent && (
+                        <div className="rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50 p-4 text-center space-y-3">
+                            <p className="text-sm text-amber-800">{t('auth.clientEntry.telegramHint')}</p>
+                            <a href={`https://t.me/${BOT_USERNAME}`} target="_blank" rel="noopener noreferrer">
+                                <Button size="sm" type="button">
+                                    <ExternalLink size={14} />
+                                    @{BOT_USERNAME}
+                                </Button>
+                            </a>
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+                        {code.map((digit, index) => (
+                            <input
+                                key={index}
+                                ref={(el) => { inputsRef.current[index] = el; }}
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                maxLength={1}
+                                value={digit}
+                                onChange={(e) => handleCodeChange(index, e.target.value)}
+                                onKeyDown={(e) => handleCodeKeyDown(index, e)}
+                                className="w-11 h-12 text-center text-lg font-bold bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] outline-none focus:border-[var(--brand-primary)]"
+                            />
+                        ))}
+                    </div>
+
+                    {error && (
+                        <div className="rounded-[var(--radius-lg)] border border-red-100 bg-red-50 p-3">
+                            <p className="text-sm font-semibold text-red-700">{error}</p>
+                        </div>
+                    )}
+
+                    <Button className="w-full" size="lg" onClick={handleVerify} disabled={loading || code.join('').length !== 6}>
+                        {loading ? t('common.pleaseWait') : t('auth.clientEntry.verify')}
+                    </Button>
+
+                    <div className="text-center">
+                        {countdown > 0 ? (
+                            <p className="text-sm text-[var(--text-secondary)]">
+                                {t('auth.clientEntry.resendIn')} ({countdown}s)
+                            </p>
+                        ) : (
+                            <button type="button" onClick={resendCode} disabled={resending} className="text-sm font-semibold text-[var(--brand-primary)] disabled:opacity-50">
+                                {resending ? t('common.pleaseWait') : t('auth.clientEntry.resend')}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {step === 'name' && (
+                <div className="space-y-5">
+                    <div>
+                        <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-2">
+                            {t('common.fullName')}
+                        </label>
+                        <input
+                            type="text"
+                            value={fullname}
+                            onChange={(e) => setFullname(e.target.value)}
+                            placeholder={t('auth.clientOnboarding.namePlaceholder')}
+                            className="w-full h-12 px-4 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] outline-none focus:border-[var(--brand-primary)]"
+                            disabled={loading}
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="rounded-[var(--radius-lg)] border border-red-100 bg-red-50 p-3">
+                            <p className="text-sm font-semibold text-red-700">{error}</p>
+                        </div>
+                    )}
+
+                    <Button className="w-full" size="lg" onClick={handleNameSubmit} disabled={loading || !fullname.trim()}>
+                        {loading ? t('auth.clientOnboarding.creatingAccount') : t('common.continue')}
+                    </Button>
+                </div>
+            )}
+        </AuthShell>
     );
 }
