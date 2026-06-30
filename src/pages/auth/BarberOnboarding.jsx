@@ -26,7 +26,12 @@ const serviceDurationOptions = [
 
 function BarberOnboarding() {
     const [step, setStep] = useState(0);
-    const [fullname, setFullname] = useState('');
+    const [fullname, setFullname] = useState(() => {
+        try {
+            const data = JSON.parse(localStorage.getItem('onboarding_data') || '{}');
+            return data.fullname || '';
+        } catch { return ''; }
+    });
     const [phone, setPhone] = useState(() => {
         try {
             const data = JSON.parse(localStorage.getItem('onboarding_data') || '{}');
