@@ -38,17 +38,25 @@ const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_FUNCTIONS_URL ?? '';
  * @returns {{ phone: string|null, error: string|null }}
  */
 export async function getTelegramLinkByChatId(telegramUserId) {
-    if (!telegramUserId) return { phone: null, error: 'No Telegram user ID' };
+    if (!telegramUserId) return { phone: null, role: null, onboarding_step: null, language: null, error: 'No Telegram user ID' };
     const id = String(telegramUserId);
     try {
         // Primary: check telegram_users table (new onboarding flow)
         const { data: tgUser, error: tgError } = await supabase
             .from('telegram_users')
-            .select('phone, role, onboarding_step')
+            .select('phone, role, onboarding_step, language')
             .eq('telegram_id', id)
             .maybeSingle();
 
-        if (!tgError && tgUser?.phone) return { phone: tgUser.phone, error: null };
+        if (!tgError && tgUser) {
+            return {
+                phone: tgUser.phone || null,
+                role: tgUser.role || null,
+                onboarding_step: tgUser.onboarding_step || null,
+                language: tgUser.language || null,
+                error: null
+            };
+        }
 
         // Fallback: try telegram_user_id column in telegram_links
         let { data, error } = await supabase
@@ -57,7 +65,7 @@ export async function getTelegramLinkByChatId(telegramUserId) {
             .eq('telegram_user_id', id)
             .maybeSingle();
 
-        if (!error && data?.phone) return { phone: data.phone, error: null };
+        if (!error && data?.phone) return { phone: data.phone, role: null, onboarding_step: null, language: null, error: null };
 
         // Fallback: chat_id is the same value for DM-based bots
         ({ data, error } = await supabase
@@ -66,10 +74,10 @@ export async function getTelegramLinkByChatId(telegramUserId) {
             .eq('chat_id', id)
             .maybeSingle());
 
-        if (error) return { phone: null, error: error.message };
-        return { phone: data?.phone ?? null, error: null };
+        if (error) return { phone: null, role: null, onboarding_step: null, language: null, error: error.message };
+        return { phone: data?.phone ?? null, role: null, onboarding_step: null, language: null, error: null };
     } catch (err) {
-        return { phone: null, error: err.message };
+        return { phone: null, role: null, onboarding_step: null, language: null, error: err.message };
     }
 }
 

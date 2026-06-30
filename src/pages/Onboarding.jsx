@@ -1,9 +1,8 @@
 /**
  * Onboarding.jsx
- * Step-by-step onboarding flow for users registering via Telegram:
- *   Step 1: Language selection (Uzbek / Russian)
- *   Step 2: Role Selection (Client / Barber) + Full Name input
- * Pre-fills phone from Telegram bot registration — no manual typing.
+ * Shown after Telegram phone registration.
+ * Asks: display name + role (client or barber).
+ * Pre-fills phone and sets language automatically from Telegram bot registration.
  */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,13 +12,13 @@ import { useClient } from '../context/ClientContext.jsx';
 import { getOrCreateClient } from '../api/clientApi.js';
 import { getTelegramUser, getTelegramRegisteredPhone, expandApp } from '../utils/telegramWebApp.js';
 import { t, setLocale } from '../utils/i18n.js';
+import { User, Scissors } from 'lucide-react';
 
 export default function Onboarding() {
     const navigate = useNavigate();
     const { login } = useAuth();
     const { identify } = useClient();
 
-    const [step, setStep] = useState('lang'); // 'lang' | 'profile'
     const [phone, setPhone] = useState('');
     const [name, setName] = useState('');
     const [role, setRole] = useState(null); // 'client' | 'barber'
@@ -41,11 +40,13 @@ export default function Onboarding() {
         const record = await getTelegramRegisteredPhone();
         if (record?.phone) {
             setPhone(record.phone);
-        } else {
-            setError(t('onboarding.botFirst') || 'Avval Telegram botda ro\'yxatdan o\'ting');
+            if (record.language) {
+                setLocale(record.language);
+                localStorage.setItem('language', record.language);
+            }
         }
 
-        // If the user already exists in DB with a role, skip onboarding entirely
+        // If the user already has a role, skip onboarding
         if (record?.role) {
             if (record.role === 'barber') {
                 navigate('/barber/dashboard', { replace: true });
@@ -55,14 +56,11 @@ export default function Onboarding() {
             return;
         }
 
+        if (!record?.phone) {
+            setError(t('onboarding.botFirst') || 'Avval Telegram botda ro\'yxatdan o\'ting');
+        }
         setLoading(false);
     }
-
-    const handleSelectLanguage = (lang) => {
-        setLocale(lang);
-        localStorage.setItem('language', lang);
-        setStep('profile');
-    };
 
     async function handleSubmit() {
         if (!name.trim() || !role) return;
@@ -143,128 +141,91 @@ export default function Onboarding() {
                     </svg>
                 </div>
                 <h1 className="text-3xl font-extrabold text-[#111] tracking-tight">BarberUp</h1>
-                <p className="text-sm text-[#666] mt-1.5">
-                    {step === 'lang' ? 'Tilni tanlang / Выберите язык' : t('onboarding.title')}
-                </p>
+                <p className="text-sm text-[#666] mt-1.5">{t('onboarding.title')}</p>
             </div>
 
-            {/* Step 1: Language selection */}
-            {step === 'lang' && (
-                <div className="grid grid-cols-1 gap-4">
-                    <button
-                        onClick={() => handleSelectLanguage('uz')}
-                        className="w-full flex items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)] text-left"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center shrink-0">
-                                <img className="w-[28px]" src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Flag_of_Uzbekistan.png" alt="Uzbekistan" />
-                            </div>
-                            <div>
-                                <h2 className="text-[17px] font-bold text-[#111] tracking-[-0.02em]">O'zbekcha</h2>
-                                <p className="text-sm text-[#666] font-medium mt-0.5">O'zbek tili</p>
-                            </div>
-                        </div>
-                        <svg className="shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 18l6-6-6-6" />
-                        </svg>
-                    </button>
-
-                    <button
-                        onClick={() => handleSelectLanguage('ru')}
-                        className="w-full flex items-center justify-between p-5 bg-white border border-black/5 rounded-[28px] transition-all duration-200 hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] active:scale-[0.99] shadow-[0_4px_20px_rgba(0,0,0,0.04)] text-left"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center shrink-0">
-                                <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
-                                    <rect width="28" height="20" rx="2" fill="white" />
-                                    <rect y="6.67" width="28" height="6.67" fill="#0039A6" />
-                                    <rect y="13.33" width="28" height="6.67" fill="#D52B1E" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h2 className="text-[17px] font-bold text-[#111] tracking-[-0.02em]">Русский</h2>
-                                <p className="text-sm text-[#666] font-medium mt-0.5">Русский язык</p>
-                            </div>
-                        </div>
-                        <svg className="shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 18l6-6-6-6" />
-                        </svg>
-                    </button>
+            <div className="bg-white rounded-[28px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.07)] p-7 space-y-5">
+                {/* Phone display */}
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#666] mb-2 block">
+                        {t('onboarding.phone')}
+                    </label>
+                    <div className="w-full px-4 py-3.5 rounded-2xl bg-[#f8f8f8] border border-black/5 text-sm text-[#666] font-medium">
+                        {phone || t('onboarding.botFirst')}
+                    </div>
                 </div>
-            )}
 
-            {/* Step 2: Role and profile details */}
-            {step === 'profile' && (
-                <div className="bg-white rounded-[28px] border border-black/5 shadow-[0_20px_60px_rgba(0,0,0,0.07)] p-7 space-y-5">
-                    {/* Phone display */}
-                    <div>
-                        <label className="text-xs font-bold uppercase tracking-widest text-[#666] mb-2 block">
-                            {t('onboarding.phone')}
-                        </label>
-                        <div className="w-full px-4 py-3.5 rounded-2xl bg-[#f8f8f8] border border-black/5 text-sm text-[#666] font-medium">
-                            {phone}
-                        </div>
-                    </div>
-
-                    {/* Name input */}
-                    <div>
-                        <label className="text-xs font-bold uppercase tracking-widest text-[#666] mb-2 block">
-                            {t('onboarding.name')}
-                        </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder={t('auth.clientOnboarding.namePlaceholder')}
-                            className="w-full px-4 py-3.5 rounded-2xl border border-black/5 text-sm outline-none focus:border-[#378ADD] transition bg-white"
-                        />
-                    </div>
-
-                    {/* Role Selection */}
-                    <div>
-                        <label className="text-xs font-bold uppercase tracking-widest text-[#666] mb-3 block">
-                            {t('onboarding.role')}
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => setRole('client')}
-                                className={`py-5 rounded-2xl border-2 flex flex-col items-center gap-2 transition active:scale-95 ${
-                                    role === 'client' ? 'border-[#378ADD] bg-[#378ADD]/5' : 'border-black/5 bg-white'
-                                }`}
-                            >
-                                <span className="text-3xl">👤</span>
-                                <span className={`text-sm font-bold ${role === 'client' ? 'text-[#378ADD]' : 'text-[#111]'}`}>
-                                    {t('onboarding.roleClient')}
-                                </span>
-                                <span className="text-[10px] text-[#888] text-center px-1">{t('onboarding.roleClientDesc')}</span>
-                            </button>
-
-                            <button
-                                onClick={() => setRole('barber')}
-                                className={`py-5 rounded-2xl border-2 flex flex-col items-center gap-2 transition active:scale-95 ${
-                                    role === 'barber' ? 'border-[#378ADD] bg-[#378ADD]/5' : 'border-black/5 bg-white'
-                                }`}
-                            >
-                                <span className="text-3xl">✂️</span>
-                                <span className={`text-sm font-bold ${role === 'barber' ? 'text-[#378ADD]' : 'text-[#111]'}`}>
-                                    {t('onboarding.roleBarber')}
-                                </span>
-                                <span className="text-[10px] text-[#888] text-center px-1">{t('onboarding.roleBarberDesc')}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!name.trim() || !role || saving}
-                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#378ADD] to-[#185FA5] text-white text-base font-bold disabled:opacity-40 active:scale-[0.98] transition shadow-[0_10px_25px_rgba(55,138,221,0.28)]"
-                    >
-                        {saving ? '...' : `${t('onboarding.submit')} →`}
-                    </button>
+                {/* Name input */}
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#666] mb-2 block">
+                        {t('onboarding.name')}
+                    </label>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder={t('auth.clientOnboarding.namePlaceholder')}
+                        className="w-full px-4 py-3.5 rounded-2xl border border-black/5 text-sm outline-none focus:border-[#378ADD] transition bg-white"
+                    />
                 </div>
-            )}
+
+                {/* Role selection */}
+                <div>
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#666] mb-3 block">
+                        {t('onboarding.role')}
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => setRole('client')}
+                            className={`py-5 rounded-2xl border-2 flex flex-col items-center gap-2 transition active:scale-95 ${
+                                role === 'client'
+                                    ? 'border-[#378ADD] bg-[#378ADD]/5'
+                                    : 'border-black/5 bg-white'
+                            }`}
+                        >
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                                role === 'client' ? 'bg-[#378ADD]/10 text-[#378ADD]' : 'bg-[#f5f5f7] text-[#666]'
+                            }`}>
+                                <User size={24} />
+                            </div>
+                            <span className={`text-sm font-bold ${role === 'client' ? 'text-[#378ADD]' : 'text-[#111]'}`}>
+                                {t('onboarding.roleClient')}
+                            </span>
+                            <span className="text-[10px] text-[#888] text-center px-1">{t('onboarding.roleClientDesc')}</span>
+                        </button>
+
+                        <button
+                            onClick={() => setRole('barber')}
+                            className={`py-5 rounded-2xl border-2 flex flex-col items-center gap-2 transition active:scale-95 ${
+                                role === 'barber'
+                                    ? 'border-[#378ADD] bg-[#378ADD]/5'
+                                    : 'border-black/5 bg-white'
+                            }`}
+                        >
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                                role === 'barber' ? 'bg-[#378ADD]/10 text-[#378ADD]' : 'bg-[#f5f5f7] text-[#666]'
+                            }`}>
+                                <Scissors size={24} />
+                            </div>
+                            <span className={`text-sm font-bold ${role === 'barber' ? 'text-[#378ADD]' : 'text-[#111]'}`}>
+                                {t('onboarding.roleBarber')}
+                            </span>
+                            <span className="text-[10px] text-[#888] text-center px-1">{t('onboarding.roleBarberDesc')}</span>
+                        </button>
+                    </div>
+                </div>
+
+                {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+
+                {/* Submit */}
+                <button
+                    onClick={handleSubmit}
+                    disabled={!name.trim() || !role || saving || (!phone && !!error)}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#378ADD] to-[#185FA5] text-white text-base font-bold disabled:opacity-40 active:scale-[0.98] transition shadow-[0_10px_25px_rgba(55,138,221,0.28)]"
+                >
+                    {saving ? '...' : `${t('onboarding.submit')} →`}
+                </button>
+            </div>
         </div>
     );
 }

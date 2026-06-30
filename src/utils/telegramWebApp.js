@@ -68,7 +68,7 @@ export async function getTelegramRegisteredPhone() {
     // Primary: check telegram_users table
     const { data, error } = await supabase
         .from('telegram_users')
-        .select('phone, role, onboarding_step')
+        .select('phone, role, onboarding_step, language')
         .eq('telegram_id', tgUser.id)
         .maybeSingle();
 

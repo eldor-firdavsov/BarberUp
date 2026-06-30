@@ -1,10 +1,10 @@
 // Supabase Edge Function: telegram-webhook
 //
 // Full onboarding flow:
-//   • /start          — check telegram_users; ask for phone if new, show Mini App if returning
+//   • /start          — check telegram_users; ask for language first, then phone. Show Mini App if returning
+//   • Callback query  — Language selection OR Accept/Reject booking + mark notifications as actioned
 //   • Shared contact  — save phone, mark onboarding complete, also upsert telegram_links for compat
 //   • /changenumber   — trigger phone change flow
-//   • Callback query  — Accept/Reject booking + mark notifications as actioned
 //
 // Required secrets:  TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // Optional:          MINI_APP_URL
@@ -35,27 +35,39 @@ async function sendText(chatId: number, text: string, extra: object = {}) {
   return tg('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', ...extra });
 }
 
-async function sendRequestContact(chatId: number) {
+async function sendRequestContact(chatId: number, lang: string) {
+  const text = lang === 'ru'
+    ? '📱 <b>Отправьте ваш номер телефона</b>\n\nПожалуйста, нажмите кнопку ниже — ваш аккаунт BarberUp будет привязан к этому номеру.'
+    : '📱 <b>Telefon raqamingizni yuboring</b>\n\nIltimos, quyidagi tugmani bosing — BarberUp akkauntingiz shu raqamga bog\'lanadi.';
+
+  const buttonText = lang === 'ru' ? '📲 Отправить номер телефона' : '📲 Telefon raqamimni yuborish';
+
   return tg('sendMessage', {
     chat_id: chatId,
-    text: '📱 <b>Telefon raqamingizni yuboring</b>\n\nIltimos, quyidagi tugmani bosing — BarberUp akkauntingiz shu raqamga bog\'lanadi.',
+    text,
     parse_mode: 'HTML',
     reply_markup: {
-      keyboard: [[{ text: '📲 Telefon raqamimni yuborish', request_contact: true }]],
+      keyboard: [[{ text: buttonText, request_contact: true }]],
       resize_keyboard: true,
       one_time_keyboard: true,
     },
   });
 }
 
-async function sendOpenMiniApp(chatId: number, firstName: string) {
+async function sendOpenMiniApp(chatId: number, firstName: string, lang: string) {
+  const text = lang === 'ru'
+    ? `✅ <b>Вы зарегистрированы, ${firstName}!</b>\n\nТеперь откройте приложение, чтобы заполнить профиль 👇`
+    : `✅ <b>Ro'yxatdan o'tdingiz, ${firstName}!</b>\n\nEndi profilingizni to'ldirish uchun ilovani oching 👇`;
+
+  const btnText = lang === 'ru' ? '💈 Открыть BarberUp' : '💈 BarberUp ilovasini ochish';
+
   return tg('sendMessage', {
     chat_id: chatId,
-    text: `✅ <b>Ro'yxatdan o'tdingiz, ${firstName}!</b>\n\nEndi profilingizni to'ldirish uchun ilovani oching 👇`,
+    text,
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [[{
-        text: '💈 BarberUp ilovasini ochish',
+        text: btnText,
         web_app: { url: MINI_APP_URL },
       }]],
     },
@@ -64,19 +76,25 @@ async function sendOpenMiniApp(chatId: number, firstName: string) {
 
 // ─── Phone number change flow ─────────────────────────────────────────────────
 
-async function handlePhoneChangeRequest(chatId: number, telegramId: number) {
+async function handlePhoneChangeRequest(chatId: number, telegramId: number, lang: string) {
   // Mark user as awaiting new phone
   await supabase
     .from('telegram_users')
     .update({ onboarding_step: 'awaiting_phone_change' })
     .eq('telegram_id', telegramId);
 
+  const text = lang === 'ru'
+    ? '📱 <b>Отправьте ваш новый номер телефона</b>\n\nНажмите кнопку ниже:'
+    : '📱 <b>Yangi telefon raqamingizni yuboring</b>\n\nQuyidagi tugmani bosing:';
+
+  const btnText = lang === 'ru' ? '📲 Отправить новый номер' : '📲 Yangi raqamimni yuborish';
+
   return tg('sendMessage', {
     chat_id: chatId,
-    text: '📱 <b>Yangi telefon raqamingizni yuboring</b>\n\nQuyidagi tugmani bosing:',
+    text,
     parse_mode: 'HTML',
     reply_markup: {
-      keyboard: [[{ text: '📲 Yangi raqamimni yuborish', request_contact: true }]],
+      keyboard: [[{ text: btnText, request_contact: true }]],
       resize_keyboard: true,
       one_time_keyboard: true,
     },
@@ -115,12 +133,48 @@ Deno.serve(async (req) => {
       return new Response('bad request', { status: 400 });
     }
 
-    // ── Handle callback_query (inline button taps: Accept / Reject) ──────────────
+    // ── Handle callback_query (inline button taps) ──────────────────────────────
     if (update.callback_query) {
       const cbq = update.callback_query;
-      const [action, bookingId] = cbq.data?.split(':') ?? [];
+      const dataStr = cbq.data ?? '';
       const telegramId = cbq.from.id;
 
+      // 1. Language Selection query callback
+      if (dataStr.startsWith('lang:')) {
+        const lang = dataStr.split(':')[1]; // 'uz' or 'ru'
+
+        // Save language and set onboarding step to awaiting_phone
+        await supabase.from('telegram_users').upsert({
+          telegram_id: telegramId,
+          language: lang,
+          first_name: cbq.from.first_name ?? 'Foydalanuvchi',
+          username: cbq.from.username ?? null,
+          onboarding_step: 'awaiting_phone',
+        }, { onConflict: 'telegram_id' });
+
+        // Answer callback query
+        await tg('answerCallbackQuery', {
+          callback_query_id: cbq.id,
+          text: lang === 'ru' ? 'Выбран русский язык' : 'O\'zbek tili tanlandi',
+        });
+
+        // Edit the inline message to show selection
+        await tg('editMessageText', {
+          chat_id: cbq.message.chat.id,
+          message_id: cbq.message.message_id,
+          text: lang === 'ru' 
+            ? '🇷🇺 Выбран русский язык.' 
+            : '🇺🇿 O\'zbek tili tanlandi.',
+          parse_mode: 'HTML',
+        });
+
+        // Request contact in the chosen language
+        await sendRequestContact(cbq.message.chat.id, lang);
+        return new Response('ok');
+      }
+
+      // 2. Booking actions (Accept / Reject)
+      const [action, bookingId] = dataStr.split(':') ?? [];
       if ((action === 'accept' || action === 'reject') && bookingId) {
         const newStatus = action === 'accept' ? 'accepted' : 'rejected';
 
@@ -202,20 +256,26 @@ Deno.serve(async (req) => {
       const startParam = msg.text?.split(' ')[1] ?? '';
 
       if (startParam === 'changenumber' && existingUser) {
-        await handlePhoneChangeRequest(chatId, telegramId);
+        await handlePhoneChangeRequest(chatId, telegramId, existingUser.language || 'uz');
         return new Response('ok');
       }
 
       if (existingUser?.onboarding_step === 'complete') {
         // Already registered — show welcome back + menu
+        const lang = existingUser.language || 'uz';
+        const welcomeText = lang === 'ru'
+          ? `👋 Привет, <b>${firstName}</b>!\n\nНажмите кнопку ниже, чтобы открыть BarberUp:`
+          : `👋 Salom, <b>${firstName}</b>!\n\nBarberUp ilovasini ochish uchun quyidagi tugmani bosing:`;
+        const btnText = lang === 'ru' ? '💈 Открыть приложение' : '💈 Ilovani ochish';
+
         return Response.json(
           await tg('sendMessage', {
             chat_id: chatId,
-            text: `👋 Salom, <b>${firstName}</b>!\n\nBarberUp ilovasini ochish uchun quyidagi tugmani bosing:`,
+            text: welcomeText,
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [[{
-                text: '💈 Ilovani ochish',
+                text: btnText,
                 web_app: { url: MINI_APP_URL },
               }]],
             },
@@ -238,6 +298,7 @@ Deno.serve(async (req) => {
           first_name: firstName,
           username: msg.from.username ?? null,
           onboarding_step: 'complete',
+          language: 'uz', // default legacy to uz
         }, { onConflict: 'telegram_id' });
 
         await tg('sendMessage', {
@@ -254,37 +315,45 @@ Deno.serve(async (req) => {
         return new Response('ok');
       }
 
-      // New user — start onboarding
-      await supabase.from('telegram_users').upsert({
-        telegram_id: telegramId,
-        phone: '',
-        first_name: firstName,
-        username: msg.from.username ?? null,
-        onboarding_step: 'awaiting_phone',
-      }, { onConflict: 'telegram_id' });
-
-      // Welcome message
-      await sendText(
-        chatId,
-        '✂️ <b>BarberUp\'ga xush kelibsiz!</b>\n\n' +
-          'Sartaroshxona qidirish va navbat band qilishning eng qulay yo\'li.\n\n' +
-          '🔹 Yaqin atrofdagi sartaroshxonalarni toping\n' +
-          '🔹 Onlayn navbat band qiling — kutmasdan boring\n' +
-          '🔹 Bron holati haqida darhol xabar oling\n\n' +
-          'Boshlash uchun <b>telefon raqamingizni ulang</b> 👇'
+      // New user — prompt for language first
+      return Response.json(
+        await tg('sendMessage', {
+          chat_id: chatId,
+          text: '🌐 <b>Tilni tanlang / Выберите язык:</b>',
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '🇺🇿 O\'zbekcha', callback_data: 'lang:uz' },
+                { text: '🇷🇺 Русский', callback_data: 'lang:ru' }
+              ]
+            ]
+          }
+        })
       );
-
-      await sendRequestContact(chatId);
-      return new Response('ok');
     }
 
     // ── /changenumber command ─────────────────────────────────────────────────────
-    if (msg.text === '/changenumber' || msg.text === '🔄 Raqamni o\'zgartirish') {
+    if (msg.text === '/changenumber' || msg.text === '🔄 Raqamni o\'zgartirish' || msg.text === '🔄 Изменить номер') {
       if (!existingUser) {
-        await sendRequestContact(chatId);
-        return new Response('ok');
+        // Ask for language first if not exists
+        return Response.json(
+          await tg('sendMessage', {
+            chat_id: chatId,
+            text: '🌐 <b>Tilni tanlang / Выберите язык:</b>',
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '🇺🇿 O\'zbekcha', callback_data: 'lang:uz' },
+                  { text: '🇷🇺 Русский', callback_data: 'lang:ru' }
+                ]
+              ]
+            }
+          })
+        );
       }
-      await handlePhoneChangeRequest(chatId, telegramId);
+      await handlePhoneChangeRequest(chatId, telegramId, existingUser.language || 'uz');
       return new Response('ok');
     }
 
@@ -295,6 +364,7 @@ Deno.serve(async (req) => {
       const telegramUserId = String(msg.contact.user_id ?? msg.from?.id ?? chatId);
 
       const currentStep = existingUser?.onboarding_step;
+      const lang = existingUser?.language || 'uz';
 
       if (currentStep === 'awaiting_phone_change') {
         // ── Phone change flow ──────────────────────────────────────────────────
@@ -332,9 +402,13 @@ Deno.serve(async (req) => {
           });
         }
 
+        const changeSuccessText = lang === 'ru'
+          ? `✅ <b>Номер успешно обновлен!</b>\n\nНовый номер: <code>${phone}</code>\n\nВсе ваши бронирования привязаны к новому номеру.`
+          : `✅ <b>Raqam yangilandi!</b>\n\nYangi raqamingiz: <code>${phone}</code>\n\nBarcha bronlaringiz yangi raqamga o'tkazildi.`;
+
         await tg('sendMessage', {
           chat_id: chatId,
-          text: `✅ <b>Raqam yangilandi!</b>\n\nYangi raqamingiz: <code>${phone}</code>\n\nBarcha bronlaringiz yangi raqamga o'tkazildi.`,
+          text: changeSuccessText,
           parse_mode: 'HTML',
           reply_markup: { remove_keyboard: true },
         });
@@ -349,6 +423,7 @@ Deno.serve(async (req) => {
         first_name: firstName,
         username: msg.from.username ?? null,
         onboarding_step: 'complete',
+        language: lang,
       }, { onConflict: 'telegram_id' });
 
       // Also upsert telegram_links for backward compat
@@ -361,15 +436,19 @@ Deno.serve(async (req) => {
 
       console.log(`[TELEGRAM WEBHOOK] linked phone=${phone} chat_id=${chatId} tg_user_id=${telegramUserId}`);
 
+      const savePhoneText = lang === 'ru'
+        ? `✅ <b>Ваш номер телефона сохранен:</b> <code>${phone}</code>`
+        : `✅ <b>Telefon raqamingiz saqlandi:</b> <code>${phone}</code>`;
+
       // Remove keyboard and send confirmation
       await tg('sendMessage', {
         chat_id: chatId,
-        text: `✅ <b>Telefon raqamingiz saqlandi:</b> <code>${phone}</code>`,
+        text: savePhoneText,
         parse_mode: 'HTML',
         reply_markup: { remove_keyboard: true },
       });
 
-      await sendOpenMiniApp(chatId, firstName);
+      await sendOpenMiniApp(chatId, firstName, lang);
       return new Response('ok');
     }
 
@@ -378,6 +457,7 @@ Deno.serve(async (req) => {
     if (msg.text && phoneRegex.test(msg.text.trim())) {
       const phone = msg.text.trim();
       const telegramUserId = String(msg.from?.id ?? chatId);
+      const lang = existingUser?.language || 'uz';
 
       await supabase.from('telegram_users').upsert({
         telegram_id: telegramId,
@@ -385,6 +465,7 @@ Deno.serve(async (req) => {
         first_name: firstName,
         username: msg.from.username ?? null,
         onboarding_step: 'complete',
+        language: lang,
       }, { onConflict: 'telegram_id' });
 
       // Also upsert telegram_links for backward compat
@@ -397,33 +478,42 @@ Deno.serve(async (req) => {
 
       console.log(`[TELEGRAM WEBHOOK] linked phone=${phone} chat_id=${chatId} tg_user_id=${telegramUserId}`);
 
+      const confirmText = lang === 'ru'
+        ? '✅ <b>Номер телефона подтвержден!</b>\n\nВсе уведомления будут приходить сюда.'
+        : '✅ <b>Telefon raqamingiz tasdiqlandi!</b>\n\nEndi sartaroshxona bronlari bo\'yicha barcha xabarnomalar shu yerga keladi.';
+
       await tg('sendMessage', {
         chat_id: chatId,
-        text: '✅ <b>Telefon raqamingiz tasdiqlandi!</b>\n\n' +
-          'Endi sartaroshxona bronlari bo\'yicha barcha xabarnomalar shu yerga keladi.',
+        text: confirmText,
         parse_mode: 'HTML',
         reply_markup: { remove_keyboard: true },
       });
 
-      await sendOpenMiniApp(chatId, firstName);
+      await sendOpenMiniApp(chatId, firstName, lang);
       return new Response('ok');
     }
 
     // ── Unrecognized message — show help ──────────────────────────────────────────
     if (existingUser?.onboarding_step === 'complete') {
+      const lang = existingUser.language || 'uz';
+      const helpText = lang === 'ru'
+        ? '💈 <b>BarberUp</b>\n\n/changenumber — изменить номер телефона'
+        : '💈 <b>BarberUp</b>\n\n/changenumber — telefon raqamingizni o\'zgartirish';
+      const openBtnText = lang === 'ru' ? '💈 Открыть приложение' : '💈 Ilovani ochish';
+
       await tg('sendMessage', {
         chat_id: chatId,
-        text: '💈 <b>BarberUp</b>\n\n/changenumber — telefon raqamingizni o\'zgartirish',
+        text: helpText,
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [[{
-            text: '💈 Ilovani ochish',
+            text: openBtnText,
             web_app: { url: MINI_APP_URL },
           }]],
         },
       });
     } else {
-      await sendRequestContact(chatId);
+      await sendRequestContact(chatId, existingUser?.language || 'uz');
     }
 
     return new Response('ok');

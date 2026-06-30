@@ -6,6 +6,7 @@ import { getTelegramLinkByChatId } from '../../api/telegramApi.js';
 import { checkPhoneExists } from '../../api/verificationApi.js';
 import { loginClient, getOrCreateClient } from '../../api/clientApi.js';
 import { loginBarber } from '../../api/barberApi.js';
+import { setLocale } from '../../utils/i18n.js';
 
 const BOT_USERNAME = 'BarberUp_bot';
 const TG = () => window.Telegram?.WebApp;
@@ -77,11 +78,16 @@ export default function TelegramEntry() {
         (async () => {
             try {
                 // Step 1: look up the phone linked to this Telegram user
-                const { phone, error: linkErr } = await getTelegramLinkByChatId(telegramUserId);
+                const { phone, language, error: linkErr } = await getTelegramLinkByChatId(telegramUserId);
 
                 if (linkErr || !phone) {
                     setPhase('no-phone');
                     return;
+                }
+
+                if (language) {
+                    setLocale(language);
+                    localStorage.setItem('language', language);
                 }
 
                 setLinkedPhone(phone);
