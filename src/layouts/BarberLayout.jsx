@@ -249,18 +249,36 @@ function BarberLayout() {
             {/* Desktop Sidebar Navigation */}
             <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-black/5 bg-white py-8 px-4 z-20 justify-between">
                 <div>
-                    <div className="flex items-center gap-3 mb-10 px-2">
-                        <div className="w-10 h-10 rounded-2xl bg-[#378ADD] flex items-center justify-center shadow-lg shadow-[#378ADD]/20">
-                            <img
-                                src="/Scissor.png"
-                                alt={t('common.logo')}
-                                className="w-5 h-5 object-contain invert"
-                                onError={e => e.target.style.display = 'none'}
-                            />
+                    <div className="flex items-center justify-between mb-10 px-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-[#378ADD] flex items-center justify-center shadow-lg shadow-[#378ADD]/20">
+                                <img
+                                    src="/Scissor.png"
+                                    alt={t('common.logo')}
+                                    className="w-5 h-5 object-contain invert"
+                                    onError={e => e.target.style.display = 'none'}
+                                />
+                            </div>
+                            <h1 className="text-xl font-bold text-[#111] tracking-[-0.03em]">
+                                {t('brand.name')}
+                            </h1>
                         </div>
-                        <h1 className="text-xl font-bold text-[#111] tracking-[-0.03em]">
-                            {t('brand.name')}
-                        </h1>
+
+                        {/* Sidebar Notification Icon for Desktop/Laptop */}
+                        <div className="relative notification-container">
+                            <button
+                                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                                className="relative w-10 h-10 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center hover:bg-[#f0f0f0] transition-all duration-200"
+                            >
+                                <Bell size={18} className="text-[#111]" />
+                                {notificationCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-[#378ADD] text-white text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center px-1">
+                                        {notificationCount}
+                                    </span>
+                                )}
+                            </button>
+                            {notificationsOpen && renderNotificationDropdown(false)}
+                        </div>
                     </div>
 
                     <nav className="flex flex-col gap-2">
@@ -299,32 +317,6 @@ function BarberLayout() {
 
             {/* Main Wrapper */}
             <div className="flex-1 flex flex-col min-w-0 pl-0 md:pl-64">
-                {/* Desktop Sticky Header */}
-                <header className="hidden md:flex items-center justify-between h-[72px] px-8 bg-white/80 backdrop-blur-md border-b border-black/5 sticky top-0 z-10 w-full">
-                    <div>
-                        <h2 className="text-sm font-bold text-[#111] tracking-[-0.01em]">
-                            {user?.fullname ? `Welcome, ${user.fullname}` : 'Barber Dashboard'}
-                        </h2>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="relative notification-container">
-                            <button
-                                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                                className="relative w-10 h-10 bg-[#f8f8f8] border border-black/5 rounded-2xl flex items-center justify-center hover:bg-[#f0f0f0] transition-all duration-200"
-                            >
-                                <Bell size={18} className="text-[#111]" />
-                                {notificationCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-[#378ADD] text-white text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center px-1">
-                                        {notificationCount}
-                                    </span>
-                                )}
-                            </button>
-                            {notificationsOpen && renderNotificationDropdown(true)}
-                        </div>
-                    </div>
-                </header>
-
                 {/* Mobile Header */}
                 <div className="md:hidden">
                     <AppHeader
@@ -359,7 +351,7 @@ function BarberLayout() {
                 </div>
 
                 {/* Main content */}
-                <main className="flex-grow md:pt-0 md:pb-0 min-h-screen">
+                <main className="flex-grow pt-0 pb-0 md:pt-8 md:px-8 min-h-screen">
                     <Outlet />
                 </main>
 
