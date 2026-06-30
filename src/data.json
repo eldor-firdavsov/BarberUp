@@ -529,6 +529,25 @@
         "geoUnavailable": "Информация о местоположении недоступна. Введите адрес вручную.",
         "geoTimeout": "Время ожидания запроса геопозиции истекло. Проверьте связь и попробуйте снова."
       }
+    },
+    "onboarding": {
+      "title": "Заполните профиль",
+      "phone": "Номер телефона",
+      "name": "Ваше имя",
+      "role": "Ваша роль",
+      "roleClient": "Клиент",
+      "roleBarber": "Мастер",
+      "roleClientDesc": "Записаться к мастеру",
+      "roleBarberDesc": "Управлять очередью",
+      "submit": "Начать",
+      "botFirst": "Сначала зарегистрируйтесь в Telegram боте"
+    },
+    "notifications": {
+      "title": "Уведомления",
+      "empty": "Нет новых уведомлений",
+      "dismissAll": "Закрыть все",
+      "accept": "Принять",
+      "reject": "Отклонить"
     }
   },
 
@@ -1062,6 +1081,25 @@
         "geoUnavailable": "Joylashuv ma'lumoti mavjud emas. Iltimos, manzilni qo'lda kiriting.",
         "geoTimeout": "Joylashuv so'rovi vaqti tugadi. Ulanishni tekshirib, qayta urinib ko'ring."
       }
+    },
+    "onboarding": {
+      "title": "Profilingizni to'ldiring",
+      "phone": "Telefon raqam",
+      "name": "Ismingiz",
+      "role": "Rolingiz",
+      "roleClient": "Mijoz",
+      "roleBarber": "Sartarosh",
+      "roleClientDesc": "Sartaroshga yozilish",
+      "roleBarberDesc": "Navbatni boshqarish",
+      "submit": "Boshlash",
+      "botFirst": "Avval Telegram botda ro'yxatdan o'ting"
+    },
+    "notifications": {
+      "title": "Bildirishnomalar",
+      "empty": "Yangi bildirishnoma yo'q",
+      "dismissAll": "Barchasini o'chirish",
+      "accept": "Qabul",
+      "reject": "Rad"
     }
   }
 }

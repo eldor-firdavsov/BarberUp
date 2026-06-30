@@ -144,6 +144,19 @@ function Settings() {
                     <ChevronRight size={16} className="text-[#bbb]" />
                 </button>
 
+                {/* Quick phone change via Telegram */}
+                <button
+                    onClick={() => {
+                        const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'BarberUp_bot';
+                        window.open(`https://t.me/${botUsername}?start=changenumber`, '_blank');
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-[#378ADD]/10 text-[#378ADD] text-xs font-bold
+                        flex items-center justify-center gap-2 active:scale-[0.98] transition -mt-2"
+                >
+                    <span>✈️</span>
+                    <span>Telegram orqali o'zgartirish</span>
+                </button>
+
                 {/* Telegram Bot Connection */}
                 <div className="bg-white border border-black/5 rounded-[24px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center gap-4 px-5 py-4">

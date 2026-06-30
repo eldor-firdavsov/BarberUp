@@ -41,7 +41,16 @@ export async function getTelegramLinkByChatId(telegramUserId) {
     if (!telegramUserId) return { phone: null, error: 'No Telegram user ID' };
     const id = String(telegramUserId);
     try {
-        // Try telegram_user_id column first (set by updated webhook)
+        // Primary: check telegram_users table (new onboarding flow)
+        const { data: tgUser, error: tgError } = await supabase
+            .from('telegram_users')
+            .select('phone, role, onboarding_step')
+            .eq('telegram_id', id)
+            .maybeSingle();
+
+        if (!tgError && tgUser?.phone) return { phone: tgUser.phone, error: null };
+
+        // Fallback: try telegram_user_id column in telegram_links
         let { data, error } = await supabase
             .from('telegram_links')
             .select('phone')

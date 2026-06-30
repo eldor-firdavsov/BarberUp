@@ -93,12 +93,11 @@ export default function TelegramEntry() {
                     // Auto-login — no friction for returning users
                     const ok = await doAutoLogin(phone, role);
                     if (!ok) {
-                        // Something went wrong with the DB lookup — show role select
-                        setPhase('role-select');
+                        navigate('/onboarding', { replace: true });
                     }
                 } else {
-                    // New user — show role selection so they can onboard
-                    setPhase('role-select');
+                    // New user — send to onboarding to complete profile
+                    navigate('/onboarding', { replace: true });
                 }
             } catch (err) {
                 console.error('[TelegramEntry]', err);

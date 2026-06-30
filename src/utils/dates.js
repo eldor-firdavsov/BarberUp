@@ -126,3 +126,38 @@ export function getBookingDayOptions(count = 7) {
         };
     });
 }
+
+/**
+ * Format a timestamp (ISO string or Date) as a relative time string.
+ * e.g. "2 daqiqa oldin", "1 soat oldin", "3 kun oldin"
+ */
+export function formatRelativeTime(dateInput) {
+    if (!dateInput) return '';
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    const lang = getLocale() === 'ru' ? 'ru' : 'uz';
+
+    if (lang === 'ru') {
+        if (diffSec < 60) return 'только что';
+        if (diffMin < 60) return `${diffMin} мин. назад`;
+        if (diffHour < 24) return `${diffHour} ч. назад`;
+        if (diffDay < 7) return `${diffDay} дн. назад`;
+        return formatBookingDate(toDateStr(date), { style: 'short' });
+    }
+
+    // Uzbek
+    if (diffSec < 60) return 'hozirgina';
+    if (diffMin < 60) return `${diffMin} daqiqa oldin`;
+    if (diffHour < 24) return `${diffHour} soat oldin`;
+    if (diffDay < 7) return `${diffDay} kun oldin`;
+    return formatBookingDate(toDateStr(date), { style: 'short' });
+}
+

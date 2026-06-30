@@ -264,6 +264,21 @@ function Settings() {
                     <ChevronRight size={16} className="text-[#bbb]" />
                 </button>
 
+                {/* Quick phone change via Telegram */}
+                <div className="px-5 sm:px-6 pb-4 pt-0">
+                    <button
+                        onClick={() => {
+                            const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'BarberUp_bot';
+                            window.open(`https://t.me/${botUsername}?start=changenumber`, '_blank');
+                        }}
+                        className="w-full py-2.5 rounded-xl bg-[#378ADD]/10 text-[#378ADD] text-xs font-bold
+                            flex items-center justify-center gap-2 active:scale-[0.98] transition"
+                    >
+                        <span>✈️</span>
+                        <span>Telegram orqali o'zgartirish</span>
+                    </button>
+                </div>
+
                 {/* Edit Lunch Hours */}
                 <button
                     onClick={() => openModal('lunch')}

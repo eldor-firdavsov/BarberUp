@@ -8,7 +8,9 @@ import { supabase } from '../../api/supabase.js';
 import { compareTimes, formatTo24h } from '../../utils/time.js';
 import { toDateStr, getBookingDateStr, bookingMatchesDate } from '../../utils/dates.js';
 import { t } from '../../utils/i18n.js';
+import { getUnreadNotifications } from '../../api/notificationApi.js';
 import ClientProfileModal from '../../components/ClientProfileModal.jsx';
+import NotificationPanel from '../../components/NotificationPanel.jsx';
 import SkeletonLoader from '../../components/SkeletonLoader.jsx';
 import { ListRow, Button, Card, SegmentedControl, EmptyState } from '../../components/ui/index.js';
 import WalkInBookingSheet from '../../components/WalkInBookingSheet.jsx';
@@ -49,6 +51,36 @@ function Dashboard() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [profileClient, setProfileClient] = useState(null);
     const [walkInOpen, setWalkInOpen] = useState(false);
+
+    /* ── Notification panel state ──────────────────────────────────────── */
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const loadUnreadCount = useCallback(async () => {
+        const barberId = user?.id ?? user?._id;
+        if (!barberId) return;
+        const { data } = await getUnreadNotifications(barberId);
+        setUnreadCount(data.length);
+    }, [user?.id]);
+
+    useEffect(() => {
+        loadUnreadCount();
+
+        const barberId = user?.id ?? user?._id;
+        if (!barberId) return;
+
+        const channel = supabase
+            .channel(`notif-badge:${barberId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'notifications',
+                filter: `barber_id=eq.${barberId}`,
+            }, loadUnreadCount)
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    }, [loadUnreadCount, user?.id]);
 
     /* ── Toast notification state ─────────────────────────────────────────── */
     const [toast, setToast] = useState(null);
@@ -194,9 +226,24 @@ function Dashboard() {
             )}
 
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('barber.dashboard.title')}</h1>
-                <p className="text-sm text-[var(--text-secondary)] mt-1">{t('barber.dashboard.subtitle')}</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('barber.dashboard.title')}</h1>
+                    <p className="text-sm text-[var(--text-secondary)] mt-1">{t('barber.dashboard.subtitle')}</p>
+                </div>
+                <button
+                    onClick={() => setNotifOpen(true)}
+                    className="relative p-2 rounded-xl bg-white border border-black/5 shadow-sm active:scale-95 transition"
+                >
+                    <Bell size={20} className="text-[var(--text-primary)]" />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1
+                            bg-[#EF4444] text-white text-[10px] font-bold rounded-full
+                            flex items-center justify-center leading-none">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
+                </button>
             </div>
 
             <Card className="p-4 bg-[var(--brand-primary-light)] border-[var(--brand-primary)]/10">
@@ -323,6 +370,16 @@ function Dashboard() {
                 onSuccess={(newBooking) => {
                     setBookings(prev => [newBooking, ...prev]);
                     showToast(t('booking.walkInSuccess'), 'success');
+                }}
+            />
+
+            <NotificationPanel
+                barberId={user?.id ?? user?._id}
+                isOpen={notifOpen}
+                onClose={() => setNotifOpen(false)}
+                onAction={() => {
+                    loadDashboard();
+                    loadUnreadCount();
                 }}
             />
         </PageContainer>

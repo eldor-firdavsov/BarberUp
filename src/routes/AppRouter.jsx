@@ -26,6 +26,7 @@ const BookingStatus = lazy(() => import('../pages/client/BookingStatus.jsx'));
 const ClientEntry = lazy(() => import('../pages/client/ClientEntry.jsx'));
 const ChangePhone = lazy(() => import('../pages/client/ChangePhone.jsx'));
 const BarberChangePhone = lazy(() => import('../pages/barber/ChangePhone.jsx'));
+const Onboarding = lazy(() => import('../pages/Onboarding.jsx'));
 
 const BarberDashboard = lazy(() => import('../pages/barber/Dashboard.jsx'));
 const BarberAppointments = lazy(() => import('../pages/barber/Appointments.jsx'));
@@ -78,6 +79,9 @@ function AppRouter() {
 
                         {/* Telegram Mini App entry */}
                         <Route path="/tg" element={<TelegramEntry />} />
+
+                        {/* Post-Telegram onboarding (profile completion) */}
+                        <Route path="/onboarding" element={<Onboarding />} />
 
                         <Route path="/guest-book/:id" element={<GuestBooking />} />
                         <Route path="/track/:id" element={<TrackBooking />} />

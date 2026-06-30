@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js';
 import { formatTo24h } from '../utils/time.js';
 import { toDbStatus, fromDbStatus, mapBookingError } from '../utils/bookingStatus.js';
+import { createNotification } from './notificationApi.js';
 
 // Helper to perform insert with fallback if database columns do not exist
 async function safeInsert(table, payload, selectString = '*') {
@@ -197,7 +198,20 @@ export async function createBooking(payload) {
             return { data: null, error: mapBookingError(error) };
         }
 
-        return { data: normalizeBooking(data), error: null };
+        const normalized = normalizeBooking(data);
+
+        // Create in-app notification for the barber
+        if (data?.barber_id) {
+            createNotification({
+                barberId: data.barber_id,
+                bookingId: data.id,
+                type: 'new_booking',
+                title: `Yangi bron: ${data.guest_name ?? data.service_name ?? 'Mijoz'}`,
+                body: `${data.booking_date} — ${data.booking_hours} · ${data.service_name ?? ''}`,
+            }).catch(err => console.warn('[BOOKING] notification creation failed:', err));
+        }
+
+        return { data: normalized, error: null };
     } catch (err) {
         return { data: null, error: 'Failed to create booking.' };
     }
@@ -245,7 +259,20 @@ export async function createGuestBooking(payload) {
             return { data: null, error: mapBookingError(error) };
         }
 
-        return { data: normalizeBooking(data), error: null };
+        const normalized = normalizeBooking(data);
+
+        // Create in-app notification for the barber
+        if (data?.barber_id) {
+            createNotification({
+                barberId: data.barber_id,
+                bookingId: data.id,
+                type: 'new_booking',
+                title: `Yangi bron: ${data.guest_name ?? data.service_name ?? 'Mijoz'}`,
+                body: `${data.booking_date} — ${data.booking_hours} · ${data.service_name ?? ''}`,
+            }).catch(err => console.warn('[GUEST BOOKING] notification creation failed:', err));
+        }
+
+        return { data: normalized, error: null };
     } catch (err) {
         return { data: null, error: 'Failed to create guest booking.' };
     }
