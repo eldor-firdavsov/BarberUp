@@ -1029,7 +1029,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    height: calc(66px + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--bg-card);
     border-top: 1px solid var(--border-subtle);
@@ -1045,13 +1045,13 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 4px;
     color: var(--text-secondary);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     transition: color 0.2s ease;
     flex: 1;
-    height: 56px;
+    height: 66px;
     z-index: 2;
 }
 
@@ -1070,19 +1070,19 @@ body {
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 24px;
-    height: 2px;
+    width: 28px;
+    height: 3px;
     background: var(--brand-primary);
-    border-radius: 0 0 2px 2px;
+    border-radius: 0 0 3px 3px;
 }
 
 .bottom-nav-item svg {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
 }
 
 .has-bottom-nav {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
 }
 
 .action-bar-bottom {
@@ -1106,15 +1106,15 @@ body {
 }
 
 @utility mb-nav {
-  margin-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  margin-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
 }
 
 @utility pb-nav {
-  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
+  padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 16px);
 }
 
 @utility bottom-nav {
-  bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 16px);
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 16px);
 }
 
 @utility z-60 {

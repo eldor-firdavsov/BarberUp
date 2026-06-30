@@ -373,7 +373,7 @@ function BarberLayout() {
                                     to={tab.path}
                                     className={({ isActive }) => `bottom-nav-item ${isActive ? "active" : ""}`}
                                 >
-                                    <Icon size={22} />
+                                    <Icon size={24} />
                                     <span>{t(tab.labelKey)}</span>
                                 </NavLink>
                             );
